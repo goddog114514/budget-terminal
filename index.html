@@ -253,22 +253,43 @@
 
 const LS_KEY = "budget_term_v1";
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
-const CONSUME_SHARE = 0.85;           // 总预算中用于"消费"的比例(其余投入投资)
-const INVEST_SHARE  = 0.15;           // 总预算中用于投资的比例 = 0.13 + 0.02
-const MM_RATE   = 0.13;               // 其中货币基金占比
-const IDX_RATE  = 0.02;               // 其中指数基金占比
+/* 可调投资比例：总花费(占用) = 消费 ÷ N, 其中 N = 消费占比(默认 0.85)、
+   投资占比 = 1 - N (默认 0.15)。投资池内部仍按原始 13:2 比例拆分货币/指数。
+   下面四个常量是"默认/基准值"，运行时的真实比例见 consumeShare()/rateSplit()。 */
+const CONSUME_SHARE = 0.85;           // 基准: 总预算中用于"消费"的比例 N (可用 set invest/consume 调)
+const INVEST_SHARE  = 0.15;           // 基准: 投资占比 1-N = 0.13 + 0.02
+const MM_RATE   = 0.13;               // 基准: 其中货币基金占比(占总投资池 13/15)
+const IDX_RATE  = 0.02;               // 基准: 其中指数基金占比(占总投资池 2/15)
 /* 一键投资的触发/单笔额度: 应投货币池累计≥100、应投指数池累计≥20 时可投入该额度 */
 const INVEST_MONEY_LOT = 100;         // 货币基金每次投入额(触发阈值)
 const INVEST_INDEX_LOT = 20;          // 指数基金每次投入额(触发阈值)
 const DEFAULT_CATEGORIES = ["餐饮","交通","购物","娱乐","居住","医疗","教育","人情","旅行","其他"];
 const PREDEFINED = new Map(DEFAULT_CATEGORIES.map((c,i)=>[c,["#3dff7a","#4de8ff","#ffd23d","#ff9d3d","#ff5ef0","#ff4d5e","#2dcc9f","#c58bff","#8be9fd","#f1fa8c"][i % 10]]));
 
+/* ---------- 可调投资比例: 运行时读取的消费/投资比率 ---------- */
+function r6(x){ return Math.round(x*1e6)/1e6; }
+function consumeShare(){                        // N: 消费占总花费(占用)的比例
+  const v = (state && state.settings) ? state.settings.consumeShare : undefined;
+  return (typeof v==="number" && v>0 && v<1) ? v : CONSUME_SHARE;
+}
+function investShare(){ return r6(1 - consumeShare()); }   // 1-N: 投资比例
+/* 投资池内部拆分: 保持原始 13:2 比例, 按投资占比整体缩放 */
+function rateSplit(){
+  const inv = investShare(), base = MM_RATE + IDX_RATE;    // 0.15
+  if(Math.abs(inv-base) < 1e-9) return { mm: MM_RATE, idx: IDX_RATE };
+  return { mm: r6(inv * (MM_RATE/base)), idx: r6(inv * (IDX_RATE/base)) };
+}
+function consumePct(){ return r2(consumeShare()*100); }    // 85
+function invPct(){ return r2(investShare()*100); }         // 15
+function mmPct(){ return r2(rateSplit().mm*100); }         // 13
+function idxPct(){ return r2(rateSplit().idx*100); }       // 2
+
 /* ----------------------------- state ------------------------------------ */
 let state = null;
 function defaultSettings(){
   return { budget: DEFAULT_BUDGET, monthStart:1, weekStart:"mon", thresholds:[80,100],
            periodMode:"month", lengthDays:15, anchor:null, epoch:null,
-           rateMoney:0.02, rateIndex:0.08, periodBudget:{} };
+           consumeShare:CONSUME_SHARE, rateMoney:0.02, rateIndex:0.08, periodBudget:{} };
 }
 function loadState(){
   try{
@@ -559,11 +580,21 @@ function inRange(dateStr, start, end){
 function catColor(cat){ return PREDEFINED.get(cat) || "#8be9fd"; }
 
 /* --------------------------- investment calc ---------------------------- */
-/* 核心换算: 一笔消费 E 对应占用总预算 E/0.85(=E 消费 + 应投);
-   应投 = E/0.85 * 15%, 其中货币 13 / 指数 2 (合计 15) 拆成两笔 */
+/* 核心换算: 一笔消费 E 对应占用总花费 E/N (N=消费占比, 默认0.85, 可调);
+   应投 = 占用 × (1-N), 其中货币/指数按 13:2 拆分 */
 function investOf(amount){
-  const base = amount / CONSUME_SHARE;              // 占用总预算的等价口径
-  return { base: base, mm: r2(base*MM_RATE), idx: r2(base*IDX_RATE) };
+  const base = amount / consumeShare();             // 占用总花费的等价口径
+  const sp = rateSplit();
+  return { base: base, mm: r2(base*sp.mm), idx: r2(base*sp.idx) };
+}
+/* 比例变化后: 按新比例重算所有记录的应投额(已投金额不会超过新的应投额) */
+function recomputeAllInvest(){
+  for(const r of state.records){
+    const inv = investOf(r.amount);
+    r.mm = inv.mm; r.idx = inv.idx;
+    r.moneyInv = r2(Math.min(r.moneyInv||0, r.mm));
+    r.indexInv = r2(Math.min(r.indexInv||0, r.idx));
+  }
 }
 function r2(x){ return Math.round(x*100)/100; }
 function money(x){
@@ -669,7 +700,7 @@ function grantedTotal(){
   for(const s of periodStartsUpTo(cur)) sum += effectiveBudget({start:s});
   return r2(sum);
 }
-function totalCharge(){ return r2(state.records.reduce((s,r)=>s + (r.amount / CONSUME_SHARE), 0)); }
+function totalCharge(){ return r2(state.records.reduce((s,r)=>s + (r.amount / consumeShare()), 0)); }
 function availableBalance(){ return r2(grantedTotal() - totalCharge()); }
 function periodDayCount(p){ return daysBetween(p.start, p.end) + 1; }
 /* 当前周期快照(含燃尽预测所需的日进度) */
@@ -681,7 +712,7 @@ function periodSnapshot(){
   const mm  = r2(rows.reduce((s,r)=>s+r.mm,0));                   // 应投货币(本期累计)
   const idx = r2(rows.reduce((s,r)=>s+r.idx,0));                  // 应投指数(本期累计)
   const invest = r2(mm+idx);
-  const usedUnits = r2(consumption / CONSUME_SHARE);              // 本期已占用的预算口径
+  const usedUnits = r2(consumption / consumeShare());              // 本期已占用的预算口径
   const ratio = B>0 ? usedUnits/B : 0;                            // 进度(相对本期发放 B)
   return { p, B, rows, consumption, mm, idx, invest, usedUnits, ratio };
 }
@@ -756,6 +787,8 @@ const HELP_LINES = [
   ["set monthstart <1-28>", "(按月模式)起始日; 1=自然月; 15=每月15日起"],
   ["set weekstart <mon|sun>", "周总结起始日(周一/周日)"],
   ["set alert <p1,p2..>", "自定义预警阈值(百分比), 默认 80,100"],
+  ["set invest <投资比例%>", "可调投资比例, 如 set invest 15 (消费占比=1-投资比例); 0~50%"],
+  ["set consume <消费占比%>", "直接设消费占比 N, 如 set consume 85 或 set ratio 0.85; 总花费=消费÷N"],
   ["set rate <money|index> <%>", "设置基金年化(收益模拟用), 例 set rate index 8"],
   ["budget", "当前周期预算进度(含进度条)"],
   ["budget set <金额>", "只调整当前周期的预算, 例 budget set 1200"],
@@ -773,7 +806,7 @@ const HELP_LINES = [
   ["assets [N年]", "资产看板: 现金+基金本金+复利预估(默认10年)与增长曲线"],
   ["undo  /  redo", "撤销 / 重做上一次改动 (Ctrl+Z / Ctrl+Y)"],
   ["cls", "清屏"],
-  ["换算: 消费÷0.85 占用总预算; 其中 15% 应投(货币13/指数2); 剩余结转, 透支下期扣回", "__INFO"],
+  ["换算: 消费÷N 占用总花费(N=消费占比, 默认85%); 其中(1-N)=投资(默认15%, 货币13/指数2); set invest 15 可调", "__INFO"],
 ];
 function printHelp(){
   for(const [cmdText, desc] of HELP_LINES){
@@ -925,8 +958,36 @@ function doSet(tokens){
     else { line([{t:"用法: set rate <money|index> <年化%>",c:"#ffd23d"}]); return; }
     save();
     line([{t:"✓ 货币年化 "+(state.settings.rateMoney*100).toFixed(2)+"%  |  指数年化 "+(state.settings.rateIndex*100).toFixed(2)+"%",c:"#3dff7a"}]);
+  } else if(sub==="invest"||sub==="investment"||sub==="consume"||sub==="ratio"||sub==="share"){
+    // set invest <投资占比%>   → 消费占比 N = 1 - 投资占比
+    // set consume <消费占比%>  → 直接设 N (也接受 set ratio 0.85 小数写法)
+    let pct = numeric(tokens[1]);
+    const asInvest = (sub==="invest"||sub==="investment");
+    const usage = "用法: set invest <投资比例%>   例 set invest 15   (消费占比 = 1 - 投资比例)"
+                + "\n      set consume <消费占比%>  例 set consume 85   (或 set ratio 0.85)";
+    if(pct==null){ line([{t:usage,c:"#ffd23d"}]); return; }
+    if(!asInvest && pct>0 && pct<=1) pct = pct*100;            // 允许 0.85 / 0.9 小数写法
+    const newConsume = asInvest ? (1 - pct/100) : (pct/100);
+    if(!(newConsume>0.5 && newConsume<1)){
+      line([{t:"比例超出范围: 消费占比需在 50%~100% 之间 (即投资比例 0%~50%)。",c:"#ffd23d"}]);
+      line([{t:usage,c:"#ffd23d"}]); return;
+    }
+    const oldPct = consumePct();
+    state.settings.consumeShare = r6(newConsume);
+    recomputeAllInvest();                                      // 历史记录按新比例重算应投
+    save();
+    const sp = rateSplit();
+    line([{t:"✓ 投资比例已更新: ",c:"#3dff7a"},
+          {t:"消费占比 "+consumePct()+"%",c:"#ffffff"},
+          {t:"  |  投资占比 "+invPct()+"%",c:"#4de8ff"},
+          {t:"  (货币 "+r2(sp.mm*100)+"% + 指数 "+r2(sp.idx*100)+"%)",c:"#f1fa8c"}]);
+    line([{t:"  换算: 占用 = 消费 ÷ "+consumePct()+"%  →  消费¥100 ⇒ 占用¥"+money(100/consumeShare())
+          +" (消费¥100 + 应投¥"+money(100/consumeShare()*(1-consumeShare()))+")",c:"#5d6b62"}]);
+    line([{t:"  ※ 已按新比例重算全部记录的应投额 (已投金额不会超过新的应投额)。",c:"#5d6b62"}]);
+    if(oldPct!==consumePct()) line([{t:"  原消费占比 "+oldPct+"%",c:"#5d6b62"}]);
+    refreshHeader(); renderInvestBar();
   } else {
-    line([{t:"set 支持: budget | period <N天> | periodstart <日期> | monthstart | weekstart | alert | rate",c:"#ffd23d"}]);
+    line([{t:"set 支持: budget | invest <投资比例%> | consume <消费占比%> | period <N天> | periodstart <日期> | monthstart | weekstart | alert | rate",c:"#ffd23d"}]);
   }
 }
 
@@ -991,7 +1052,7 @@ function showBudget(){
   line([{t:aw.t,c:aw.c,cls:"glow"}]);
   blank();
   line([{t:"换算口径: 消费 ¥"+money(st.consumption)+" → 占用 ¥"+money(st.usedUnits)
-        +" = 消费/0.85; 其中应投 15% = 应投货币 ",c:"#5d6b62"},
+        +" = 消费÷"+consumePct()+"%; 其中应投 "+invPct()+"% = 应投货币 ",c:"#5d6b62"},
         {t:"¥"+money(st.mm),c:"#4de8ff"},{t:" + 应投指数 ",c:"#5d6b62"},
         {t:"¥"+money(st.idx),c:"#f1fa8c"}]);
   if(hasBudgetOverride(p)){
@@ -1029,8 +1090,8 @@ function doAdd(tokens){
   line([{t:"✓ 已记入 #",c:"#3dff7a"},{t:rec.id,c:"#ffffff",cls:"hl"},
         {t:"  "+cat+" ",c:catColor(cat)},
         {t:"¥"+money(rec.amount),c:"#ffffff"}, {t:"  ("+date+")",c:"#5d6b62"}]);
-  line([{t:"  占用预算 ",c:"#5d6b62"},{t:"¥"+money(rec.amount/CONSUME_SHARE),c:"#d7ffe0"},
-        {t:"  (消费÷85%)  应投货币 ",c:"#5d6b62"},{t:"¥"+money(rec.mm),c:"#4de8ff"},
+  line([{t:"  占用预算 ",c:"#5d6b62"},{t:"¥"+money(rec.amount/consumeShare()),c:"#d7ffe0"},
+        {t:"  (消费÷"+consumePct()+"%)  应投货币 ",c:"#5d6b62"},{t:"¥"+money(rec.mm),c:"#4de8ff"},
         {t:"  + 应投指数 ",c:"#5d6b62"},{t:"¥"+money(rec.idx),c:"#f1fa8c"},
         {t:"  = ",c:"#5d6b62"},{t:"¥"+money(rec.mm+rec.idx),c:"#3dff7a"}]);
   // overspend notice for this period
@@ -1230,8 +1291,8 @@ function printSummaryReport(win, windowName, budgetRef, opts){
     const pct = win.total>0? (amt/win.total*100).toFixed(1)+"%":"0%";
     rows.push(["  类别·"+cat, "¥"+money(amt)+"  ("+pct+")", catColor(cat)]);
   }
-  rows.push(["应投货币(13%)", "¥"+money(win.mmT), "#4de8ff"]);
-  rows.push(["应投指数(2%)", "¥"+money(win.idxT), "#f1fa8c"]);
+  rows.push(["应投货币("+mmPct()+"%)", "¥"+money(win.mmT), "#4de8ff"]);
+  rows.push(["应投指数("+idxPct()+"%)", "¥"+money(win.idxT), "#f1fa8c"]);
   rows.push(["应投合计", "¥"+money(invTotal), "#3dff7a"]);
   rows.push(["本期发放(基准)", "¥"+money(st.B), "#d7ffe0"]);
   rows.push(["本期消费", "¥"+money(st.consumption), "#ffffff"]);
@@ -1244,7 +1305,7 @@ function printSummaryReport(win, windowName, budgetRef, opts){
   }
   // visual bar for the period
   line([{t:" 本期发放进度 ",c:"#5d6b62"},{t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%",c:"#d7ffe0"}]);
-  line([{t:" 换算口径: 消费÷0.85=占用; 占用×15% 应投(货币13/指数2)", c:"#5d6b62"}]);
+  line([{t:" 换算口径: 消费÷"+consumePct()+"%=占用; 占用×"+invPct()+"% 应投(货币"+mmPct()+"%/指数"+idxPct()+"%)", c:"#5d6b62"}]);
   // category mini-bars
   if(win.cats.length && win.total>0){
     line([{t:" 类别占比(按消费):",c:"#5d6b62"}]);
@@ -1358,7 +1419,7 @@ function buildReportText(md){
   const aw = alertWord(st.ratio);
   H("预算与周期");
   push("记账周期", p.label);
-  push("换算口径", "消费÷0.85=占用总预算; 其中15%应投(货币13/指数2)");
+  push("换算口径", "消费÷"+consumePct()+"%=占用总花费; 其中"+invPct()+"%应投(货币"+mmPct()+"%/指数"+idxPct()+"%)");
   push("本期发放总预算", moneyF(st.B));
   push("本期消费", moneyF(st.consumption));
   push("本期应投合计", moneyF(st.invest));
@@ -1375,8 +1436,8 @@ function buildReportText(md){
   for(const [cat,amt] of w.cats){ push("类别·"+cat, moneyF(amt)+" ("+(w.total?amt/w.total*100:0).toFixed(1)+"%)"); }
   HR();
   H("自动投资换算");
-  push("应投货币 (13%口径)", moneyF(w.mmT));
-  push("应投指数 (2%口径)", moneyF(w.idxT));
+  push("应投货币 ("+mmPct()+"%口径)", moneyF(w.mmT));
+  push("应投指数 ("+idxPct()+"%口径)", moneyF(w.idxT));
   push("应投合计", moneyF(r2(w.mmT+w.idxT)));
   const paidMM = r2(w.rows.reduce((s,r)=>s+(r.moneyInv||0),0));
   const paidIdx= r2(w.rows.reduce((s,r)=>s+(r.indexInv||0),0));
@@ -1428,6 +1489,11 @@ function showSettings(){
   line([{t:"  周起始日        ",c:"#5d6b62"},{t:s.weekStart==="mon"?"周一":"周日",c:"#ffffff"}]);
   line([{t:"  预警阈值        ",c:"#5d6b62"},{t:s.thresholds.join("% , ")+"%",c:"#ffffff"}]);
   line([{t:"  年化(货币/指数) ",c:"#5d6b62"},{t:(s.rateMoney*100).toFixed(2)+"% / "+(s.rateIndex*100).toFixed(2)+"%",c:"#ffffff"}]);
+  const sp = rateSplit();
+  line([{t:"  消费/投资比例  ",c:"#5d6b62"},
+        {t:"消费 "+consumePct()+"%  |  投资 "+invPct()+"%  (货币 "+r2(sp.mm*100)+"% + 指数 "+r2(sp.idx*100)+"%)",c:"#ffffff"}]);
+  line([{t:"  换算(占用)      ",c:"#5d6b62"},
+        {t:"占用 = 消费 ÷ "+consumePct()+"%   (set invest 15 / set consume 85 可调)",c:"#ffffff"}]);
   blank();
 }
 
@@ -1443,9 +1509,9 @@ function forecastData(){
   const spent = st.consumption;
   const dailyAvg = elapsed>0 ? spent/elapsed : 0;
   const projConsumption = r2(dailyAvg * total);         // 期末预测消费
-  const projUsed = r2(projConsumption / CONSUME_SHARE); // 期末预测占用(预算口径)
+  const projUsed = r2(projConsumption / consumeShare()); // 期末预测占用(预算口径)
   const projLeft = r2(B - projUsed);                    // >0 预计结余, <0 预计超支
-  const allow = r2(CONSUME_SHARE * B);                  // 本期消费额度(85%)
+  const allow = r2(consumeShare() * B);                 // 本期消费额度(N%)
   const leftConsume = r2(allow - spent);                // 还可消费
   const perDayLeft = remaining>0 ? r2(leftConsume/remaining) : leftConsume;
   const projRatio = B>0 ? projUsed/B : 0;
@@ -1732,9 +1798,11 @@ function argCandidates(c0, slot, tokens, cur){
     return [];
   }
   if(cmd==="set"){
-    if(slot===1) return ["budget","period","periodstart","monthstart","weekstart","alert","rate"];
+    if(slot===1) return ["budget","invest","consume","ratio","period","periodstart","monthstart","weekstart","alert","rate"];
     if(slot===2){
       const sub=(tokens[1]||"").toLowerCase();
+      if(sub==="invest") return ["15","10","20","5"];
+      if(sub==="consume"||sub==="ratio") return ["85","90","80","0.85"];
       if(sub==="period") return ["natural","15","14","7","30","90"];
       if(sub==="monthstart") return ["natural","1","5","10","15","20","25","28"];
       if(sub==="weekstart") return ["mon","sun"];
@@ -1893,10 +1961,12 @@ function boot(){
   line([{t:"╚══════════════════════════════════════════════════════╝",c:"#3dff7a"}]);
   line([
     {t:"今日 ",c:"#5d6b62"},{t:t,c:"#d7ffe0"},
-    {t:"   模型: 消费÷0.85=占用预算; 占用×15% 应投 ",c:"#5d6b62"},
-    {t:"货币13%",c:"#4de8ff"},{t:"+",c:"#5d6b62"},{t:"指数2%",c:"#f1fa8c"},
+    {t:"   模型: 消费÷"+consumePct()+"%=占用预算; 占用×"+invPct()+"% 应投 ",c:"#5d6b62"},
+    {t:"货币"+mmPct()+"%",c:"#4de8ff"},{t:"+",c:"#5d6b62"},{t:"指数"+idxPct()+"%",c:"#f1fa8c"},
     {t:"; 剩余结转, 透支下期扣回",c:"#5d6b62"}
   ]);
+  line([{t:"  投资比例可调: ",c:"#5d6b62"},{t:"set invest 15",c:"#ffd23d"},
+        {t:" (或 set consume 85 / set ratio 0.85)",c:"#5d6b62"}]);
   showBudget();
   line([{t:"输入 ",c:"#5d6b62"},{t:"help",c:"#ffd23d"},{t:" 查看全部命令；或点上方按钮快速操作。",c:"#5d6b62"}]);
   blank();
