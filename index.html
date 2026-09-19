@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BUDGET::TERM — 记账与自动理财终端</title>
+<style>
+  :root{
+    --bg:#050607;
+    --panel:#0b0e0f;
+    --green:#3dff7a;
+    --green-dim:#1e9e54;
+    --white:#d7ffe0;
+    --yellow:#ffd23d;
+    --orange:#ff9d3d;
+    --red:#ff4d5e;
+    --cyan:#4de8ff;
+    --magenta:#ff5ef0;
+    --gray:#5d6b62;
+    --border:#142018;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--green);
+    font-family:"Consolas","JetBrains Mono","Cascadia Code","Courier New",monospace;
+    display:flex;flex-direction:column;height:100vh;overflow:hidden;
+  }
+  /* faint scanlines + vignette for immersion */
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:5;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0 1px,transparent 1px 3px);
+    mix-blend-mode:multiply;opacity:.5;
+  }
+  .glow{ text-shadow:0 0 6px currentColor; }
+
+  /* ---- header status bar ---- */
+  header{
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--border);
+    font-size:13px;letter-spacing:.3px;flex:0 0 auto;
+  }
+  .logo{font-weight:bold;color:var(--cyan);}
+  .logo b{color:var(--magenta);}
+  .stat{display:flex;flex-direction:column;gap:1px;border-left:1px solid var(--border);padding-left:12px;}
+  .stat .k{color:var(--gray);font-size:11px;}
+  .stat .v{color:var(--white);font-size:13px;}
+  .stat .v.neg{color:var(--red);}
+  .stat .v.ok{color:var(--green);}
+  .stat .v.warn{color:var(--yellow);}
+  .spacer{flex:1;}
+  .mini-alert{font-size:12px;border:1px solid var(--border);padding:2px 8px;border-radius:3px;}
+  .mini-alert.ok{color:var(--green);}
+  .mini-alert.warn{color:var(--yellow);border-color:var(--yellow);}
+  .mini-alert.over{color:var(--red);border-color:var(--red);animation:blink 1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:.35;}}
+
+  /* ---- button toolbar (auxiliary mouse support) ---- */
+  nav.toolbar{
+    flex:0 0 auto;display:flex;gap:6px;padding:6px 14px;
+    background:#080a0b;border-bottom:1px solid var(--border);flex-wrap:wrap;
+  }
+  nav.toolbar button{
+    background:transparent;color:var(--green);border:1px solid var(--border);
+    font-family:inherit;font-size:12px;padding:4px 10px;cursor:pointer;border-radius:3px;
+  }
+  nav.toolbar button:hover{background:rgba(61,255,122,.08);border-color:var(--green);color:var(--white);}
+  nav.toolbar button:active{background:rgba(61,255,122,.2);}
+  nav.toolbar button.danger:hover{border-color:var(--red);color:var(--red);}
+  nav.toolbar button.accent:hover{border-color:var(--cyan);color:var(--cyan);}
+  /* 行内 "已投资" 开关按钮 */
+  .tbtn{
+    background:transparent;color:var(--yellow);border:1px solid var(--yellow);
+    font-family:inherit;font-size:12px;padding:1px 9px;margin:0 2px 0 8px;
+    cursor:pointer;border-radius:3px;vertical-align:middle;line-height:1.4;
+  }
+  .tbtn:hover{background:rgba(255,210,61,.12);}
+  .tbtn.on{color:var(--green);border-color:var(--green);}
+  .tbtn.on:hover{background:rgba(61,255,122,.12);}
+  .tbtn.dimmed{color:var(--gray);border-color:var(--gray);}
+
+  /* ---- 理财条：应投货币 / 应投指数 池 + 一键投资 ---- */
+  #investbar{
+    flex:0 0 auto;display:flex;gap:22px;align-items:center;flex-wrap:wrap;
+    padding:5px 14px;background:#07090a;border-bottom:1px solid var(--border);font-size:12.5px;
+  }
+  .inv-cl{display:flex;align-items:center;gap:9px;}
+  .inv-kind{color:var(--gray);}
+  .inv-kind.m{color:#4de8ff;}.inv-kind.i{color:#f1fa8c;}
+  .inv-pool{font-weight:bold;font-size:13px;color:var(--yellow);}
+  .inv-pool.ready{color:var(--green);text-shadow:0 0 7px var(--green);}
+  .inv-done{color:var(--gray);}
+  .inv-btn{
+    background:transparent;border:1px solid var(--green);color:var(--green);
+    font-family:inherit;font-size:12px;padding:1px 10px;cursor:pointer;border-radius:3px;display:inline-block;
+  }
+  .inv-btn:hover{background:rgba(61,255,122,.12);}
+  .inv-btn[disabled]{opacity:.35;cursor:not-allowed;border-color:var(--border);color:var(--gray);}
+  .inv-hint{color:#3c4b41;margin-left:4px;}
+
+  /* ---- terminal output ---- */
+  #term{
+    flex:1 1 auto;overflow-y:auto;padding:10px 14px 14px;
+    font-size:14px;line-height:1.5;scroll-behavior:smooth;
+  }
+  #term::-webkit-scrollbar{width:10px;}
+  #term::-webkit-scrollbar-thumb{background:#122a1a;border-radius:6px;}
+  #term::-webkit-scrollbar-track{background:transparent;}
+  .l{white-space:pre-wrap;word-break:break-word;min-height:1em;}
+  .dim{color:var(--gray);}
+  .ok{color:var(--green);}
+  .y{color:var(--yellow);}
+  .o{color:var(--orange);}
+  .r{color:var(--red);}
+  .c{color:var(--cyan);}
+  .m{color:var(--magenta);}
+  .w{color:var(--white);}
+  .cmd{color:var(--cyan);}
+  .prompt{color:var(--magenta);}
+  .sep{border-bottom:1px solid var(--border);margin:4px 0;}
+  .error{color:var(--red);}
+  .hl{background:rgba(61,255,122,.14);}
+  .line0,.line1,.line2,.line3,.line4,.line5{border-left:2px solid transparent;padding-left:8px;margin:2px 0;}
+  .lvl-0{border-color:var(--green);}
+  .lvl-1{border-color:var(--yellow);}
+  .lvl-2{border-color:var(--orange);}
+  .lvl-3{border-color:var(--red);}
+  .lvl-4{border-color:var(--magenta);}
+
+  /* ---- input ---- */
+  footer{
+    flex:0 0 auto;background:var(--panel);border-top:1px solid var(--border);
+    display:flex;align-items:center;padding:8px 14px;gap:8px;
+  }
+  .ps1{color:var(--magenta);white-space:nowrap;font-size:13px;}
+  .ps1 .pwd{color:var(--cyan);}
+  footer input{
+    flex:1;background:transparent;border:none;outline:none;color:var(--green);
+    font-family:inherit;font-size:15px;caret-color:var(--green);
+  }
+  footer input::placeholder{color:#2c3a30;}
+  .inwrap{position:relative;flex:1;display:flex;align-items:center;overflow:hidden;}
+  #cmdline{position:relative;z-index:1;}
+  #ghost{
+    position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:0;
+    color:#4c6b57;white-space:pre;font-family:inherit;font-size:15px;line-height:normal;
+    pointer-events:none;opacity:0;user-select:none;
+  }
+  #ghost.show{opacity:1;}
+
+  /* ---- modal forms (auxiliary) ---- */
+  #modalWrap,#budgetWrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:20;}
+  #modalWrap.open,#budgetWrap.open{display:flex;}
+  #modal,#budgetModal{
+    width:min(560px,94vw);max-height:90vh;overflow:auto;
+    background:#07090a;border:1px solid var(--green);border-radius:6px;padding:18px 20px;
+    box-shadow:0 0 30px rgba(61,255,122,.15);
+  }
+  #modal h3,#budgetModal h3{color:var(--cyan);font-size:15px;letter-spacing:1px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;}
+  #modal label,#budgetModal label{display:block;color:var(--gray);font-size:12px;margin:10px 0 4px;}
+  #modal input,#modal select,#budgetModal input{
+    width:100%;background:#0c100e;border:1px solid var(--border);color:var(--white);
+    font-family:inherit;font-size:14px;padding:6px 8px;border-radius:3px;outline:none;
+  }
+  #modal input:focus,#modal select:focus,#budgetModal input:focus{border-color:var(--green);}
+  .mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap;}
+  .mbtns button{font-family:inherit;padding:6px 16px;cursor:pointer;border-radius:3px;border:1px solid var(--border);background:transparent;}
+  #btnSubmit,#b_current{color:var(--green);border-color:var(--green);}
+  #btnCancel,#b_cancel{color:var(--red);border-color:var(--red);}
+  #b_default{color:var(--cyan);border-color:var(--cyan);}
+  #btnSubmit:hover,#b_current:hover{background:rgba(61,255,122,.1);}
+  #btnCancel:hover,#b_cancel:hover{background:rgba(255,77,94,.1);}
+  #b_default:hover{background:rgba(77,232,255,.1);}
+  #budgetModal .hint{color:var(--gray);font-size:12px;margin-top:12px;line-height:1.6;}
+
+  table.kv{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0;}
+  table.kv td{padding:3px 8px;border:1px solid var(--border);}
+  table.kv td:first-child{color:var(--gray);width:170px;}
+  table.kv td:last-child{color:var(--white);}
+  .tag{color:var(--cyan);}
+  .bar-track{display:inline-block;width:200px;background:#10241a;margin:0 8px;vertical-align:middle;height:14px;border:1px solid var(--border);}
+  .bar-fill{display:block;height:100%;}
+</style>
+</head>
+<body>
+<header id="statusbar"></header>
+<nav class="toolbar">
+  <button data-cmd="help">[F1] 帮助</button>
+  <button data-cmd="budget">预算进度</button>
+  <button data-cmd="open-budget" class="accent">配置预算</button>
+  <button data-cmd="forecast">燃尽预测</button>
+  <button data-cmd="open-add" class="accent">+ 记一笔</button>
+  <button data-cmd="list">消费列表</button>
+  <button data-cmd="summary">周期总结</button>
+  <button data-cmd="summary day">日总结</button>
+  <button data-cmd="summary week">周总结</button>
+  <button data-cmd="assets">资产看板</button>
+  <button id="btnUndo" data-cmd="undo" disabled>↩ 撤销</button>
+  <button id="btnRedo" data-cmd="redo" disabled>↪ 重做</button>
+  <button data-cmd="export md">导出 .md</button>
+  <button data-cmd="export txt">导出 .txt</button>
+  <button data-cmd="backup-download">备份 .json</button>
+  <button data-cmd="restore-file">导入 .json…</button>
+  <button id="btnAutosave" data-cmd="autosave-dir" class="accent">存到本地目录: 关</button>
+  <button data-cmd="cls" class="danger">清屏</button>
+</nav>
+<input type="file" id="fileImport" accept="application/json,.json" style="display:none">
+<div id="investbar"></div>
+<main id="term"></main>
+<footer>
+  <span class="ps1 glow"><b>user</b>@<span class="pwd">budget</span>:~$</span>
+  <span class="inwrap">
+    <input id="cmdline" autocomplete="off" spellcheck="false" placeholder="输入命令，如  add 50 餐饮 午餐    输入 help 查看帮助" />
+    <span id="ghost" aria-hidden="true"></span>
+  </span>
+</footer>
+
+<div id="modalWrap">
+  <div id="modal">
+    <h3 id="mTitle">记一笔消费</h3>
+    <label>金额 (元)</label><input id="f_amt" type="number" step="0.01" min="0.01" placeholder="如 50">
+    <label>类别</label>
+    <input id="f_cat" list="catlist" placeholder="如 餐饮 / 交通 / 购物 ..."><datalist id="catlist"></datalist>
+    <label>日期</label><input id="f_date" type="date">
+    <label>备注</label><input id="f_note" placeholder="可选，如 午餐">
+    <div class="mbtns">
+      <button id="btnCancel">取消</button>
+      <button id="btnSubmit">确认</button>
+    </div>
+  </div>
+</div>
+
+<div id="budgetWrap">
+  <div id="budgetModal">
+    <h3>配置预算</h3>
+    <label>金额 (元)</label><input id="b_amt" type="number" step="0.01" min="0.01" placeholder="如 1200">
+    <div class="hint" id="b_hint"></div>
+    <div class="mbtns">
+      <button id="b_cancel">取消</button>
+      <button id="b_default">设为默认 (各期)</button>
+      <button id="b_current">应用于当期</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================================
+   BUDGET::TERM  — 个人记账与自动理财规划终端
+   纯前端，数据保存在 localStorage。无需构建、无需服务器，双击即可运行。
+   ========================================================================== */
+
+const LS_KEY = "budget_term_v1";
+const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
+const CONSUME_SHARE = 0.85;           // 总预算中用于"消费"的比例(其余投入投资)
+const INVEST_SHARE  = 0.15;           // 总预算中用于投资的比例 = 0.13 + 0.02
+const MM_RATE   = 0.13;               // 其中货币基金占比
+const IDX_RATE  = 0.02;               // 其中指数基金占比
+/* 一键投资的触发/单笔额度: 应投货币池累计≥100、应投指数池累计≥20 时可投入该额度 */
+const INVEST_MONEY_LOT = 100;         // 货币基金每次投入额(触发阈值)
+const INVEST_INDEX_LOT = 20;          // 指数基金每次投入额(触发阈值)
+const DEFAULT_CATEGORIES = ["餐饮","交通","购物","娱乐","居住","医疗","教育","人情","旅行","其他"];
+const PREDEFINED = new Map(DEFAULT_CATEGORIES.map((c,i)=>[c,["#3dff7a","#4de8ff","#ffd23d","#ff9d3d","#ff5ef0","#ff4d5e","#2dcc9f","#c58bff","#8be9fd","#f1fa8c"][i % 10]]));
+
+/* ----------------------------- state ------------------------------------ */
+let state = null;
+function defaultSettings(){
+  return { budget: DEFAULT_BUDGET, monthStart:1, weekStart:"mon", thresholds:[80,100],
+           periodMode:"month", lengthDays:15, anchor:null, epoch:null,
+           rateMoney:0.02, rateIndex:0.08, periodBudget:{} };
+}
+function loadState(){
+  try{
+    state = JSON.parse(localStorage.getItem(LS_KEY));
+  }catch(e){ state = null; }
+  if(!state){
+    state = { settings: defaultSettings(), seq: 0, records: [] };
+  } else {
+    // normalize legacy / partial states
+    if(!state.settings) state.settings = {};
+    const def = defaultSettings();
+    for(const k in def){ if(state.settings[k]===undefined) state.settings[k]=def[k]; }
+    if(!Array.isArray(state.records)) state.records=[];
+    if(typeof state.seq!=="number") state.seq = state.records.length;
+    // migrate investment fields: mm/idx (应投) + 金额制 moneyInv/indexInv (已投金额)
+    for(const r of state.records){
+      if(typeof r.amount==="number" && r.amount>0){ const inv=investOf(r.amount); r.mm=inv.mm; r.idx=inv.idx; }
+      const mInv = typeof r.moneyInv==="number" ? r.moneyInv : (r.mmPaid ? r.mm : 0);
+      const iInv = typeof r.indexInv==="number" ? r.indexInv : (r.idxPaid ? r.idx : 0);
+      r.moneyInv = Math.min(r.mm, mInv);
+      r.indexInv = Math.min(r.idx, iInv);
+    }
+  }
+  // ensure a ledger epoch exists (start of the current budget period)
+  state.settings.epoch = state.settings.epoch || currentPeriod().start;
+  save();
+}
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); scheduleFileWrite(); }
+
+/* ======================= 撤销 / 重做 (undo / redo) ======================= */
+const HISTORY_MAX = 200;
+let undoStack = [], redoStack = [];
+function snapshotState(){ return JSON.stringify(state); }
+/* 包住一次可能修改数据的操作: 若数据确实变了, 把"改前"快照压入撤销栈 */
+function mutate(fn){
+  const before = snapshotState();
+  const r = fn();
+  if(snapshotState() !== before){
+    undoStack.push(before);
+    if(undoStack.length > HISTORY_MAX) undoStack.shift();
+    redoStack.length = 0;
+    refreshHistoryUI();
+  }
+  return r;
+}
+function applyState(json){
+  state = JSON.parse(json);
+  save(); refreshHeader(); refreshHistoryUI();
+}
+function undo(){
+  if(!undoStack.length){ line([{t:"没有可撤销的操作。", c:"#ffd23d"}]); return; }
+  const cur = snapshotState();
+  const prev = undoStack.pop();
+  redoStack.push(cur);
+  applyState(prev);
+  line([{t:"↩ 已撤销 (可重做 "+redoStack.length+" 步)", c:"#ffd23d"}]);
+  scrollBottom();
+}
+function redo(){
+  if(!redoStack.length){ line([{t:"没有可重做的操作。", c:"#ffd23d"}]); return; }
+  const cur = snapshotState();
+  const next = redoStack.pop();
+  undoStack.push(cur);
+  applyState(next);
+  line([{t:"↪ 已重做 (可撤销 "+undoStack.length+" 步)", c:"#3dff7a"}]);
+  scrollBottom();
+}
+function refreshHistoryUI(){
+  const u = document.getElementById("btnUndo"); if(u) u.disabled = !undoStack.length;
+  const r = document.getElementById("btnRedo"); if(r) r.disabled = !redoStack.length;
+}
+
+/* ============ 本地文件持久化(防刷新/清缓存丢失) ============
+   方式: 导出/导入 .json (全浏览器可用) + 存到本地目录自动写盘
+   (File System Access API, 需 Chrome/Edge; 用 IndexedDB 记住所选目录) */
+let dirHandle = null;               // 本地目录句柄(内存, 本次会话)
+let fileWritePending = false;
+let autosaveOn = false;
+function supportsFSA(){ return typeof window!=="undefined" && ("showDirectoryPicker" in window); }
+function fsLog(msg, color){ if(typeof line==="function") line([{t:msg, c:color||"#4de8ff"}]); }
+
+function serializeState(){
+  return JSON.stringify({ app:"budget_term", version:2,
+    savedAt: todayYMD()+" "+new Date().toTimeString().slice(0,8),
+    settings: state.settings, seq: state.seq, records: state.records }, null, 2);
+}
+function restoreFromText(text){
+  const data = JSON.parse(text);
+  if(!data || typeof data!=="object" || !Array.isArray(data.records)) throw new Error("不是有效的备份文件");
+  if(data.app && data.app!=="budget_term") throw new Error("备份文件不匹配本应用");
+  mutate(()=>{
+    state.settings = Object.assign(state.settings||{}, data.settings||{});
+    state.seq = (typeof data.seq==="number")? data.seq : data.records.length;
+    state.records = data.records;
+    save();
+  });
+  refreshHeader();
+  fsLog("✓ 已从备份恢复 "+state.records.length+" 条记录、预算与设置已更新 (可 undo 撤销)。", "#3dff7a");
+}
+function doBackupDownload(){
+  const blob = new Blob([serializeState()], {type:"application/json;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href=url; a.download="budget_backup_"+todayYMD()+".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 400);
+  fsLog("✓ 已下载完整备份 .json (含所有记录/设置)。", "#3dff7a");
+}
+/* --- 存到本地目录: 选择目录并立即写入 budget_term_backup.json, 之后每改一次自动写盘 --- */
+async function writeToFolder(){
+  const dir = dirHandle || await window.showDirectoryPicker({mode:"readwrite"});
+  dirHandle = dir;
+  // 申请持久授权, 便于以后每次点开自动重连
+  try{ await dir.requestPermission({mode:"readwrite"}); }catch(e){}
+  const fh = await dir.getFileHandle("budget_term_backup.json", {create:true});
+  const w = await fh.createWritable();
+  await w.write(serializeState());
+  await w.close();
+  await persistDirHandle(dir);
+  autosaveOn = true;
+  refreshAutosaveUI();
+}
+async function doAutosaveToggle(){
+  if(autosaveOn){ autosaveOn=false; refreshAutosaveUI(); fsLog("已关闭本地自动写盘(localStorage 仍在保存)。","#ffd23d"); return; }
+  try{
+    if(!supportsFSA()){ fsLog("当前浏览器不支持“存到本地目录”(请改用 Chrome/Edge), 可用 [备份 .json] 手动导出。","#ff4d5e"); return; }
+    fsLog("请在弹出框中选择一个文件夹存放备份(budget_term_backup.json)…","#4de8ff");
+    await writeToFolder();
+    fsLog("✓ 已存到所选文件夹。此后每次改动都会自动写盘；刷新页面点一次 [存到本地目录] 重新连接即可(或浏览器仍授权时会自动重连)。","#3dff7a");
+  }catch(e){
+    if(e && (e.name==="AbortError"||/abort/i.test(String(e.message)))){ fsLog("已取消选择文件夹。","#5d6b62"); }
+    else { fsLog("存到本地目录失败: "+(e&&e.message||e),"#ff4d5e"); }
+  }
+}
+async function scheduleFileWrite(){
+  if(!autosaveOn || fileWritePending) return;
+  fileWritePending = true;
+  try{ await writeToFolder(); }
+  catch(e){ /* 目录被移除等: 保持 localStorage 兜底 */ }
+  finally{ fileWritePending = false; }
+}
+function refreshAutosaveUI(){
+  const b = document.getElementById("btnAutosave");
+  if(b) b.textContent = "存到本地目录: "+(autosaveOn?"开":"关");
+  if(typeof renderInvestBar==="function") renderInvestBar();
+}
+function backupFolderName(){ try{ return dirHandle&&dirHandle.name?dirHandle.name:"本地文件夹"; }catch(e){ return "本地文件夹"; } }
+/* --- IndexedDB: 记住所选目录句柄, 便于刷新后重连 --- */
+function idbOpen(){
+  return new Promise((res,rej)=>{
+    if(typeof indexedDB==="undefined") return rej(new Error("no indexedDB"));
+    const rq = indexedDB.open("budget_term_fs",1);
+    rq.onupgradeneeded = ()=>{ try{ rq.result.createObjectStore("kv"); }catch(e){} };
+    rq.onsuccess = ()=>res(rq.result);
+    rq.onerror = ()=>rej(rq.error||new Error("idb open"));
+  });
+}
+async function persistDirHandle(h){
+  try{ const db=await idbOpen();
+    return new Promise((res,rej)=>{ const tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(h,"dir"); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); });
+  }catch(e){ return Promise.resolve(); }
+}
+async function restoreLocalHandleQuiet(){
+  if(!supportsFSA()) return;
+  try{
+    const db=await idbOpen();
+    const h = await new Promise((res)=>{ const tx=db.transaction("kv","readonly"); const g=tx.objectStore("kv").get("dir"); g.onsuccess=()=>res(g.result||null); g.onerror=()=>res(null); });
+    if(!h) return;
+    let perm = "prompt";
+    try{ perm = await h.queryPermission({mode:"readwrite"}); }catch(e){}
+    if(perm!=="granted"){ dirHandle=null; return; }   // 未授权: 交给首次交互时自动申请
+    dirHandle = h;
+    try{ autosaveOn=true; await writeToFolder(); }catch(e){ autosaveOn=false; }
+    refreshAutosaveUI();
+    fsLog("已自动重连本地文件夹 “"+(h.name||"")+"”，改动将自动写盘。","#3dff7a");
+  }catch(e){ /* 忽略 */ }
+}
+/* 每次打开: 若上次授权因新会话过期, 在第一次用户交互时自动重新申请(无需再点专门按钮) */
+let _reconnectArmed=false, _reconnectDone=false;
+function armAutoReconnect(){
+  if(_reconnectArmed || !supportsFSA()) return;
+  _reconnectArmed = true;
+  const once = async ()=>{
+    if(_reconnectDone) return; _reconnectDone=true;
+    try{
+      const db = await idbOpen();
+      const h = await new Promise((res)=>{ const tx=db.transaction("kv","readonly"); const g=tx.objectStore("kv").get("dir"); g.onsuccess=()=>res(g.result||null); g.onerror=()=>res(null); });
+      if(!h) return;
+      let perm="prompt";
+      try{ perm = await h.queryPermission({mode:"readwrite"}); }catch(e){}
+      if(perm!=="granted"){
+        try{ perm = await h.requestPermission({mode:"readwrite"}); }catch(e){}
+      }
+      if(perm!=="granted") return;
+      dirHandle = h;
+      try{ autosaveOn=true; await writeToFolder(); }catch(e){ autosaveOn=false; }
+      refreshAutosaveUI();
+      fsLog("已重新连接本地文件夹 “"+(h.name||"")+"”，自动写盘已开启。","#3dff7a");
+    }catch(e){}
+  };
+  const guard = ()=>{ once(); window.removeEventListener("pointerdown",guard); window.removeEventListener("keydown",guard); };
+  window.addEventListener("pointerdown",guard,{once:false});
+  window.addEventListener("keydown",guard,{once:false});
+}
+
+/* ----------------------------- date utils ------------------------------- */
+function pad2(n){ return String(n).padStart(2,"0"); }
+function fmtY(d){ return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+function mkYMD(y,m,d){ return y+"-"+pad2(m)+"-"+pad2(d); }
+function parseYMD(s){ // 'YYYY-MM-DD' -> {y,m,d}
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(s||""));
+  if(!m) return null;
+  return { y:+m[1], m:+m[2], d:+m[3] };
+}
+function todayYMD(){ const n=new Date(); return fmtY(n); }
+function addMonths(y,m0,delta){ // m0: 1-based month index
+  const total = (m0-1)+delta;          // to 0-based
+  const yy = y + Math.floor(total/12);
+  const mm = ((total%12)+12)%12;       // 0-based
+  return { y:yy, m:mm+1 };
+}
+function lastDay(y,m){ return new Date(y,m,0).getDate(); } // m 1-based, day0 = prev month last day
+
+/* Period (记账周期) 边界：
+   periodMode = "month"   → 按月对齐(monthStart 自定义起始日, 1=自然月)
+   periodMode = "rolling" → 固定 lengthDays 天, 从 anchor 日起每 N 天滚动一期 */
+function daysBetween(a,b){ // whole days from a to b (both 'YYYY-MM-DD')
+  const pa=parseYMD(a), pb=parseYMD(b);
+  return Math.round((Date.UTC(pb.y,pb.m-1,pb.d) - Date.UTC(pa.y,pa.m-1,pa.d)) / 86400000);
+}
+function addDaysYMD(s, delta){
+  const p=parseYMD(s);
+  const d=new Date(Date.UTC(p.y,p.m-1,p.d)); d.setUTCDate(d.getUTCDate()+delta);
+  return mkYMD(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate());
+}
+function periodBounds(dateStr){
+  const mode = state.settings.periodMode;
+  if(mode === "rolling"){
+    const L = state.settings.lengthDays || 15;
+    let A = state.settings.anchor;
+    if(!A){ A = dateStr; state.settings.anchor = A; }      // anchor falls back to queried date
+    if(dateStr < A) A = dateStr;                            // never query before anchor
+    const k = Math.floor(daysBetween(A, dateStr) / L);
+    const start = addDaysYMD(A, k*L);
+    const end   = addDaysYMD(start, L-1);
+    return { start, end, label: start+" ~ "+end, mode:"rolling", len:L };
+  }
+  // default: monthly
+  const P = parseYMD(dateStr);
+  const ms = state.settings.monthStart;          // 1..28
+  let startY, startM;
+  if(P.d >= ms){ startY = P.y; startM = P.m; }
+  else {
+    const pr = addMonths(P.y, P.m, -1); startY = pr.y; startM = pr.m;
+  }
+  // endExclusive = start month + 1 on day ms  => inclusive end is (that day - 1)
+  const nx = addMonths(startY, startM, 1);
+  const sDate = mkYMD(startY,startM,ms);
+  let eDay = ms - 1;
+  let eY = nx.y, eM = nx.m;
+  if(eDay < 1){ const pr = addMonths(nx.y,nx.m,-1); eY=pr.y; eM=pr.m; eDay=lastDay(eY,eM); }
+  const eDate = mkYMD(eY,eM,eDay);
+  return { start:sDate, end:eDate, label: sDate+" ~ "+eDate, mode:"month" };
+}
+function currentPeriod(){ return periodBounds(todayYMD()); }
+
+/* 自然月边界：始终从当月 1 日到当月最后一天(与记账周期无关) */
+function calendarMonthBounds(dateStr){
+  const P = parseYMD(dateStr) || parseYMD(todayYMD());
+  const start = mkYMD(P.y, P.m, 1);
+  const end   = mkYMD(P.y, P.m, lastDay(P.y, P.m));
+  return { start, end, label: start+" ~ "+end };
+}
+
+function weekBounds(dateStr){
+  const P = parseYMD(dateStr);
+  const js = new Date(P.y,P.m-1,P.d).getDay(); // 0=Sun..6=Sat
+  const ws = state.settings.weekStart; // 'mon'|'sun'
+  let startD;
+  if(ws === "sun"){ startD = js; }
+  else { startD = (js===0)?6:(js-1); } // Monday start
+  const st = new Date(P.y,P.m-1,P.d-startD);
+  const en = new Date(P.y,P.m-1,P.d-startD+6);
+  return { start:fmtY(st), end:fmtY(en) };
+}
+function inRange(dateStr, start, end){
+  return dateStr >= start && dateStr <= end;
+}
+function catColor(cat){ return PREDEFINED.get(cat) || "#8be9fd"; }
+
+/* --------------------------- investment calc ---------------------------- */
+/* 核心换算: 一笔消费 E 对应占用总预算 E/0.85(=E 消费 + 应投);
+   应投 = E/0.85 * 15%, 其中货币 13 / 指数 2 (合计 15) 拆成两笔 */
+function investOf(amount){
+  const base = amount / CONSUME_SHARE;              // 占用总预算的等价口径
+  return { base: base, mm: r2(base*MM_RATE), idx: r2(base*IDX_RATE) };
+}
+function r2(x){ return Math.round(x*100)/100; }
+function money(x){
+  const neg = x<0; const s = Math.abs(x).toFixed(2);
+  return (neg?"-":"")+s;
+}
+function catNameOfRecord(r){ return r.category; }
+
+/* ===================== 投资池：应投货币 / 应投指数 ===================== */
+/* 未投资部分累加(跨期累计): 每笔记录应投 mm/idx, 已投 moneyInv/indexInv(金额制) */
+function moneyPending(){ return r2(state.records.reduce((s,r)=>s+Math.max(0,(r.mm||0)-(r.moneyInv||0)),0)); }
+function indexPending(){ return r2(state.records.reduce((s,r)=>s+Math.max(0,(r.idx||0)-(r.indexInv||0)),0)); }
+function moneyInvestedTotal(){ return r2(state.records.reduce((s,r)=>s+(r.moneyInv||0),0)); }
+function indexInvestedTotal(){ return r2(state.records.reduce((s,r)=>s+(r.indexInv||0),0)); }
+function recFullyMoney(r){ return r.mm>0 && (r.moneyInv||0) >= r.mm - 0.005; }
+function recFullyIndex(r){ return r.idx>0 && (r.indexInv||0) >= r.idx - 0.005; }
+function recStatus(r){
+  const m = recFullyMoney(r), i = recFullyIndex(r);
+  if(m && i) return {t:"已投", c:"#3dff7a"};
+  if(!(r.moneyInv||0) && !(r.indexInv||0)) return {t:"未投", c:"#5d6b62"};
+  return {t:"部分", c:"#ffd23d"};
+}
+/* 把某类阈值额度(lot)按比例分摊到未投记录上(支持部分投入), 返回描述文字 */
+function investAmount(kind, amt){ // 按比例把 amt 投给该种未投池; kind 'money'|'index'
+  const isM = kind==="money";
+  const pend = isM ? moneyPending() : indexPending();
+  if(amt == null) amt = isM ? INVEST_MONEY_LOT : INVEST_INDEX_LOT;
+  amt = Math.min(amt, pend);
+  if(amt <= 0.004) return null;
+  const lotC = Math.round(amt*100);
+  // 收集每条记录的剩余未投额度(cent)
+  const entries=[]; let totC=0;
+  for(const r of state.records){
+    const should = isM ? (r.mm||0) : (r.idx||0);
+    const inv = isM ? (r.moneyInv||0) : (r.indexInv||0);
+    const rem = Math.max(0, should - inv);
+    const remC = Math.round(rem*100);
+    if(remC>0){ entries.push({r, remC}); totC += remC; }
+  }
+  // 按剩余占比分配(largest remainder)
+  const alloc = entries.map(e=>{ const exact = lotC*e.remC/totC; const base=Math.floor(exact); return {e, base, frac: exact-base}; });
+  let rem = lotC - alloc.reduce((s,a)=>s+a.base,0);
+  alloc.sort((a,b)=>b.frac-a.frac);
+  for(const a of alloc){ if(rem<=0)break; const add=Math.min(a.e.remC-a.base, rem); a.base+=add; rem-=add; }
+  for(const a of alloc){ if(rem<=0)break; const add=Math.min(a.e.remC-a.base, rem); a.base+=add; rem-=add; }
+  // 应用
+  let applied=0;
+  for(const a of alloc){
+    if(a.base<=0) continue;
+    const cur = isM ? (a.e.r.moneyInv||0) : (a.e.r.indexInv||0);
+    const nv = r2(Math.min(isM? a.e.r.mm : a.e.r.idx, cur + a.base/100));
+    if(isM) a.e.r.moneyInv = nv; else a.e.r.indexInv = nv;
+    applied++;
+  }
+  save();
+  return { amt, applied };
+}
+/* 全额投资: 把该种整个未投池投掉清零; 仅当池≥该种阈值(货币100/指数20)才允许点亮/执行 */
+function investFull(kind){
+  const isM = kind==="money";
+  const lot = isM ? INVEST_MONEY_LOT : INVEST_INDEX_LOT;
+  const pend = isM ? moneyPending() : indexPending();
+  if(pend < lot - 0.005) return null;
+  return investAmount(kind, pend);
+}
+function recordMoneyInv(r){ return r.moneyInv||0; }
+
+/* 预算 / 结转 / 超额 派生指标：
+   总预算 B 每周期发放一次; 每笔消费按 E/0.85 记账占用;
+   未占用 = 剩余(结转下期), 占用>发放 = 透支(下期扣除)。余额跨期累计。
+   支持"当期预算"覆盖: periodBudget[start]=金额 只改某一期。 */
+function ensureEpoch(){
+  if(!state.settings.epoch) state.settings.epoch = currentPeriod().start;
+}
+function nextPeriodStart(startStr){
+  if(state.settings.periodMode === "rolling") return addDaysYMD(startStr, state.settings.lengthDays||15);
+  const p = parseYMD(startStr);
+  const nx = addMonths(p.y, p.m, 1);
+  return mkYMD(nx.y, nx.m, state.settings.monthStart||1);
+}
+function effectiveBudget(periodLike){
+  const key = periodLike && periodLike.start;
+  const ov = state.settings.periodBudget || {};
+  const v = (key!=null) ? ov[key] : undefined;
+  return (typeof v==="number" && v>0) ? v : state.settings.budget;
+}
+function hasBudgetOverride(periodLike){
+  const key = periodLike && periodLike.start;
+  const ov = state.settings.periodBudget || {};
+  return !!(key!=null && typeof ov[key]==="number");
+}
+function periodStartsUpTo(endStart){
+  ensureEpoch();
+  const out=[]; let s=state.settings.epoch; let guard=0;
+  while(s <= endStart && guard<5000){ out.push(s); s=nextPeriodStart(s); guard++; }
+  if(!out.length) out.push(endStart);
+  return out;
+}
+function grantedTotal(){
+  ensureEpoch();
+  const cur = currentPeriod().start;
+  let sum=0;
+  for(const s of periodStartsUpTo(cur)) sum += effectiveBudget({start:s});
+  return r2(sum);
+}
+function totalCharge(){ return r2(state.records.reduce((s,r)=>s + (r.amount / CONSUME_SHARE), 0)); }
+function availableBalance(){ return r2(grantedTotal() - totalCharge()); }
+function periodDayCount(p){ return daysBetween(p.start, p.end) + 1; }
+/* 当前周期快照(含燃尽预测所需的日进度) */
+function periodSnapshot(){
+  const p = currentPeriod();
+  const B = effectiveBudget(p);
+  const rows = state.records.filter(r=>inRange(r.date,p.start,p.end));
+  const consumption = r2(rows.reduce((s,r)=>s+r.amount,0));      // 消费口径 (元)
+  const mm  = r2(rows.reduce((s,r)=>s+r.mm,0));                   // 应投货币(本期累计)
+  const idx = r2(rows.reduce((s,r)=>s+r.idx,0));                  // 应投指数(本期累计)
+  const invest = r2(mm+idx);
+  const usedUnits = r2(consumption / CONSUME_SHARE);              // 本期已占用的预算口径
+  const ratio = B>0 ? usedUnits/B : 0;                            // 进度(相对本期发放 B)
+  return { p, B, rows, consumption, mm, idx, invest, usedUnits, ratio };
+}
+
+/* =========================== rendering helpers ========================== */
+const term = document.getElementById("term");
+const catlistEl = document.getElementById("catlist");
+
+function line(segs){ // segs: string | [{t,c,cls}]
+  const el = document.createElement("div");
+  el.className = "l";
+  if(typeof segs === "string"){ segs = [{t:segs}]; }
+  for(const s of segs){
+    const sp = document.createElement("span");
+    if(s.c) sp.style.color = s.c;
+    if(s.cls) sp.className = s.cls;
+    sp.textContent = s.t;
+    el.appendChild(sp);
+  }
+  term.appendChild(el);
+  return el;
+}
+function boxLines(arr){ // arr of lines already with color -> wrapped
+  for(const l of arr){ line(l); }
+}
+function hr(){ const el=document.createElement("div"); el.className="sep l"; term.appendChild(el); }
+function blank(){ line(""); }
+function tableRow(cols, widths, color){ // render table using unicode box minimal
+  let s="";
+  for(let i=0;i<cols.length;i++){
+    const cell = String(cols[i]===undefined?"":cols[i]);
+    const w = widths[i]||0;
+    const t = w>0 ? cell.slice(0,w).padEnd(w," ") : cell;
+    s += t + "  ";
+  }
+  return { t:s.replace(/\s+$/,""), c:color };
+}
+
+/* progress bar with level color */
+function barLevel(ratio){
+  const th = [...state.settings.thresholds].sort((a,b)=>a-b); // % thresholds
+  let lvl = 0;
+  for(const p of th){ if(ratio*100 >= p) lvl++; }
+  return Math.min(lvl,4);
+}
+const LEVEL_COLOR = ["#3dff7a","#ffd23d","#ff9d3d","#ff4d5e","#ff5ef0"];
+function progressBar(ratio, width){
+  width = width || 26;
+  ratio = Math.max(0, Math.min(1, ratio));
+  const filled = Math.round(ratio*width);
+  const bar = "█".repeat(filled) + "░".repeat(width-filled);
+  const lvl = barLevel(ratio);
+  return { bar:bar, color:LEVEL_COLOR[lvl], lvl:lvl, pct:(ratio*100).toFixed(1) };
+}
+function alertWord(ratio){
+  const p = ratio*100;
+  const th = [...state.settings.thresholds].sort((a,b)=>a-b);
+  if(th.length && p>=th[th.length-1]) return {t:"已超额 ⚠", c:"#ff4d5e"};
+  for(let i=th.length-1;i>=0;i--){ if(p>=th[i]) return {t:"接近预算 ⚠ "+th[i]+"%", c:"#ffd23d"}; }
+  return {t:"预算内 ✓", c:"#3dff7a"};
+}
+
+/* ============================== input / dispatch ========================= */
+const input = document.getElementById("cmdline");
+// Help entries: [command-text, description-or-__HEADER/__INFO]
+const HELP_LINES = [
+  ["▓ 命令参考", "__HEADER"],
+  ["help", "查看帮助"],
+  ["set budget <金额>", "设置每周期固定预算, 如 set budget 1000"],
+  ["set period <N天>", "滚动N天周期结算预算, 如 set period 15;  natural 回到按月"],
+  ["set periodstart <日期>", "设滚动周期起点(锚点), 例 set periodstart 2026-09-04"],
+  ["set monthstart <1-28>", "(按月模式)起始日; 1=自然月; 15=每月15日起"],
+  ["set weekstart <mon|sun>", "周总结起始日(周一/周日)"],
+  ["set alert <p1,p2..>", "自定义预警阈值(百分比), 默认 80,100"],
+  ["set rate <money|index> <%>", "设置基金年化(收益模拟用), 例 set rate index 8"],
+  ["budget", "当前周期预算进度(含进度条)"],
+  ["budget set <金额>", "只调整当前周期的预算, 例 budget set 1200"],
+  ["budget default <金额>", "调整默认预算(以后各期), budget reset 取消当期覆盖"],
+  ["forecast", "燃尽预测: 按日均消费预测期末结余/超支与每日可花"],
+  ["add <金额> <类别> [备注..] [@日期]", "add 50 餐饮 午餐  或  add @2025-03-05 300 购物 外套"],
+  ["list [类别X] [@月份]", "消费列表: list 餐饮 / list @2025-03"],
+  ["del <id>", "删除指定记录(id 见 list)"],
+  ["update <id> <金额> <类别> [..]", "修改某条记录并自动重算投资额"],
+  ["pay <id> [mm|idx|all|none]", "标记投资已投状态 (货币基金 mm / 指数基金 idx)"],
+  ["summary [day|week|month] [类别]", "总结: 无参数=当前记账周期; month=自然月; 可加类别筛选, 如 summary week 餐饮"],
+  ["summary month @YYYY-MM", "指定某自然月的总结, 例 summary month 2026-08 餐饮"],
+  ["summary cat [类别]", "当前记账周期各类别占比"],
+  ["export [md|txt]", "导出报告文件(浏览器下载)"],
+  ["assets [N年]", "资产看板: 现金+基金本金+复利预估(默认10年)与增长曲线"],
+  ["undo  /  redo", "撤销 / 重做上一次改动 (Ctrl+Z / Ctrl+Y)"],
+  ["cls", "清屏"],
+  ["换算: 消费÷0.85 占用总预算; 其中 15% 应投(货币13/指数2); 剩余结转, 透支下期扣回", "__INFO"],
+];
+function printHelp(){
+  for(const [cmdText, desc] of HELP_LINES){
+    if(desc==="__HEADER"){ line([{t:"  "+cmdText, c:"#4de8ff", cls:"glow"}]); continue; }
+    if(desc==="__INFO"){ line([{t:"  ⚙ "+cmdText, c:"#5d6b62"}]); continue; }
+    // command column (fixed-ish width; long command wraps to next line)
+    const padW = 34;
+    let cmdPad = cmdText;
+    let descIndent = 2+padW+2;
+    let extraPrefix="";
+    if(cmdText.length>padW){ cmdPad = cmdText; descIndent = 2+3+2; }
+    const cmdStr = "  "+cmdPad;
+    const descStr = descIndent>cmdStr.length ? " ".repeat(descIndent-cmdStr.length)+desc : "\n"+" ".repeat(descIndent)+desc;
+    line([
+      {t:cmdStr,c:"#ffd23d"},{t:descStr,c:"#d7ffe0"}
+    ]);
+  }
+  blank();
+}
+
+function tokenize(str){
+  // split respecting double/single quotes
+  const out=[]; const re=/([^\s"']+|"[^"]*"|'[^']*')/g; let m;
+  while((m=re.exec(str))){ let t=m[1]; if((t[0]==='"'&&t[t.length-1]==='"')||(t[0]==="'"&&t[t.length-1]==="'")) t=t.slice(1,-1); out.push(t); }
+  return out;
+}
+function parseCmd(raw){
+  const toks = tokenize(raw);
+  const cmd = (toks[0]||"").toLowerCase();
+  return { cmd, tokens:toks.slice(1) };
+}
+function numeric(t){ if(!/^-?\d+(\.\d+)?$/.test(String(t))) return null; return parseFloat(t); }
+function findDateToken(tokens){
+  // returns {tokens without @date, dateStr|null}
+  const out=[]; let date=null;
+  for(const tk of tokens){
+    if(tk[0]==="@"){ date = tk.slice(1); }
+    else out.push(tk);
+  }
+  return { tokens:out, date };
+}
+function cleanDateStr(d){ // accept YYYY-M-D variants, default today
+  const p = d ? parseYMD(d) : parseYMD(todayYMD());
+  if(!p) return null;
+  return mkYMD(p.y,p.m,p.d);
+}
+
+function runCommand(raw){
+  raw = raw.trim();
+  if(!raw) return;
+  if(raw && raw!==history[history.length-1]) history.push(raw); hIdx=-1;
+  echoCommand(raw);
+  const {cmd, tokens} = parseCmd(raw);
+  try{
+    if(cmd==="undo" || cmd==="redo") dispatch(cmd, tokens);   // 本身不改数据, 不进入撤销栈
+    else mutate(()=>dispatch(cmd, tokens));
+  }catch(e){
+    line([{t:"[ERR] "+ (e && e.message ? e.message : e), c:"#ff4d5e"}]);
+    if(e && e.stack) console.error(e);
+  }
+}
+
+/* dispatch main logic */
+function dispatch(cmd, tokens, rest){
+  switch(cmd){
+    case "help": case "?": case "h": printHelp(); break;
+    case "cls": case "clear": term.innerHTML=""; break;
+    case "set": doSet(tokens); break;
+    case "budget": case "budget show": doBudget(tokens); break;
+    case "forecast": case "burn": case "predict": doForecast(); break;
+    case "add": case "a": doAdd(tokens); break;
+    case "list": case "ls": doList(tokens); break;
+    case "del": case "rm": case "delete": doDelete(tokens); break;
+    case "update": case "edit": doUpdate(tokens); break;
+    case "pay": case "invest": doPay(tokens); break;
+    case "summary": case "sum": doSummary(tokens); break;
+    case "export": doExport(tokens); break;
+    case "assets": case "asset": case "networth": doAssets(tokens); break;
+    case "undo": case "u": undo(); break;
+    case "redo": redo(); break;
+    case "thresholds": case "alerts": showSettings(); break;
+    case "settings": case "config": showSettings(); break;
+    default:
+      line([{t:"未知命令: "+cmd+"。输入 help 查看用法。", c:"#ffd23d"}]);
+  }
+}
+
+
+/* ------------------------------- set ----------------------------------- */
+function doSet(tokens){
+  const sub = (tokens[0]||"").toLowerCase();
+  if(sub==="budget"){
+    const v = tokens[1];
+    const n = numeric(v);
+    if(n==null || n<=0){ line([{t:"用法: set budget <金额>  例 set budget 1000",c:"#ffd23d"}]); return; }
+    state.settings.budget = r2(n); save();
+    line([{t:"✓ 默认预算已设为 ",c:"#3dff7a"},{t:"¥"+money(r2(n)),c:"#ffffff",cls:"hl"},
+          {t:"  (各期生效; 只想改本期可用 budget set <金额>)",c:"#5d6b62"}]);
+    showForecastLine();
+  } else if(sub==="monthstart"){
+    const v = (tokens[1]||"").toLowerCase();
+    let d;
+    if(v==="natural"||v==="自然月"||v==="1") d=1;
+    else d = numeric(tokens[1]);
+    if(d==null || d<1 || d>28){ line([{t:"用法: set monthstart <1-28>  (1=自然月, 例 15 表示每月15日~下月14日)",c:"#ffd23d"}]); return; }
+    state.settings.monthStart = d; state.settings.periodMode = "month"; save();
+    const p = currentPeriod();
+    line([{t:"✓ 切换为按月周期, 起始日 "+(d===1?"自然月":"每月 "+d+" 日")+"。当前周期: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]);
+  } else if(sub==="period"||sub==="cycle"||sub==="length"){
+    // set period 15        → 滚动 15 天周期
+    // set period natural|month → 回到按月周期
+    const v=(tokens[1]||"").toLowerCase();
+    const n = numeric(tokens[1]);
+    if(v==="natural"||v==="month"||v==="月"||v==="自然月"){ state.settings.periodMode="month"; save(); const p=currentPeriod(); line([{t:"✓ 已切回按月周期, 当前: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]); return; }
+    if(n==null || !Number.isInteger(n) || n<2 || n>90){ line([{t:"用法: set period <N天>  例 set period 15  → 每15天滚动一期;  set period natural 回到自然月",c:"#ffd23d"}]); return; }
+    state.settings.periodMode="rolling";
+    state.settings.lengthDays=n;
+    // 起点：若尚未设 anchor 或想在今天重启，则从今天起算新一期
+    state.settings.anchor = state.settings.anchor || todayYMD();
+    save();
+    const p = currentPeriod();
+    line([{t:"✓ 已切换为滚动 "+n+" 天周期, 从 "+state.settings.anchor+" 起每 "+n+" 天滚动结算。当前期: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]);
+  } else if(sub==="periodstart"||sub==="anchor"){
+    const d = cleanDateStr(tokens[1]);
+    if(!d){ line([{t:"用法: set periodstart <YYYY-MM-DD>  设滚动周期起点(锚点)",c:"#ffd23d"}]); return; }
+    state.settings.periodMode = state.settings.periodMode || "rolling";
+    state.settings.anchor = d; save();
+    const p = currentPeriod();
+    line([{t:"✓ 滚动周期起点设为 "+d+"。当前期: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]);
+  } else if(sub==="weekstart"){
+    const v=(tokens[1]||"").toLowerCase();
+    if(v==="mon"||v==="周一"||v==="一") state.settings.weekStart="mon";
+    else if(v==="sun"||v==="周日"||v==="日") state.settings.weekStart="sun";
+    else { line([{t:"用法: set weekstart <mon|sun>",c:"#ffd23d"}]); return; }
+    save();
+    line([{t:"✓ 周起始日设为 "+(state.settings.weekStart==="mon"?"周一":"周日"),c:"#3dff7a"}]);
+  } else if(sub==="alert"||sub==="threshold"||sub==="thresholds"){
+    const rest = tokens.slice(1).join("").split(/[,，]/).map(x=>parseFloat(x)).filter(x=>!isNaN(x)&&x>0&&x<=100);
+    if(!rest.length){ line([{t:"用法: set alert <p1,p2,...>  例 set alert 80,100",c:"#ffd23d"}]); return; }
+    state.settings.thresholds = [...new Set(rest)].sort((a,b)=>a-b); save();
+    line([{t:"✓ 预警阈值设为 "+state.settings.thresholds.join("% , ")+"%",c:"#3dff7a"}]);
+  } else if(sub==="rate"||sub==="rates"){
+    // set rate money 2 / set rate index 8  (年化百分比)
+    const which = (tokens[1]||"").toLowerCase();
+    const pct = numeric(tokens[2]);
+    if(pct==null || pct<0 || pct>100){ line([{t:"用法: set rate <money|index> <年化%>  例 set rate index 8",c:"#ffd23d"}]); return; }
+    if(which==="money"||which==="m"||which==="货币"){ state.settings.rateMoney = pct/100; }
+    else if(which==="index"||which==="idx"||which==="i"||which==="指数"){ state.settings.rateIndex = pct/100; }
+    else { line([{t:"用法: set rate <money|index> <年化%>",c:"#ffd23d"}]); return; }
+    save();
+    line([{t:"✓ 货币年化 "+(state.settings.rateMoney*100).toFixed(2)+"%  |  指数年化 "+(state.settings.rateIndex*100).toFixed(2)+"%",c:"#3dff7a"}]);
+  } else {
+    line([{t:"set 支持: budget | period <N天> | periodstart <日期> | monthstart | weekstart | alert | rate",c:"#ffd23d"}]);
+  }
+}
+
+/* ------------------------------- budget -------------------------------- */
+function periodSpend(p){ return state.records.filter(r=>inRange(r.date,p.start,p.end)).reduce((s,r)=>s+r.amount,0); }
+/* 配置预算: budget set <金额>=仅改当期; budget default <金额>=以后各期; budget reset=取消当期覆盖 */
+function doBudget(tokens){
+  const sub = (tokens[0]||"").toLowerCase();
+  const p = currentPeriod();
+  if(sub==="set" || sub==="now" || sub==="current"){
+    const n = numeric(tokens[1]);
+    if(n==null || n<=0){ line([{t:"用法: budget set <金额>   例 budget set 1200 (仅调整当前周期)",c:"#ffd23d"}]); return; }
+    state.settings.periodBudget = state.settings.periodBudget || {};
+    state.settings.periodBudget[p.start] = r2(n); save();
+    line([{t:"✓ 当期预算已设为 ",c:"#3dff7a"},{t:"¥"+money(r2(n)),c:"#ffffff",cls:"hl"},
+          {t:"  仅影响当前周期 "+p.label+"；以后各期仍为 ¥"+money(state.settings.budget),c:"#5d6b62"}]);
+    refreshHeader(); showForecastLine();
+    return;
+  }
+  if(sub==="default"){
+    const n = numeric(tokens[1]);
+    if(n==null || n<=0){ line([{t:"用法: budget default <金额>   例 budget default 1000 (改默认, 各期生效)",c:"#ffd23d"}]); return; }
+    state.settings.budget = r2(n); save();
+    line([{t:"✓ 默认预算已设为 ",c:"#3dff7a"},{t:"¥"+money(r2(n)),c:"#ffffff",cls:"hl"},{t:" (未单独覆盖的周期都用它)",c:"#5d6b62"}]);
+    refreshHeader(); showForecastLine();
+    return;
+  }
+  if(sub==="reset" || sub==="clear"){
+    if(state.settings.periodBudget){ delete state.settings.periodBudget[p.start]; save(); }
+    line([{t:"✓ 已取消当前周期的预算覆盖，恢复默认 ¥"+money(state.settings.budget),c:"#3dff7a"}]);
+    refreshHeader(); showForecastLine();
+    return;
+  }
+  showBudget();
+}
+function showBudget(){
+  const st = periodSnapshot();
+  const p = st.p, b = st.B;
+  const bar = progressBar(st.ratio);
+  const aw = alertWord(st.ratio);
+  const carry = r2(st.usedUnits - b);            // >0 透支, <=0 本期可结转(=剩余)
+  const bal = availableBalance();
+  blank();
+  line([{t:"▍周期预算  ( ",c:"#4de8ff"},{t:p.label,c:"#ffffff"},{t:" )",c:"#4de8ff"}]);
+  line([
+    {t:"本期发放 ",c:"#d7ffe0"},{t:"¥"+money(b),c:"#3dff7a"},
+    {t:"   消费 ",c:"#d7ffe0"},{t:"¥"+money(st.consumption),c:"#ffffff"},
+    {t:"   应投合计 ",c:"#d7ffe0"},{t:"¥"+money(st.invest),c:"#4de8ff"},
+  ]);
+  line([
+    {t:"已占用(含应投) ",c:"#5d6b62"},{t:"¥"+money(st.usedUnits),c:bar.color,cls:"glow"},
+    {t:"   累计可用余额(含结转) ",c:"#5d6b62"},{t:"¥"+money(bal),c:(bal<0?"#ff4d5e":"#3dff7a"),cls:"glow"},
+  ]);
+  line([
+    {t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%  ",c:"#d7ffe0"}
+  ]);
+  if(carry > 0){
+    line([{t:"⚠ 本期已透支 ¥"+money(carry)+" (将自下期发放中扣除)",c:"#ff4d5e",cls:"glow"}]);
+  } else {
+    line([{t:"本期可结转 ¥"+money(-carry),c:"#3dff7a"}]);
+  }
+  line([{t:aw.t,c:aw.c,cls:"glow"}]);
+  blank();
+  line([{t:"换算口径: 消费 ¥"+money(st.consumption)+" → 占用 ¥"+money(st.usedUnits)
+        +" = 消费/0.85; 其中应投 15% = 应投货币 ",c:"#5d6b62"},
+        {t:"¥"+money(st.mm),c:"#4de8ff"},{t:" + 应投指数 ",c:"#5d6b62"},
+        {t:"¥"+money(st.idx),c:"#f1fa8c"}]);
+  if(hasBudgetOverride(p)){
+    line([{t:"  ※ 本期为自定义预算 ¥"+money(b)+" (默认 ¥"+money(state.settings.budget)+"); budget reset 可恢复", c:"#ffd23d"}]);
+  }
+  showForecastLine();
+  blank();
+}
+
+/* ------------------------------- add ----------------------------------- */
+function validateCategory(cat){
+  const c = String(cat||"").trim();
+  if(!c){ line([{t:"类别不能为空。例: add 50 餐饮 午餐",c:"#ffd23d"}]); return null; }
+  if(!PREDEFINED.has(c)){ // register custom category color
+    PREDEFINED.set(c, "#8be9fd");
+    PREDEFINED.forEach((v,k)=>{}); 
+  }
+  refreshCatlist();
+  return c;
+}
+function doAdd(tokens){
+  if(!tokens.length){ line([{t:"用法: add <金额> <类别> [备注..] [@日期]   例 add 50 餐饮 午餐",c:"#ffd23d"}]); return; }
+  const {tokens:rest, date:rawDate} = findDateToken(tokens);
+  const amt = numeric(rest[0]);
+  if(amt==null||amt<=0){ line([{t:"金额无效。例 add 50 餐饮 午餐",c:"#ffd23d"}]); return; }
+  const cat = validateCategory(rest[1]);
+  if(!cat) return;
+  const note = rest.slice(2).join(" ");
+  const date = cleanDateStr(rawDate);
+  if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:"#ffd23d"}]); return; }
+  const rec = makeRecord(amt, cat, note, date);
+  state.records.push(rec); save();
+  const st = periodSnapshot();
+  const bar = progressBar(st.ratio);
+  line([{t:"✓ 已记入 #",c:"#3dff7a"},{t:rec.id,c:"#ffffff",cls:"hl"},
+        {t:"  "+cat+" ",c:catColor(cat)},
+        {t:"¥"+money(rec.amount),c:"#ffffff"}, {t:"  ("+date+")",c:"#5d6b62"}]);
+  line([{t:"  占用预算 ",c:"#5d6b62"},{t:"¥"+money(rec.amount/CONSUME_SHARE),c:"#d7ffe0"},
+        {t:"  (消费÷85%)  应投货币 ",c:"#5d6b62"},{t:"¥"+money(rec.mm),c:"#4de8ff"},
+        {t:"  + 应投指数 ",c:"#5d6b62"},{t:"¥"+money(rec.idx),c:"#f1fa8c"},
+        {t:"  = ",c:"#5d6b62"},{t:"¥"+money(rec.mm+rec.idx),c:"#3dff7a"}]);
+  // overspend notice for this period
+  const aw = alertWord(st.ratio);
+  if(aw.t!=="预算内 ✓"){
+    line([
+      {t:"⚠ 本期占用 ",c:"#ffd23d"},{t:"¥"+money(st.usedUnits),c:"#ffd23d",cls:"glow"},
+      {t:" / 发放 ¥"+money(st.B),c:"#d7ffe0"},
+      {t:"  ("+bar.pct+"%)  ",c:"#ffd23d"},
+      {t:aw.t,c:aw.c,cls:"glow"}
+    ]);
+  }
+  refreshHeader();
+}
+function makeRecord(amount, category, note, date){
+  state.seq += 1;
+  const inv = investOf(amount);
+  return { id:state.seq, amount:r2(amount), category, note, date,
+           mm:inv.mm, idx:inv.idx, moneyInv:0, indexInv:0, created: todayYMD() };
+}
+
+/* ------------------------------- list ---------------------------------- */
+function addSeg(div, s){
+  const sp=document.createElement("span");
+  if(s.c) sp.style.color = s.c;
+  if(s.cls) sp.className = s.cls;
+  sp.textContent = s.t;
+  div.appendChild(sp);
+}
+function mkSpan(t,c){ const s=document.createElement("span"); s.textContent=t; if(c) s.style.color=c; return s; }
+/* 每条记录一行; 点右侧"投资状态"按钮后, 行内状态/已投小计即时刷新(修复点了仍显示未投) */
+function renderRecordRow(r){
+  const d = document.createElement("div"); d.className = "l";
+  addSeg(d,{t:"#"+r.id, c:"#4de8ff"});
+  addSeg(d,{t:"  "+r.date+"  ", c:"#5d6b62"});
+  addSeg(d,{t:r.category.padEnd(6," "), c:catColor(r.category)});
+  addSeg(d,{t:"¥"+money(r.amount).padStart(8," "), c:"#ffffff"});
+  addSeg(d,{t:"  应投货币 ",c:"#4de8ff"}); addSeg(d,{t:"¥"+money(r.mm), c:"#d7ffe0"});
+  addSeg(d,{t:"  应投指数 ",c:"#f1fa8c"}); addSeg(d,{t:"¥"+money(r.idx), c:"#d7ffe0"});
+  const invSpan = mkSpan("", "#5d6b62");       // 已投小计
+  const stSpan  = mkSpan("", "#5d6b62");       // 状态
+  d.appendChild(invSpan); d.appendChild(stSpan);
+  if(r.note) addSeg(d,{t:"  · "+r.note, c:"#5d6b62"});
+  addSeg(d,{t:"  ", c:"#5d6b62"});
+  const b = document.createElement("button"); b.type="button"; b.className="tbtn";
+  b.title = "把 #"+r.id+" 应投货币/指数全部标记已投 (等同 pay "+r.id+" all), 再点重置";
+  const refresh = ()=>{
+    const mInv=r.moneyInv||0, iInv=r.indexInv||0;
+    const parts=[]; if(mInv>0) parts.push("已投货币¥"+money(mInv)); if(iInv>0) parts.push("已投指数¥"+money(iInv));
+    invSpan.textContent = parts.length? "  ["+parts.join(" ")+"]" : "";
+    invSpan.style.color = "#5d6b62";
+    const st = recStatus(r);
+    stSpan.textContent = "  "+st.t; stSpan.style.color = st.c;
+    const f2 = recFullyMoney(r) && recFullyIndex(r);
+    b.className = "tbtn " + (f2 ? "on" : "");
+    b.textContent = f2 ? "已投资 ✓" : "标记已投资";
+  };
+  b.addEventListener("click", ()=>{
+    mutate(()=>{
+      if(recFullyMoney(r) && recFullyIndex(r)){ r.moneyInv=0; r.indexInv=0; }
+      else { r.moneyInv=r.mm; r.indexInv=r.idx; }
+      save();
+    });
+    const f2 = recFullyMoney(r) && recFullyIndex(r);
+    refresh();
+    line([{t:"✓ #"+r.id+" "+r.category+" ¥"+money(r.amount)+" 投资 → "+(f2?"已投资":"未投资"), c: f2?"#3dff7a":"#ffd23d"}]);
+    refreshHeader(); scrollBottom();
+  });
+  d.appendChild(b);
+  refresh();   // 初始化行内状态
+  term.appendChild(d);
+}
+function filterByTokens(tokens){
+  let cat=null, month=null, date=null, limit=null, all=false;
+  for(const tk of tokens){
+    if(tk[0]==="@"){ const p=parseYMD(tk.slice(1)); if(p) month = mkYMD(p.y,p.m,1).slice(0,7); }
+    else if(/^(cat|类别|category)$/i.test(tk)){}
+    else if(numeric(tk)!==null){ limit = +tk; }
+    else cat = tk;
+  }
+  return {cat,month,limit};
+}
+function doList(tokens){
+  const f = filterByTokens(tokens);
+  let rows = state.records.slice();
+  if(f.cat) rows = rows.filter(r=>r.category===f.cat);
+  if(f.month) rows = rows.filter(r=>r.date.startsWith(f.month));
+  rows.sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:a.id-b.id));
+  if(f.limit && f.limit>0) rows = rows.slice(-f.limit);
+  if(!rows.length){ line([{t:"(暂无匹配记录) add 一笔试试吧",c:"#5d6b62"}]); return; }
+  blank();
+  line([{t:" 消费记录  ("+rows.length+" 条)  ",c:"#4de8ff"}]);
+  line([{t:" 点每行右侧 [标记已投资] 即可一键勾选, 再点一次取消。也可用 pay <id> mm|idx 单类标记。",c:"#5d6b62"}]);
+  for(const r of rows){ renderRecordRow(r); }
+  blank();
+}
+function doDelete(tokens){
+  const id = numeric(tokens[0]);
+  if(id==null){ line([{t:"用法: del <id>",c:"#ffd23d"}]); return; }
+  const i = state.records.findIndex(r=>r.id===id);
+  if(i<0){ line([{t:"未找到 #"+id+"。用 list 查看编号",c:"#ffd23d"}]); return; }
+  const [rm] = state.records.splice(i,1); save();
+  line([{t:"✗ 已删除 #",c:"#ff4d5e"},{t:rm.id,c:"#ff4d5e"},{t:"  "+rm.category+" ¥"+money(rm.amount),c:"#d7ffe0"}]);
+  refreshHeader();
+}
+function doUpdate(tokens){
+  if(tokens.length<3){ line([{t:"用法: update <id> <金额> <类别> [备注..] [@日期]",c:"#ffd23d"}]); return; }
+  const id = numeric(tokens[0]);
+  const rec = state.records.find(r=>r.id===id);
+  if(!rec){ line([{t:"未找到 #"+id,c:"#ffd23d"}]); return; }
+  const {tokens:rest, date:rawDate} = findDateToken(tokens.slice(1));
+  const amt = numeric(rest[0]);
+  if(amt==null||amt<=0){ line([{t:"金额无效",c:"#ffd23d"}]); return; }
+  const cat = validateCategory(rest[1]); if(!cat) return;
+  const note = rest.slice(2).join(" ");
+  rec.amount = r2(amt); rec.category = cat; rec.note = note;
+  if(rawDate){ const d = cleanDateStr(rawDate); if(d) rec.date=d; }
+  const inv = investOf(rec.amount); rec.mm=inv.mm; rec.idx=inv.idx;
+  rec.moneyInv = Math.min(rec.moneyInv||0, rec.mm);
+  rec.indexInv = Math.min(rec.indexInv||0, rec.idx);
+  save();
+  line([{t:"✓ 已更新 #",c:"#3dff7a"},{t:id,c:"#ffffff"},{t:"  "+cat+" ¥"+money(rec.amount)+" 应投重新计算: 货币¥"+money(rec.mm)+" 指数¥"+money(rec.idx),c:"#d7ffe0"}]);
+  refreshHeader();
+}
+function doPay(tokens){
+  const id = numeric(tokens[0]);
+  if(id==null){ line([{t:"用法: pay <id> [mm|idx|all|none]   例 pay 3 all",c:"#ffd23d"}]); return; }
+  const rec = state.records.find(r=>r.id===id);
+  if(!rec){ line([{t:"未找到 #"+id,c:"#ffd23d"}]); return; }
+  const kind = (tokens[1]||"all").toLowerCase();
+  let label="", verb;
+  const fm = recFullyMoney(rec), fi = recFullyIndex(rec);
+  if(kind==="all"){
+    if(fm && fi){ rec.moneyInv=0; rec.indexInv=0; label="重置为未投资"; }
+    else { rec.moneyInv=rec.mm; rec.indexInv=rec.idx; label="全部记已投"; }
+  } else if(kind==="none"){
+    rec.moneyInv=0; rec.indexInv=0; label="重置为未投资";
+  } else if(kind==="mm"){
+    rec.moneyInv = fm ? 0 : rec.mm; label = fm ? "货币 重置未投" : "货币 记已投";
+  } else if(kind==="idx"||kind==="index"){
+    rec.indexInv = fi ? 0 : rec.idx; label = fi ? "指数 重置未投" : "指数 记已投";
+  } else { line([{t:"kind 应为 mm | idx | all | none",c:"#ffd23d"}]); return; }
+  save();
+  const st2 = recStatus(rec);
+  line([{t:"✓ #"+id+" "+label+" → "+st2.t, c: st2.c==="#3dff7a"?"#3dff7a":"#ffd23d"}]);
+  refreshHeader();
+}
+
+/* 全额投资: 整池投掉清零; 仅当该种未投池 ≥ 阈值(货币100/指数20)才可执行(否则提示需满额) */
+function doInvestFull(kind){
+  const name = kind==="money" ? "应投货币" : "应投指数";
+  const lot = kind==="money" ? INVEST_MONEY_LOT : INVEST_INDEX_LOT;
+  const r = mutate(()=>investFull(kind));
+  if(!r){
+    const pend = kind==="money" ? moneyPending() : indexPending();
+    if(pend <= 0.004) line([{t:name+" 未投池为空，暂无可投。", c:"#ffd23d"}]);
+    else line([{t:name+" 未投池仅 ¥"+money(pend)+"，需累计至 ¥"+lot+" 才能全额投资。", c:"#ffd23d"}]);
+    return;
+  }
+  line([{t:"✓ 已全额投资 ",c:"#3dff7a"},{t:name,c:kind==="money"?"#4de8ff":"#f1fa8c"},
+        {t:" ¥"+money(r.amt)+" (池已清零; 分摊到 "+r.applied+" 笔未投记录)",c:"#d7ffe0"}]);
+  refreshHeader();
+  renderInvestBar();
+  scrollBottom();
+}
+
+/* ----------------------------- summaries ------------------------------- */
+function collectWindow(start,end,category){
+  const catFilter = category ? String(category).trim() : null;
+  let rows = state.records.filter(r=>inRange(r.date,start,end));
+  if(catFilter) rows = rows.filter(r=>r.category===catFilter);
+  const total = r2(rows.reduce((s,r)=>s+r.amount,0));
+  const mmT  = r2(rows.reduce((s,r)=>s+r.mm,0));
+  const idxT = r2(rows.reduce((s,r)=>s+r.idx,0));
+  const byCat = new Map();
+  for(const r of rows){ byCat.set(r.category,(byCat.get(r.category)||0)+r.amount); }
+  const cats = [...byCat.entries()].sort((a,b)=>b[1]-a[1]);
+  const days = Math.max(1, daysBetween(start,end)+1);
+  return {rows,count:rows.length,total,mmT,idxT,cats,start,end,days,category:catFilter};
+}
+function printSummaryReport(win, windowName, budgetRef, opts){
+  opts = opts || {};
+  const st = periodSnapshot();                 // 当前(含窗口所在)周期口径
+  const bar = progressBar(st.ratio);
+  const aw  = alertWord(st.ratio);
+  const carry = r2(st.usedUnits - st.B);       // >0 透支; <=0 本期剩余可结转
+  const bal = availableBalance();
+  const title = windowName;
+  line([{t:"═ "+title+" 总结 ═", c:"#4de8ff"}]);
+  const invTotal = r2(win.mmT+win.idxT);
+  // stat table rows: [key, value, color, glow?]
+  const rows=[
+    ["窗口总消费", "¥"+money(win.total), "#ffffff"],
+    ["消费笔数", String(win.count), "#d7ffe0"],
+  ];
+  for(const [cat,amt] of win.cats){
+    const pct = win.total>0? (amt/win.total*100).toFixed(1)+"%":"0%";
+    rows.push(["  类别·"+cat, "¥"+money(amt)+"  ("+pct+")", catColor(cat)]);
+  }
+  rows.push(["应投货币(13%)", "¥"+money(win.mmT), "#4de8ff"]);
+  rows.push(["应投指数(2%)", "¥"+money(win.idxT), "#f1fa8c"]);
+  rows.push(["应投合计", "¥"+money(invTotal), "#3dff7a"]);
+  rows.push(["本期发放(基准)", "¥"+money(st.B), "#d7ffe0"]);
+  rows.push(["本期消费", "¥"+money(st.consumption), "#ffffff"]);
+  rows.push(["本期占用(消费+应投)", "¥"+money(st.usedUnits), (st.ratio>1?"#ff4d5e":"#d7ffe0")]);
+  rows.push(["本期结余/透支", (carry>0?"透支 -":"可结转 +")+money(Math.abs(carry)), carry>0?"#ff4d5e":"#3dff7a"]);
+  rows.push(["累计可用余额(含结转)", "¥"+money(bal), bal<0?"#ff4d5e":"#3dff7a"]);
+  rows.push(["超额状态", aw.t, aw.c]);
+  for(const [k,v,color] of rows){
+    line([{t:("  "+k).padEnd(24," "), c:"#5d6b62"},{t:v, c:color, cls:(/透支|超额/.test(k)&&(carry>0||aw.t!=="预算内 ✓"))?"glow":""}]);
+  }
+  // visual bar for the period
+  line([{t:" 本期发放进度 ",c:"#5d6b62"},{t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%",c:"#d7ffe0"}]);
+  line([{t:" 换算口径: 消费÷0.85=占用; 占用×15% 应投(货币13/指数2)", c:"#5d6b62"}]);
+  // category mini-bars
+  if(win.cats.length && win.total>0){
+    line([{t:" 类别占比(按消费):",c:"#5d6b62"}]);
+    for(const [cat,amt] of win.cats){
+      const ratioC = amt/win.total;
+      const w = Math.round(ratioC*20);
+      const col = catColor(cat);
+      line([{t:"   "+cat,c:col},{t:"  "+"█".repeat(w)+"░".repeat(20-w)+"  ",c:col},{t:(ratioC*100).toFixed(1)+"%",c:"#d7ffe0"}]);
+    }
+  }
+  // investment payment status recap (未投部分 != 0)
+  const unpaid = win.rows.filter(r=> !(recFullyMoney(r) && recFullyIndex(r)));
+  if(unpaid.length){
+    line([{t:" 未完全投资 ("+unpaid.length+" 笔): 用 pay <id> all 或点右侧按钮", c:"#ffd23d"}]);
+    unpaid.slice(0,10).forEach(r=>{
+      const mmInv=r.moneyInv||0, idxInv=r.indexInv||0;
+      const invNote = (mmInv||idxInv) ? "  (已投货币¥"+money(mmInv)+" 指数¥"+money(idxInv)+")":"";
+      line([{t:"   #"+r.id+" "+r.category+" ¥"+money(r.amount)+"  (应投货币¥"+money(r.mm)+" 指数¥"+money(r.idx)+")"+invNote,c:"#d7ffe0"}]);
+    });
+    if(unpaid.length>10) line([{t:"   ... 等 "+(unpaid.length-10)+" 笔",c:"#5d6b62"}]);
+  }
+  // 平均每日消费（summary day 不计算）
+  if(!opts.isDay){
+    const today = todayYMD();
+    const totalDays = win.days || 1;
+    const endEff = (win.end && win.end < today) ? win.end : today;
+    const usedDays = Math.max(1, daysBetween(win.start, endEff) + 1);
+    const avg = r2(win.total / usedDays);
+    line([{t:" ── 平均每日消费 ──", c:"#5d6b62"}]);
+    line([
+      {t:" 日均 ", c:"#5d6b62"},
+      {t:"¥"+money(avg), c:"#4de8ff", cls:"glow"},
+      {t:"   = 窗口总消费 ¥"+money(win.total)+" ÷ "+usedDays+" 天", c:"#5d6b62"}
+    ]);
+    line([
+      {t:" 统计口径: ", c:"#5d6b62"},
+      {t:(usedDays<totalDays
+          ? ("窗口 "+totalDays+" 天, 已过 "+usedDays+" 天")
+          : ("窗口 "+totalDays+" 天 (已结束)")), c:"#5d6b62"}
+    ]);
+  }
+  blank();
+}
+/* summary 参数解析：summary [day|week|month|cat] [类别] [@YYYY-MM]
+   第一个 token 若不在已知 kind 里, 则视为类别(窗口用当前记账周期)。 */
+const SUMMARY_KINDS = new Set(["day","日","today","week","周","month","月","natural","cat","category","类别"]);
+function parseSummaryArgs(tokens){
+  let kind = (tokens[0]||"").toLowerCase();
+  let rest = tokens.slice(1);
+  if(kind && !SUMMARY_KINDS.has(kind)){ rest = tokens.slice(); kind=""; }
+  let cat=null, ref=null;
+  for(const tk of rest){
+    if(!tk) continue;
+    if(tk[0]==="@"){ ref = tk.slice(1); continue; }
+    if(/^\d{4}-\d{1,2}(-\d{1,2})?$/.test(tk)){ ref = tk; continue; } // 形如 2026-08 / 2026-08-01
+    cat = tk;                                                        // 其余非日期 token 视为类别
+  }
+  return {kind, cat, ref};
+}
+function doSummary(tokens){
+  const {kind, cat, ref} = parseSummaryArgs(tokens);
+  const isDay = (kind==="day"||kind==="日"||kind==="today");
+  const tag = cat ? "  [类别: "+cat+"]" : "";
+  let win, name, budgetRef=null;
+  if(isDay){
+    const t=todayYMD(); win=collectWindow(t,t,cat); name="今日 "+t;
+  } else if(kind==="week"||kind==="周"){
+    const w=weekBounds(todayYMD()); win=collectWindow(w.start,w.end,cat);
+    name="本周 "+w.start+" ~ "+w.end+" (周"+(state.settings.weekStart==="mon"?"一":"日")+"起)";
+  } else if(kind==="cat"||kind==="category"||kind==="类别"){
+    const p=currentPeriod(); win=collectWindow(p.start,p.end,cat);
+    name="周期分类 · "+p.label; budgetRef=p;
+  } else if(kind==="month"||kind==="月"||kind==="natural"){
+    // 自然月：固定从当月 1 日到月末，与记账周期(滚动/自定义)无关
+    let r = todayYMD();
+    if(ref){
+      const p = parseYMD(ref) || (/^\d{4}-\d{1,2}$/.test(ref) ? parseYMD(ref+"-01") : null);
+      if(p) r = mkYMD(p.y, p.m, 1);
+    }
+    const m = calendarMonthBounds(r);
+    win = collectWindow(m.start, m.end, cat);
+    name = "本月(自然月 1日~月末) "+m.label;
+    budgetRef = currentPeriod();
+  } else { // default: current accounting period
+    const p=currentPeriod(); win=collectWindow(p.start,p.end,cat);
+    const w1 = p.mode==="rolling" ? "本周期(每"+p.len+"天)" : "本月周期";
+    name = w1+" "+p.label;
+    budgetRef=p;
+  }
+  if(cat && win.count===0){
+    line([{t:"⚠ 该窗口内没有“"+cat+"”的记录，已按 0 显示。", c:"#ffd23d"}]);
+    const used = [...new Set(state.records.map(r=>r.category))];
+    if(used.length) line([{t:"  现有类别: "+used.join("  "), c:"#5d6b62"}]);
+  }
+  printSummaryReport(win, name+tag, budgetRef, {isDay, catFilter:cat});
+}
+
+/* ------------------------------ export --------------------------------- */
+function buildReportText(md){
+  const t=todayYMD();
+  const p=currentPeriod();
+  const L = [];
+  const push=(k,v)=> L.push(md? "**"+k+"**: "+v : k+": "+v);
+  const H=(s)=> L.push(md? "## "+s : "── "+s+" ──");
+  const HR=()=> L.push(md?"---":"─".repeat(40));
+  const moneyF=(x)=> md? "¥"+money(x) : "¥"+money(x);
+  const r2s=(x)=> (x*100).toFixed(1)+"%";
+  const st = periodSnapshot();
+  const bal = availableBalance();
+  const carry = r2(st.usedUnits - st.B);           // >0 透支
+  const aw = alertWord(st.ratio);
+  H("预算与周期");
+  push("记账周期", p.label);
+  push("换算口径", "消费÷0.85=占用总预算; 其中15%应投(货币13/指数2)");
+  push("本期发放总预算", moneyF(st.B));
+  push("本期消费", moneyF(st.consumption));
+  push("本期应投合计", moneyF(st.invest));
+  push("本期占用(消费+应投)", moneyF(st.usedUnits));
+  push("本期结余/透支(结转)", (carry>0?"透支 -":"可结转 +")+moneyF(Math.abs(carry)));
+  push("累计可用余额(含结转)", moneyF(bal));
+  push("发放使用率", r2s(st.ratio));
+  push("超额状态", aw.t);
+  HR();
+  H("当前周期消费明细");
+  const w=collectWindow(p.start,p.end);
+  push("消费笔数", String(w.count));
+  push("总消费", moneyF(w.total));
+  for(const [cat,amt] of w.cats){ push("类别·"+cat, moneyF(amt)+" ("+(w.total?amt/w.total*100:0).toFixed(1)+"%)"); }
+  HR();
+  H("自动投资换算");
+  push("应投货币 (13%口径)", moneyF(w.mmT));
+  push("应投指数 (2%口径)", moneyF(w.idxT));
+  push("应投合计", moneyF(r2(w.mmT+w.idxT)));
+  const paidMM = r2(w.rows.reduce((s,r)=>s+(r.moneyInv||0),0));
+  const paidIdx= r2(w.rows.reduce((s,r)=>s+(r.indexInv||0),0));
+  push("已投货币", moneyF(paidMM)+" / 应投"+moneyF(w.mmT));
+  push("已投指数", moneyF(paidIdx)+" / 应投"+moneyF(w.idxT));
+  HR();
+  H("逐笔记录");
+  for(const r of state.records.slice().sort((a,b)=>a.date<b.date?-1:1)){
+    const paid=recStatus(r).t;
+    L.push("- "+r.date+"  #"+r.id+"  "+r.category+"  ¥"+money(r.amount)
+          +"  (应投货币¥"+money(r.mm)+" 指数¥"+money(r.idx)
+          +"  已投货币¥"+money(r.moneyInv||0)+" 指数¥"+money(r.indexInv||0)+")  ["+paid+"]"
+          +(r.note?"  "+r.note:""));
+  }
+  HR();
+  L.push("");
+  L.push("生成时间: "+t+"  |  BUDGET::TERM 自动理财报告");
+  return md? ("# BUDGET::TERM 自动理财报告\n\n"+L.join("\n")) : L.join("\n");
+}
+function download(filename, content, type){
+  const blob = new Blob([content], {type:type||"text/plain;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},300);
+}
+function doExport(tokens){
+  const fmt=(tokens[0]||"").toLowerCase();
+  const md = fmt==="md";
+  const content = buildReportText(md);
+  const t=todayYMD();
+  const fname = "budget_report_"+t+(md?".md":".txt");
+  download(fname, content, md?"text/markdown":"text/plain;charset=utf-8");
+  line([{t:"✓ 已导出报告: ",c:"#3dff7a"},{t:fname,c:"#4de8ff",cls:"glow"},{t:"  (文件已下载)",c:"#5d6b62"}]);
+}
+
+function showSettings(){
+  const s=state.settings;
+  const modeDesc = s.periodMode==="rolling"
+    ? ("滚动 "+s.lengthDays+" 天 / 起点 "+(s.anchor||"-"))
+    : (s.monthStart===1?"自然月(每月1日)":"每月 "+s.monthStart+" 日起");
+  blank();
+  line([{t:" 当前配置",c:"#4de8ff"}]);
+  line([{t:"  默认周期预算    ",c:"#5d6b62"},{t:"¥"+money(s.budget),c:"#ffffff"}]);
+  const cp = currentPeriod();
+  line([{t:"  当期预算        ",c:"#5d6b62"},
+        {t: hasBudgetOverride(cp) ? ("¥"+money(effectiveBudget(cp))+"  (自定义, 默认 ¥"+money(s.budget)+")") : ("¥"+money(effectiveBudget(cp))+"  (跟随默认)"), c:"#ffffff"}]);
+  line([{t:"  周期模式        ",c:"#5d6b62"},{t:modeDesc,c:"#ffffff"}]);
+  line([{t:"  周起始日        ",c:"#5d6b62"},{t:s.weekStart==="mon"?"周一":"周日",c:"#ffffff"}]);
+  line([{t:"  预警阈值        ",c:"#5d6b62"},{t:s.thresholds.join("% , ")+"%",c:"#ffffff"}]);
+  line([{t:"  年化(货币/指数) ",c:"#5d6b62"},{t:(s.rateMoney*100).toFixed(2)+"% / "+(s.rateIndex*100).toFixed(2)+"%",c:"#ffffff"}]);
+  blank();
+}
+
+/* ======================= 燃尽预测 (burn rate) ======================= */
+function forecastData(){
+  const st = periodSnapshot();
+  const p = st.p, B = st.B;
+  const today = todayYMD();
+  const total = periodDayCount(p);
+  const elapsedRaw = daysBetween(p.start, today) + 1;   // 含今天(不超过周期)
+  const elapsed = Math.max(1, Math.min(total, elapsedRaw));
+  const remaining = Math.max(0, total - elapsed);       // 之后还剩几天
+  const spent = st.consumption;
+  const dailyAvg = elapsed>0 ? spent/elapsed : 0;
+  const projConsumption = r2(dailyAvg * total);         // 期末预测消费
+  const projUsed = r2(projConsumption / CONSUME_SHARE); // 期末预测占用(预算口径)
+  const projLeft = r2(B - projUsed);                    // >0 预计结余, <0 预计超支
+  const allow = r2(CONSUME_SHARE * B);                  // 本期消费额度(85%)
+  const leftConsume = r2(allow - spent);                // 还可消费
+  const perDayLeft = remaining>0 ? r2(leftConsume/remaining) : leftConsume;
+  const projRatio = B>0 ? projUsed/B : 0;
+  return { st, p, B, today, total, elapsed, remaining, spent, dailyAvg,
+           projConsumption, projUsed, projLeft, allow, leftConsume, perDayLeft, projRatio };
+}
+/* budget 命令末尾的一行简报 */
+function showForecastLine(){
+  const f = forecastData();
+  const color = f.projLeft < 0 ? "#ff4d5e" : "#3dff7a";
+  line([{t:"  燃尽预测: 日均 ¥"+money(f.dailyAvg)+"/天", c:"#5d6b62"},
+        {t:"  →  期末预计"+(f.projLeft<0?"超支 ":"结余 "), c:"#5d6b62"},
+        {t:(f.projLeft<0?"":"")+"¥"+money(Math.abs(f.projLeft)), c:color, cls:"glow"},
+        {t:"  (还剩 "+f.remaining+" 天, 每天可花 ¥"+money(Math.max(0,f.perDayLeft))+")", c:"#5d6b62"}]);
+}
+function doForecast(){
+  const f = forecastData();
+  const bar = progressBar(f.projRatio);
+  const over = f.projLeft < 0;
+  blank();
+  line([{t:"▍燃尽预测  ( ",c:"#4de8ff"},{t:f.p.label,c:"#ffffff"},{t:" )",c:"#4de8ff"}]);
+  const row=(k,v,c)=>line([{t:("  "+k).padEnd(22," "),c:"#5d6b62"},{t:v,c:c||"#d7ffe0"}]);
+  row("周期天数", f.total+" 天");
+  row("已过 / 剩余", f.elapsed+" 天 / "+f.remaining+" 天");
+  row("本期消费额度(85%)", "¥"+money(f.allow), "#4de8ff");
+  row("已消费", "¥"+money(f.spent), "#ffffff");
+  row("日均消费", "¥"+money(f.dailyAvg), "#ffd23d");
+  row("剩余可消费", "¥"+money(f.leftConsume), f.leftConsume<0?"#ff4d5e":"#3dff7a");
+  row("每日可花(剩余)", "¥"+money(Math.max(0,f.perDayLeft))+"/天", f.perDayLeft<0?"#ff4d5e":"#3dff7a");
+  line([{t:"  "+"─".repeat(40), c:"#5d6b62"}]);
+  row("期末预测消费", "¥"+money(f.projConsumption), "#ffffff");
+  row("期末预测占用", "¥"+money(f.projUsed)+" / 发放 ¥"+money(f.B), f.projRatio>1?"#ff4d5e":"#d7ffe0");
+  row(over?"预计超支":"预计结余", (over?"-":"+")+"¥"+money(Math.abs(f.projLeft)), over?"#ff4d5e":"#3dff7a");
+  line([{t:"  预测占用进度 ",c:"#5d6b62"},{t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%",c:"#d7ffe0"}]);
+  line([{t:"  提示: 保持当前节奏, "+(over?("本期将透支 ¥"+money(Math.abs(f.projLeft))+" (会从下期发放扣回)"):("本期可结转 ¥"+money(f.projLeft))), c: over?"#ffd23d":"#5d6b62"}]);
+  blank();
+}
+
+/* ======================= 资产看板 & 收益模拟 ======================= */
+function fv(P, rate, years){ return P * Math.pow(1 + rate, years); }
+function sparkline(vals){
+  const blocks = "▁▂▃▄▅▆▇█";
+  if(!vals.length) return "";
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  if(mx - mn < 1e-9) return blocks[3].repeat(vals.length);
+  return vals.map(v=>{
+    const i = Math.round((v-mn)/(mx-mn)*7);
+    return blocks[Math.max(0, Math.min(7, i))];
+  }).join("");
+}
+function doAssets(tokens){
+  const rawYears = numeric(tokens[0]);
+  const horizon = (rawYears!=null && rawYears>0 && rawYears<=60) ? Math.round(rawYears) : 10;
+  const cash  = availableBalance();
+  const pm    = moneyInvestedTotal();
+  const pi    = indexInvestedTotal();
+  const rm    = state.settings.rateMoney  || 0;
+  const ri    = state.settings.rateIndex  || 0;
+  const mvM   = r2(fv(pm, rm, horizon));
+  const mvI   = r2(fv(pi, ri, horizon));
+  const totalNow = r2(cash + pm + pi);
+  const totalFut = r2(cash + mvM + mvI);
+  blank();
+  line([{t:"▍资产看板",c:"#4de8ff"},{t:"   (年化 货币 "+(rm*100).toFixed(2)+"% / 指数 "+(ri*100).toFixed(2)+"%; set rate 可改)",c:"#5d6b62"}]);
+  // 逐行
+  const row=(k,v,c)=>line([{t:("  "+k).padEnd(22," "),c:"#5d6b62"},{t:v,c:c||"#d7ffe0"}]);
+  row("现金余额(含结转)", "¥"+money(cash), cash<0?"#ff4d5e":"#3dff7a");
+  row("货币基金 本金", "¥"+money(pm), "#4de8ff");
+  row("  货币 "+horizon+"年后", "¥"+money(mvM), "#4de8ff");
+  row("指数基金 本金", "¥"+money(pi), "#f1fa8c");
+  row("  指数 "+horizon+"年后", "¥"+money(mvI), "#f1fa8c");
+  line([{t:"  "+"─".repeat(40), c:"#5d6b62"}]);
+  row("总资产(现金+本金)", "¥"+money(totalNow), "#ffffff");
+  row("总资产("+horizon+"年后预估)", "¥"+money(totalFut), "#3dff7a");
+  const gain = r2(totalFut - totalNow);
+  row("预估增值", (gain>=0?"+":"")+"¥"+money(gain), gain>=0?"#3dff7a":"#ff4d5e");
+  // ASCII 增长曲线(现金不增长, 仅基金复利)
+  const vals = [];
+  for(let t=0;t<=horizon;t++){ vals.push(cash + fv(pm,rm,t) + fv(pi,ri,t)); }
+  line([{t:"  增长曲线(0→"+horizon+"年): ",c:"#5d6b62"},{t:sparkline(vals),c:"#3dff7a",cls:"glow"}]);
+  const step = Math.max(1, Math.round(horizon/5));
+  const labels = [];
+  for(let t=0;t<=horizon;t+=step){ labels.push("第"+t+"年"); }
+  line([{t:"  "+labels.join("        "),c:"#5d6b62"}]);
+  blank();
+}
+
+/* ============================ UI plumbing =============================== */
+function echoCommand(raw){
+  const div=document.createElement("div"); div.className="l";
+  div.appendChild(Object.assign(document.createElement("span"),{className:"prompt glow",textContent:"user@budget:~$ "}));
+  div.appendChild(Object.assign(document.createElement("span"),{className:"cmd",textContent:raw}));
+  term.appendChild(div);
+}
+function refreshHeader(){
+  const bar=document.getElementById("statusbar");
+  const st = periodSnapshot();
+  const p = st.p;
+  const bal = availableBalance();
+  const pb=progressBar(st.ratio,18);
+  const aw=alertWord(st.ratio);
+  const cls = aw.t==="预算内 ✓"?"ok":(aw.t==="已超额 ⚠"?"over":"warn");
+  const iMoney = moneyInvestedTotal(), iIndex = indexInvestedTotal();
+  bar.innerHTML="";
+  const modeLabel = p.mode==="rolling" ? ("每"+state.settings.lengthDays+"天周期") : (state.settings.monthStart===1?"自然月":("月"+state.settings.monthStart+"日起"));
+  const cells=[
+    ["周期模式", modeLabel],
+    ["周期", p.label],
+    ["本期消费", "¥"+money(st.consumption)],
+    ["应投", "¥"+money(st.invest)],
+    ["已投货币", "¥"+money(iMoney)],
+    ["已投指数", "¥"+money(iIndex)],
+    ["可用余额(含结转)", "¥"+money(bal)],
+    ["总资产(现金+基金)", "¥"+money(r2(bal + iMoney + iIndex))],
+  ];
+  for(const [k,v] of cells){
+    const d=document.createElement("div"); d.className="stat";
+    const kk=document.createElement("span"); kk.className="k"; kk.textContent=k;
+    const vv=document.createElement("span"); vv.className="v"; vv.textContent=v;
+    if(k==="可用余额(含结转)") vv.className+= bal<0?" neg":(bal<st.B*0.2?" warn":" ok");
+    else if(k==="已投货币"){ vv.className+=" ok"; vv.style.color="#4de8ff"; }
+    else if(k==="已投指数"){ vv.className+=" ok"; vv.style.color="#f1fa8c"; }
+    else if(k==="总资产(现金+基金)") { vv.className+=" ok"; vv.style.color="#ffffff"; }
+    d.append(kk,vv); bar.appendChild(d);
+  }
+  const gap=document.createElement("div"); gap.className="spacer"; bar.appendChild(gap);
+  const al=document.createElement("div");
+  al.className="mini-alert "+cls;
+  al.innerHTML='<span class="glow">'+aw.t+"  "+ (st.ratio*100).toFixed(0)+"%</span>";
+  bar.appendChild(al);
+  const pbb=document.createElement("div"); pbb.className="stat";
+  const lb=document.createElement("span"); lb.className="k"; lb.textContent="发放进度";
+  const tr=document.createElement("span"); tr.className="v";
+  tr.style.color=pb.color; tr.textContent=pb.bar;
+  pbb.append(lb,tr); bar.appendChild(pbb);
+  renderInvestBar();
+}
+/* 理财条: 应投货币/应投指数 的"未投池"累计; 达阈值变绿并出现"一键投资"按钮 */
+function renderInvestBar(){
+  const host = document.getElementById("investbar");
+  if(!host) return;
+  host.innerHTML="";
+  host.appendChild(invCluster("money"));
+  host.appendChild(invCluster("index"));
+  if(autosaveOn){
+    const s=document.createElement("span"); s.className="inv-hint autosave-mark";
+    s.textContent="● 自动写盘 → "+(backupFolderName());
+    host.appendChild(s);
+  }
+}
+function invCluster(kind){
+  const m = kind==="money";
+  const lot = m ? INVEST_MONEY_LOT : INVEST_INDEX_LOT;
+  const pend    = m ? moneyPending()    : indexPending();
+  const invested= m ? moneyInvestedTotal(): indexInvestedTotal();
+  const ready = pend >= lot - 0.005;              // 池≥阈值才点亮全额投资
+  const cl = document.createElement("div"); cl.className="inv-cl";
+  const kEl = document.createElement("span"); kEl.className="inv-kind "+(m?"m":"i");
+  kEl.textContent = m ? "应投货币" : "应投指数";
+  const pool = document.createElement("span"); pool.className="inv-pool"+(ready?" ready":"");
+  pool.textContent = "¥"+money(pend);
+  const done = document.createElement("span"); done.className="inv-done";
+  done.textContent = "已投 ¥"+money(invested);
+  // 全额投资: 把整池一次性投掉; 仅当未投池 ≥ 该种阈值(货币100/指数20)才点亮
+  const btnFull = document.createElement("button"); btnFull.type="button"; btnFull.className="inv-btn";
+  btnFull.disabled = !ready;
+  btnFull.textContent = ready ? ("全额投资 ¥"+money(pend)) : ("待满 ¥"+lot);
+  if(ready) btnFull.addEventListener("click", ()=>doInvestFull(kind));
+  cl.append(kEl, pool, done, btnFull);
+  if(!ready){
+    const hint = document.createElement("span"); hint.className="inv-hint";
+    hint.textContent = "(未投池累计至 ¥"+lot+" 即点亮全额投资并清池)";
+    cl.appendChild(hint);
+  }
+  return cl;
+}
+function scrollBottom(){ term.scrollTop = term.scrollHeight; }
+
+/* modal for add/edit */
+let modalMode = "add"; let modalId=null;
+function openAdd(){ modalMode="add"; modalId=null;
+  document.getElementById("mTitle").textContent="记一笔消费";
+  document.getElementById("f_amt").value=""; document.getElementById("f_note").value="";
+  document.getElementById("f_date").value=todayYMD(); document.getElementById("f_cat").value="";
+  document.getElementById("modalWrap").classList.add("open");
+  document.getElementById("f_amt").focus();
+}
+function refreshCatlist(){
+  const d=document.getElementById("catlist"); d.innerHTML="";
+  for(const c of PREDEFINED.keys()){
+    const o=document.createElement("option"); o.value=c; d.appendChild(o);
+  }
+}
+/* ---- 配置预算弹窗(鼠标) ---- */
+function openBudgetModal(){
+  const p = currentPeriod();
+  const cur = effectiveBudget(p);
+  document.getElementById("b_amt").value = cur;
+  const ov = hasBudgetOverride(p);
+  document.getElementById("b_hint").textContent =
+    "当前周期: "+p.label+"\n"+
+    "· 应用于当期: 只把本期预算改成该金额 (默认 ¥"+money(state.settings.budget)+" 不变)\n"+
+    "· 设为默认: 改成以后各期的默认预算"+(ov?("\n· 本期当前为自定义 ¥"+money(cur)+", 可用 budget reset 恢复默认"):"");
+  document.getElementById("budgetWrap").classList.add("open");
+  document.getElementById("b_amt").focus();
+}
+function closeBudgetModal(){ document.getElementById("budgetWrap").classList.remove("open"); }
+function applyBudget(kind){
+  const v = input2num(document.getElementById("b_amt").value);
+  if(v==null || v<=0){ document.getElementById("b_hint").textContent="请输入大于 0 的金额。"; return; }
+  closeBudgetModal();
+  runCommand(kind==="default" ? ("budget default "+v) : ("budget set "+v));
+}
+function closeModal(){ document.getElementById("modalWrap").classList.remove("open"); }
+function submitModal(){
+  const amt=input2num(document.getElementById("f_amt").value);
+  const cat=document.getElementById("f_cat").value.trim();
+  const date=document.getElementById("f_date").value||todayYMD();
+  const note=document.getElementById("f_note").value.trim();
+  if(amt==null||amt<=0){ alertModal("金额需为大于0的数字"); return; }
+  if(!cat){ alertModal("请输入类别，如 餐饮 / 交通"); return; }
+  closeModal();
+  const cmd = modalMode==="add"
+    ? "add "+amt+" "+cat+(note?" "+quote(note):"")+" @"+date
+    : "update "+modalId+" "+amt+" "+cat+(note?" "+quote(note):"")+" @"+date;
+  input.value = cmd; input.focus();
+  runCommand(cmd);
+}
+function input2num(v){ const n=parseFloat(String(v).replace(/,/g,"")); return isNaN(n)?null:n; }
+function quote(s){ return '"'+s.replace(/"/g,'\\"')+'"'; }
+function alertModal(msg){ const old=document.getElementById("btnSubmit").textContent; document.getElementById("btnSubmit").textContent=msg; setTimeout(()=>{document.getElementById("btnSubmit").textContent="确认";},1400); }
+
+/* toolbar */
+function bindToolbar(){
+  document.querySelectorAll("nav.toolbar button").forEach(b=>{
+    b.addEventListener("click",()=>{
+      const c=b.dataset.cmd;
+      if(c==="open-add"){ openAdd(); return; }
+      if(c==="open-budget"){ openBudgetModal(); return; }
+      if(c==="backup-download"){ doBackupDownload(); return; }
+      if(c==="restore-file"){ document.getElementById("fileImport").click(); return; }
+      if(c==="autosave-dir"){ doAutosaveToggle(); return; }
+      input.value = c; input.focus();
+      runCommand(c);
+    });
+  });
+  const fi = document.getElementById("fileImport");
+  if(fi) fi.addEventListener("change", async (ev)=>{
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value="";
+    if(!file) return;
+    try{ await restoreFromText(await file.text()); }
+    catch(e){ line([{t:"导入失败: "+(e&&e.message||e), c:"#ff4d5e"}]); }
+  });
+  restoreLocalHandleQuiet(); // 尝试重连上次选择的本地目录(若权限仍在)
+}
+function bindModal(){
+  document.getElementById("btnCancel").addEventListener("click",closeModal);
+  document.getElementById("btnSubmit").addEventListener("click",submitModal);
+  document.getElementById("modalWrap").addEventListener("click",(e)=>{ if(e.target.id==="modalWrap") closeModal(); });
+  [document.getElementById("f_amt"),document.getElementById("f_date"),document.getElementById("f_cat"),document.getElementById("f_note")]
+    .forEach(el=>el.addEventListener("keydown",(e)=>{ if(e.key==="Enter") submitModal(); }));
+  // 预算弹窗
+  document.getElementById("b_cancel").addEventListener("click",closeBudgetModal);
+  document.getElementById("b_current").addEventListener("click",()=>applyBudget("current"));
+  document.getElementById("b_default").addEventListener("click",()=>applyBudget("default"));
+  document.getElementById("budgetWrap").addEventListener("click",(e)=>{ if(e.target.id==="budgetWrap") closeBudgetModal(); });
+  document.getElementById("b_amt").addEventListener("keydown",(e)=>{ if(e.key==="Enter") applyBudget("current"); });
+}
+/* ===================== Tab 命令补全 ===================== */
+const CMD_WORDS = ["help","set","add","list","del","update","pay","summary","export","assets","forecast","undo","redo","config","cls","budget"];
+function recordIds(){ return state.records.map(r=>String(r.id)); }
+// 已知类别 + 历史记录里出现过的类别(含自定义)，用于补全与提示
+function allCategories(){
+  return [...new Set([...PREDEFINED.keys(), ...state.records.map(r=>r.category)])].filter(Boolean);
+}
+function argCandidates(c0, slot, tokens, cur){
+  const cmd = c0;
+  if(cmd==="help"||cmd==="config"||cmd==="cls"||cmd==="undo"||cmd==="redo") return [];
+  if(cmd==="assets"||cmd==="forecast"||cmd==="burn"||cmd==="predict") return [];
+  if(cmd==="budget"){
+    if(slot===1) return ["set","default","reset"];
+    if(slot===2) return ["800","1000","1200","1500","2000"];
+    return [];
+  }
+  if(cmd==="set"){
+    if(slot===1) return ["budget","period","periodstart","monthstart","weekstart","alert","rate"];
+    if(slot===2){
+      const sub=(tokens[1]||"").toLowerCase();
+      if(sub==="period") return ["natural","15","14","7","30","90"];
+      if(sub==="monthstart") return ["natural","1","5","10","15","20","25","28"];
+      if(sub==="weekstart") return ["mon","sun"];
+      if(sub==="alert") return ["80,100","50,100","90"];
+      if(sub==="rate") return ["money","index"];
+    }
+    if(slot===3){
+      const sub=(tokens[1]||"").toLowerCase();
+      if(sub==="rate") return ["2","3","8","10"];
+    }
+    return [];
+  }
+  if(cmd==="add"||cmd==="a") return [...PREDEFINED.keys()];
+  if(cmd==="update"||cmd==="edit"){
+    if(slot===1) return recordIds();
+    if(slot===2) return [...PREDEFINED.keys()];
+    return [];
+  }
+  if(cmd==="del"||cmd==="rm"||cmd==="delete") return recordIds();
+  if(cmd==="pay"||cmd==="invest"){
+    if(slot===1) return recordIds();
+    if(slot===2) return ["mm","idx","all","none"];
+    return [];
+  }
+  if(cmd==="list"||cmd==="ls"){
+    if(cur[0]==="@") return [];
+    return [...PREDEFINED.keys()];
+  }
+  if(cmd==="summary"||cmd==="sum"){
+    if(cur[0]==="@") return [];
+    if(slot<=1) return ["day","week","month","cat", ...allCategories()];
+    return allCategories();          // 类别筛选
+  }
+  if(cmd==="export"){ if(slot===1) return ["md","txt"]; return []; }
+  return [];
+}
+function completionCandidates(full){
+  const hasTrailing = /\s$/.test(full);
+  const tokens = full.match(/[^\s]+/g) || [];
+  const slot = hasTrailing ? tokens.length : Math.max(0, tokens.length-1);
+  const cur   = hasTrailing ? "" : (tokens.length? tokens[slot] : "");
+  const prefix = cur.toLowerCase();
+  let list=[];
+  if(slot===0){ list = CMD_WORDS.filter(w=>w.toLowerCase().startsWith(prefix)); }
+  else if(tokens.length){ list = argCandidates(tokens[0].toLowerCase(), slot, tokens, cur); }
+  list = [...new Set(list)].filter(x=>x.toLowerCase().startsWith(prefix));
+  return { list, slot, cur, hasTrailing, base: full };
+}
+function tabHint(names){
+  line([{t:"Tab 候选: ", c:"#5d6b62"},{t:names.join("   "), c:"#4de8ff"},
+        {t:"   (继续按 Tab 循环, Enter 执行)", c:"#5d6b62"}]);
+  scrollBottom();
+}
+/* ---- 输入框淡色“将输入”提示(ghost): 唯一候选时显示待补字符 ---- */
+let ghostSuffixCache = null;
+function currentGhostSuffix(value){
+  const info = completionCandidates(value);
+  if(info.list.length!==1) return null;
+  if(info.hasTrailing) return null;       // 后面还有空 token 时不提示
+  if(!info.cur) return null;              // 尚未输入前缀
+  const suffix = info.list[0].slice(info.cur.length);
+  return suffix || null;
+}
+let _cv=null, _ctx2=null;
+function textWidthPx(s){
+  if(!s) return 0;
+  try{
+    if(!_cv){ _cv = document.createElement("canvas"); _ctx2 = _cv.getContext && _cv.getContext("2d"); }
+    if(_ctx2){
+      let f="15px monospace";
+      try{ f = getComputedStyle(input).font || f; }catch(e){}
+      _ctx2.font = f;
+      return _ctx2.measureText(s).width;
+    }
+  }catch(e){}
+  return 0;
+}
+function hideGhost(){ ghostSuffixCache=null;
+  const el=document.getElementById("ghost"); if(el){ el.textContent=""; el.classList.remove("show"); } }
+function updateGhost(){
+  const el=document.getElementById("ghost");
+  if(!el) return;
+  if(document.activeElement!==input){ hideGhost(); return; }
+  const suf = currentGhostSuffix(input.value);
+  ghostSuffixCache = suf;
+  if(!suf){ el.textContent=""; el.classList.remove("show"); return; }
+  const w = textWidthPx(input.value);
+  el.textContent = suf;
+  el.style.left = (w + 3) + "px";
+  el.classList.add("show");
+}
+function caretAtEnd(){
+  try{ if(input.selectionEnd==null) return true; return input.selectionEnd===input.value.length; }
+  catch(e){ return true; }
+}
+let comp=null; // {list,i,cur,hasTrailing,base,hint}
+function handleTab(){
+  if(!comp){
+    const info = completionCandidates(input.value);
+    if(!info.list.length){ return; }
+    comp = { list: info.list, i: 0, cur: info.cur, hasTrailing: info.hasTrailing, base: info.base, hint:false };
+  } else {
+    comp.i = (comp.i + 1) % comp.list.length;
+  }
+  if(comp.list.length>1 && !comp.hint){ comp.hint=true; tabHint(comp.list); }
+  const cand = comp.list[comp.i];
+  let out;
+  if(comp.hasTrailing){ out = comp.base + cand; }
+  else { out = comp.base.slice(0, comp.base.length - comp.cur.length) + cand; }
+  input.value = out;
+  input.setSelectionRange(out.length, out.length);
+  hideGhost();
+}
+function bindInput(){
+  input.addEventListener("keydown",(e)=>{
+    if((e.ctrlKey||e.metaKey) && (e.key==="z"||e.key==="Z")){ e.preventDefault(); if(e.shiftKey) redo(); else undo(); return; }
+    if((e.ctrlKey||e.metaKey) && (e.key==="y"||e.key==="Y")){ e.preventDefault(); redo(); return; }
+    if(e.key==="Enter"){ comp=null; hideGhost(); runCommand(input.value); input.value=""; scrollBottom(); return; }
+    if(e.key==="Tab"){ e.preventDefault(); handleTab(); updateGhost(); return; }
+    if(e.key==="ArrowRight"){
+      if(caretAtEnd() && ghostSuffixCache){
+        e.preventDefault();
+        input.value = input.value + ghostSuffixCache;
+        input.setSelectionRange(input.value.length, input.value.length);
+        hideGhost();
+        return;
+      }
+    }
+    if(!["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) comp=null;
+    if(e.key==="ArrowUp"){ historyUp(); }
+    else if(e.key==="ArrowDown"){ historyDown(); }
+    updateGhost();
+  });
+  input.addEventListener("input",()=>{ scrollBottom(); updateGhost(); });
+  input.addEventListener("focus", updateGhost);
+  input.addEventListener("blur", hideGhost);
+}
+let history=[], hIdx=-1;
+function historyUp(){ if(!history.length) return; if(hIdx<0) hIdx=history.length-1; else hIdx=Math.max(0,hIdx-1); input.value=history[hIdx]; }
+function historyDown(){ if(hIdx<0) return; hIdx++; if(hIdx>=history.length){ hIdx=-1; input.value=""; } else input.value=history[hIdx]; }
+function recordHistory(c){ if(c && c!==history[history.length-1]) history.push(c); hIdx=-1; }
+
+/* live clock in input prompt? keep simple */
+
+function boot(){
+  loadState();
+  refreshCatlist();
+  refreshHeader();
+  bindToolbar(); bindModal(); bindInput();
+  armAutoReconnect();
+  refreshHistoryUI();
+  // banner
+  const t=todayYMD();
+  line([{t:"╔══════════════════════════════════════════════════════╗",c:"#3dff7a"}]);
+  line([{t:"║  ",c:"#3dff7a"},{t:"BUDGET :: TERM",c:"#4de8ff",cls:"glow"},{t:"   个人记账 · 自动理财规划",c:"#ffffff"},{t:"  ║",c:"#3dff7a"}]);
+  line([{t:"╚══════════════════════════════════════════════════════╝",c:"#3dff7a"}]);
+  line([
+    {t:"今日 ",c:"#5d6b62"},{t:t,c:"#d7ffe0"},
+    {t:"   模型: 消费÷0.85=占用预算; 占用×15% 应投 ",c:"#5d6b62"},
+    {t:"货币13%",c:"#4de8ff"},{t:"+",c:"#5d6b62"},{t:"指数2%",c:"#f1fa8c"},
+    {t:"; 剩余结转, 透支下期扣回",c:"#5d6b62"}
+  ]);
+  showBudget();
+  line([{t:"输入 ",c:"#5d6b62"},{t:"help",c:"#ffd23d"},{t:" 查看全部命令；或点上方按钮快速操作。",c:"#5d6b62"}]);
+  blank();
+  input.focus();
+}
+
+window.addEventListener("DOMContentLoaded", boot);
+// keep focus on input when clicking terminal
+term.addEventListener("click",()=>input.focus());
+</script>
+</body>
+</html>

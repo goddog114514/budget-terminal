@@ -1,0 +1,21 @@
+# ── 个人账本备份（含真实记账数据，切勿上传）────────────────
+budget_term_backup.json
+*.backup.json
+
+# ── 导出的报告（同样含个人消费数据）─────────────────────
+budget_report_*.md
+budget_report_*.txt
+
+# ── 系统 / 编辑器 ────────────────────────────────────
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp
+*.log
+/.vscode/
+/.idea/
+
+# ── 临时文件 ─────────────────────────────────────────
+_chk.js
+_t_*.js
+_combined.js
