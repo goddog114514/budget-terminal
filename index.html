@@ -268,6 +268,7 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
+const APP_VERSION = "v0.0.2";         // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
 /* 可调投资比例：总花费(占用) = 消费 ÷ N, 其中 N = 消费占比(默认 0.85)、
    投资占比 = 1 - N (默认 0.15)。投资池内部仍按原始 13:2 比例拆分货币/指数。
@@ -284,6 +285,10 @@ const PREDEFINED = new Map(DEFAULT_CATEGORIES.map((c,i)=>[c,["#3dff7a","#4de8ff"
 
 /* ---------- 可调投资比例: 运行时读取的消费/投资比率 ---------- */
 function r6(x){ return Math.round(x*1e6)/1e6; }
+/* 投资金额内部保留 6 位小数: 避免 <0.005 的应投被显示口径(0.00)抹掉后永远无法标记已投。
+   UI 一律用 money() 显示 2 位, 只有内部计算/比较用高精度。 */
+const INV_EPS  = 1e-9;                          // 判定"是否需要投资 / 是否已投足"的浮点容差
+const INV_UNIT = 1e6;                           // 全额投资分摊用的整数单位(1e-6 元)
 function consumeShare(){                        // N: 消费占总花费(占用)的比例
   const v = (state && state.settings) ? state.settings.consumeShare : undefined;
   return (typeof v==="number" && v>0 && v<1) ? v : CONSUME_SHARE;
@@ -320,13 +325,17 @@ function loadState(){
     for(const k in def){ if(state.settings[k]===undefined) state.settings[k]=def[k]; }
     if(!Array.isArray(state.records)) state.records=[];
     if(typeof state.seq!=="number") state.seq = state.records.length;
-    // migrate investment fields: mm/idx (应投) + 金额制 moneyInv/indexInv (已投金额)
+    // migrate investment fields: mm/idx (应投, 6位精度) + 金额制 moneyInv/indexInv (已投金额)
     for(const r of state.records){
+      const oldMm = r.mm||0, oldIdx = r.idx||0;
+      const mInv0 = typeof r.moneyInv==="number" ? r.moneyInv : (r.mmPaid ? oldMm : 0);
+      const iInv0 = typeof r.indexInv==="number" ? r.indexInv : (r.idxPaid ? oldIdx : 0);
       if(typeof r.amount==="number" && r.amount>0){ const inv=investOf(r.amount); r.mm=inv.mm; r.idx=inv.idx; }
-      const mInv = typeof r.moneyInv==="number" ? r.moneyInv : (r.mmPaid ? r.mm : 0);
-      const iInv = typeof r.indexInv==="number" ? r.indexInv : (r.idxPaid ? r.idx : 0);
-      r.moneyInv = Math.min(r.mm, mInv);
-      r.indexInv = Math.min(r.idx, iInv);
+      // 旧数据里已标记"已投足"的, 重算后要吸附到新的应投额, 避免因精度变化退回"部分/未投"
+      const wasFullM = oldMm>0 && mInv0 >= oldMm - 0.005;
+      const wasFullI = oldIdx>0 && iInv0 >= oldIdx - 0.005;
+      r.moneyInv = wasFullM ? (r.mm||0) : Math.min(r.mm||0, mInv0);
+      r.indexInv = wasFullI ? (r.idx||0) : Math.min(r.idx||0, iInv0);
     }
   }
   // ensure a ledger epoch exists (start of the current budget period)
@@ -601,15 +610,15 @@ function catColor(cat){ return PREDEFINED.get(cat) || "#8be9fd"; }
 function investOf(amount){
   const base = amount / consumeShare();             // 占用总花费的等价口径
   const sp = rateSplit();
-  return { base: base, mm: r2(base*sp.mm), idx: r2(base*sp.idx) };
+  return { base: base, mm: r6(base*sp.mm), idx: r6(base*sp.idx) };
 }
 /* 比例变化后: 按新比例重算所有记录的应投额(已投金额不会超过新的应投额) */
 function recomputeAllInvest(){
   for(const r of state.records){
     const inv = investOf(r.amount);
     r.mm = inv.mm; r.idx = inv.idx;
-    r.moneyInv = r2(Math.min(r.moneyInv||0, r.mm));
-    r.indexInv = r2(Math.min(r.indexInv||0, r.idx));
+    r.moneyInv = Math.min(r.moneyInv||0, r.mm);
+    r.indexInv = Math.min(r.indexInv||0, r.idx);
   }
 }
 function r2(x){ return Math.round(x*100)/100; }
@@ -621,13 +630,17 @@ function catNameOfRecord(r){ return r.category; }
 
 /* ===================== 投资池：应投货币 / 应投指数 ===================== */
 /* 未投资部分累加(跨期累计): 每笔记录应投 mm/idx, 已投 moneyInv/indexInv(金额制) */
-function moneyPending(){ return r2(state.records.reduce((s,r)=>s+Math.max(0,(r.mm||0)-(r.moneyInv||0)),0)); }
-function indexPending(){ return r2(state.records.reduce((s,r)=>s+Math.max(0,(r.idx||0)-(r.indexInv||0)),0)); }
-function moneyInvestedTotal(){ return r2(state.records.reduce((s,r)=>s+(r.moneyInv||0),0)); }
-function indexInvestedTotal(){ return r2(state.records.reduce((s,r)=>s+(r.indexInv||0),0)); }
-function recFullyMoney(r){ return r.mm>0 && (r.moneyInv||0) >= r.mm - 0.005; }
-function recFullyIndex(r){ return r.idx>0 && (r.indexInv||0) >= r.idx - 0.005; }
+function moneyPending(){ return r6(state.records.reduce((s,r)=>s+Math.max(0,(r.mm||0)-(r.moneyInv||0)),0)); }
+function indexPending(){ return r6(state.records.reduce((s,r)=>s+Math.max(0,(r.idx||0)-(r.indexInv||0)),0)); }
+function moneyInvestedTotal(){ return r6(state.records.reduce((s,r)=>s+(r.moneyInv||0),0)); }
+function indexInvestedTotal(){ return r6(state.records.reduce((s,r)=>s+(r.indexInv||0),0)); }
+/* 应投为 0 视为"无需求"(满足); 否则按高精度比较是否已投足。
+   注意: 不能用 0.005 这类粗容差 —— 那会把 <0.005 的小额应投直接判成"已投足"。 */
+function recFullyMoney(r){ const need=r.mm||0; return need<=INV_EPS || (r.moneyInv||0) >= need - INV_EPS; }
+function recFullyIndex(r){ const need=r.idx||0; return need<=INV_EPS || (r.indexInv||0) >= need - INV_EPS; }
+function recNoNeed(r){ return (r.mm||0)<=INV_EPS && (r.idx||0)<=INV_EPS; }
 function recStatus(r){
+  if(recNoNeed(r)) return {t:"无需", c:"#5d6b62"};   // 应投恒为 0, 无需投资
   const m = recFullyMoney(r), i = recFullyIndex(r);
   if(m && i) return {t:"已投", c:"#3dff7a"};
   if(!(r.moneyInv||0) && !(r.indexInv||0)) return {t:"未投", c:"#5d6b62"};
@@ -639,29 +652,30 @@ function investAmount(kind, amt){ // 按比例把 amt 投给该种未投池; kin
   const pend = isM ? moneyPending() : indexPending();
   if(amt == null) amt = isM ? INVEST_MONEY_LOT : INVEST_INDEX_LOT;
   amt = Math.min(amt, pend);
-  if(amt <= 0.004) return null;
-  const lotC = Math.round(amt*100);
-  // 收集每条记录的剩余未投额度(cent)
-  const entries=[]; let totC=0;
+  if(amt <= INV_EPS) return null;
+  const lotU = Math.round(amt*INV_UNIT);
+  // 收集每条记录的剩余未投额度(1e-6 元为单位, 保证 <0.01 的零头也能被分摊清零)
+  const entries=[]; let totU=0;
   for(const r of state.records){
     const should = isM ? (r.mm||0) : (r.idx||0);
     const inv = isM ? (r.moneyInv||0) : (r.indexInv||0);
-    const rem = Math.max(0, should - inv);
-    const remC = Math.round(rem*100);
-    if(remC>0){ entries.push({r, remC}); totC += remC; }
+    const remU = Math.round(Math.max(0, should - inv)*INV_UNIT);
+    if(remU>0){ entries.push({r, remU}); totU += remU; }
   }
+  if(!totU) return null;
   // 按剩余占比分配(largest remainder)
-  const alloc = entries.map(e=>{ const exact = lotC*e.remC/totC; const base=Math.floor(exact); return {e, base, frac: exact-base}; });
-  let rem = lotC - alloc.reduce((s,a)=>s+a.base,0);
+  const alloc = entries.map(e=>{ const exact = lotU*e.remU/totU; const base=Math.floor(exact); return {e, base, frac: exact-base}; });
+  let rem = lotU - alloc.reduce((s,a)=>s+a.base,0);
   alloc.sort((a,b)=>b.frac-a.frac);
-  for(const a of alloc){ if(rem<=0)break; const add=Math.min(a.e.remC-a.base, rem); a.base+=add; rem-=add; }
-  for(const a of alloc){ if(rem<=0)break; const add=Math.min(a.e.remC-a.base, rem); a.base+=add; rem-=add; }
+  for(const a of alloc){ if(rem<=0)break; const add=Math.min(a.e.remU-a.base, rem); a.base+=add; rem-=add; }
+  for(const a of alloc){ if(rem<=0)break; const add=Math.min(a.e.remU-a.base, rem); a.base+=add; rem-=add; }
   // 应用
   let applied=0;
   for(const a of alloc){
     if(a.base<=0) continue;
-    const cur = isM ? (a.e.r.moneyInv||0) : (a.e.r.indexInv||0);
-    const nv = r2(Math.min(isM? a.e.r.mm : a.e.r.idx, cur + a.base/100));
+    const need = isM ? (a.e.r.mm||0) : (a.e.r.idx||0);
+    const cur  = isM ? (a.e.r.moneyInv||0) : (a.e.r.indexInv||0);
+    const nv = r6(Math.min(need, cur + a.base/INV_UNIT));
     if(isM) a.e.r.moneyInv = nv; else a.e.r.indexInv = nv;
     applied++;
   }
@@ -1155,17 +1169,27 @@ function renderRecordRow(r){
   const b = document.createElement("button"); b.type="button"; b.className="tbtn";
   b.title = "把 #"+r.id+" 应投货币/指数全部标记已投 (等同 pay "+r.id+" all), 再点重置";
   const refresh = ()=>{
+    const noNeed = recNoNeed(r);
     const mInv=r.moneyInv||0, iInv=r.indexInv||0;
     const parts=[]; if(mInv>0) parts.push("已投货币¥"+money(mInv)); if(iInv>0) parts.push("已投指数¥"+money(iInv));
     invSpan.textContent = parts.length? "  ["+parts.join(" ")+"]" : "";
     invSpan.style.color = "#5d6b62";
     const st = recStatus(r);
     stSpan.textContent = "  "+st.t; stSpan.style.color = st.c;
-    const f2 = recFullyMoney(r) && recFullyIndex(r);
+    const f2 = !noNeed && recFullyMoney(r) && recFullyIndex(r);
     b.className = "tbtn " + (f2 ? "on" : "");
-    b.textContent = f2 ? "已投资 ✓" : "标记已投资";
+    if(noNeed){
+      b.disabled = true;
+      b.textContent = "无需投资";
+      b.title = "该笔应投货币/指数均为 ¥0.00, 无需投资";
+    } else {
+      b.disabled = false;
+      b.textContent = f2 ? "已投资 ✓" : "标记已投资";
+      b.title = "把 #"+r.id+" 应投货币/指数全部标记已投 (等同 pay "+r.id+" all), 再点重置";
+    }
   };
   b.addEventListener("click", ()=>{
+    if(recNoNeed(r)){ line([{t:"#"+r.id+" 应投货币/指数均为 ¥0.00, 无需投资。", c:"#ffd23d"}]); return; }
     mutate(()=>{
       if(recFullyMoney(r) && recFullyIndex(r)){ r.moneyInv=0; r.indexInv=0; }
       else { r.moneyInv=r.mm; r.indexInv=r.idx; }
@@ -1237,6 +1261,7 @@ function doPay(tokens){
   if(id==null){ line([{t:"用法: pay <id> [mm|idx|all|none]   例 pay 3 all",c:"#ffd23d"}]); return; }
   const rec = state.records.find(r=>r.id===id);
   if(!rec){ line([{t:"未找到 #"+id,c:"#ffd23d"}]); return; }
+  if(recNoNeed(rec)){ line([{t:"#"+id+" 应投货币/指数均为 ¥0.00, 无需投资。",c:"#ffd23d"}]); return; }
   const kind = (tokens[1]||"all").toLowerCase();
   let label="", verb;
   const fm = recFullyMoney(rec), fi = recFullyIndex(rec);
@@ -1263,7 +1288,7 @@ function doInvestFull(kind){
   const r = mutate(()=>investFull(kind));
   if(!r){
     const pend = kind==="money" ? moneyPending() : indexPending();
-    if(pend <= 0.004) line([{t:name+" 未投池为空，暂无可投。", c:"#ffd23d"}]);
+    if(pend <= INV_EPS) line([{t:name+" 未投池为空，暂无可投。", c:"#ffd23d"}]);
     else line([{t:name+" 未投池仅 ¥"+money(pend)+"，需累计至 ¥"+lot+" 才能全额投资。", c:"#ffd23d"}]);
     return;
   }
@@ -1496,7 +1521,7 @@ function showSettings(){
     ? ("滚动 "+s.lengthDays+" 天 / 起点 "+(s.anchor||"-"))
     : (s.monthStart===1?"自然月(每月1日)":"每月 "+s.monthStart+" 日起");
   blank();
-  line([{t:" 当前配置",c:"#4de8ff"}]);
+  line([{t:" 当前配置",c:"#4de8ff"},{t:"   "+APP_VERSION,c:"#5d6b62"}]);
   line([{t:"  默认周期预算    ",c:"#5d6b62"},{t:"¥"+money(s.budget),c:"#ffffff"}]);
   const cp = currentPeriod();
   line([{t:"  当期预算        ",c:"#5d6b62"},
@@ -1973,7 +1998,7 @@ function boot(){
   // banner
   const t=todayYMD();
   line([{t:"╔══════════════════════════════════════════════════════╗",c:"#3dff7a"}]);
-  line([{t:"║  ",c:"#3dff7a"},{t:"BUDGET :: TERM",c:"#4de8ff",cls:"glow"},{t:"   个人记账 · 自动理财规划",c:"#ffffff"},{t:"  ║",c:"#3dff7a"}]);
+  line([{t:"║  ",c:"#3dff7a"},{t:"BUDGET :: TERM",c:"#4de8ff",cls:"glow"},{t:"  "+APP_VERSION+"   个人记账 · 自动理财规划",c:"#ffffff"},{t:"  ║",c:"#3dff7a"}]);
   line([{t:"╚══════════════════════════════════════════════════════╝",c:"#3dff7a"}]);
   line([
     {t:"今日 ",c:"#5d6b62"},{t:t,c:"#d7ffe0"},
