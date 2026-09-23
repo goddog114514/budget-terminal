@@ -75,10 +75,10 @@
   .dotbox .dlabel{color:var(--gray);}
   .dotbox .dval{color:var(--white);}
   .dot{font-size:14px;line-height:1;display:inline-block;}
-  .dot.g,.dotword.g{color:var(--green);}
-  .dot.y,.dotword.y{color:var(--yellow);}
-  .dot.r,.dotword.r{color:var(--red);}
-  .dot.n,.dotword.n{color:var(--gray);}
+  .dot.g{color:var(--green);}
+  .dot.y{color:var(--yellow);}
+  .dot.r{color:var(--red);}
+  .dot.n{color:var(--gray);}
 
   /* ---- button toolbar (auxiliary mouse support) ---- */
   nav.toolbar{
@@ -880,18 +880,17 @@ function todaySnapshot(){
   const hasDaily = typeof d==="number" && d>0;
   return { date:t, consumption, daily: hasDaily? d : null, ratio: hasDaily ? consumption/d : null };
 }
-/* 终端文本版: "周期预算：红●已超额114%" */
+/* 终端文本版: "周期预算：●已超额114%" (颜色由圆点本身表示, 圆点前不放文字) */
 function dotLine(label, info){
-  return [{t:label+"：",c:"#5d6b62"},{t:info.word,c:info.dot},{t:"●",c:info.dot},{t:info.text,c:"#d7ffe0"}];
+  return [{t:label+"：",c:"#5d6b62"},{t:"●",c:info.dot},{t:info.text,c:"#d7ffe0"}];
 }
 /* DOM 版圆点组合 */
 function dotPair(label, info){
   const box=document.createElement("span"); box.className="dotbox";
   const l=document.createElement("span"); l.className="dlabel"; l.textContent=label+"：";
-  const w=document.createElement("span"); w.className="dotword "+info.cls; w.textContent=info.word;
   const d=document.createElement("span"); d.className="dot "+info.cls; d.textContent="●";
   const v=document.createElement("span"); v.className="dval"; v.textContent=info.text;
-  box.append(l,w,d,v);
+  box.append(l,d,v);
   return box;
 }
 
@@ -1921,7 +1920,7 @@ function updateDailyHint(){
   if(typeof db==="number" && db>0){
     const inf = ratioDot(ts.ratio);
     el.textContent = "当前每日额度 ¥"+money(db)+"   今日已消费 ¥"+money(ts.consumption)
-                   + "   → [" + inf.word + "● " + inf.text + "]";
+                   + "   → [" + "● " + inf.text + "]";
   } else {
     el.textContent = "未设置每日额度：右上角「今日预算」将显示为灰点(未设置)。";
   }
