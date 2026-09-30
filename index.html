@@ -22,6 +22,7 @@
 <title>BUDGET::TERM — 记账与自动理财终端</title>
 <style>
   :root{
+    color-scheme:dark;              /* 让原生控件(日期/月份选择器图标、数字微调箭头)按暗色渲染, 否则默认是黑图标看不见 */
     --bg:#050607;
     --panel:#0b0e0f;
     --green:#3dff7a;
@@ -203,13 +204,23 @@
   }
   #modal input:focus,#modal select:focus,#budgetModal input:focus,#dateModal input:focus{border-color:var(--green);}
   .mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap;}
-  .mbtns button{font-family:inherit;padding:6px 16px;cursor:pointer;border-radius:3px;border:1px solid var(--border);background:transparent;}
+  /* 兜底: 弹窗按钮默认用主题绿字, 避免落到浏览器默认的黑色 ButtonText(在近黑底上完全看不清) */
+  .mbtns button{font-family:inherit;padding:6px 16px;cursor:pointer;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--green);}
   #btnSubmit,#b_current{color:var(--green);border-color:var(--green);}
   #btnCancel,#b_cancel{color:var(--red);border-color:var(--red);}
   #b_default{color:var(--cyan);border-color:var(--cyan);}
   #btnSubmit:hover,#b_current:hover{background:rgba(61,255,122,.1);}
   #btnCancel:hover,#b_cancel:hover{background:rgba(255,77,94,.1);}
   #b_default:hover{background:rgba(77,232,255,.1);}
+  /* 每日可用余额 / 按日期查看 两个新弹窗的按钮 */
+  #b_daily_save,#d_ok{color:var(--green);border-color:var(--green);}
+  #b_daily_save:hover,#d_ok:hover{background:rgba(61,255,122,.1);}
+  #b_daily_off{color:var(--gray);border-color:var(--gray);}
+  #b_daily_off:hover{background:rgba(93,107,98,.18);}
+  #d_cancel{color:var(--red);border-color:var(--red);}
+  #d_cancel:hover{background:rgba(255,77,94,.1);}
+  /* 输入框的日历/微调图标在暗色下也需要提亮 */
+  #modal input,#budgetModal input,#dateModal input{color-scheme:dark;}
   #budgetModal .hint{color:var(--gray);font-size:12px;margin-top:12px;line-height:1.6;}
 
   table.kv{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0;}
@@ -293,7 +304,7 @@
     <input id="b_daily" type="number" step="0.01" min="0.01" placeholder="如 100；留空=不设置">
     <div class="hint" id="b_daily_hint"></div>
     <div class="mbtns">
-      <button id="b_daily_off" style="color:var(--gray);border-color:var(--gray);">清除 (不设)</button>
+      <button id="b_daily_off">清除 (不设)</button>
       <button id="b_daily_save">保存每日额度</button>
     </div>
   </div>
