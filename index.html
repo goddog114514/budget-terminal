@@ -223,6 +223,23 @@
   #modal input,#budgetModal input,#dateModal input{color-scheme:dark;}
   #budgetModal .hint{color:var(--gray);font-size:12px;margin-top:12px;line-height:1.6;}
 
+  /* ---- 「手动输日期」弹窗: 日期/月份统一为 ISO 文本 + 原生选择器辅助按钮 ---- */
+  #dateModal label .fmt{color:#3c4b41;font-size:11px;margin-left:6px;letter-spacing:.5px;}
+  #dateModal .drow{position:relative;display:flex;gap:6px;align-items:stretch;}
+  #dateModal .drow > input[type="text"]{flex:1 1 auto;min-width:0;}
+  #dateModal .drow .pick{
+    flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--cyan);
+    font-family:inherit;font-size:13px;padding:0 10px;cursor:pointer;border-radius:3px;line-height:1;
+  }
+  #dateModal .drow .pick:hover{border-color:var(--cyan);background:rgba(77,232,255,.1);}
+  #dateModal .drow .native-pick{
+    position:absolute;right:0;top:0;width:40px;height:100%;opacity:0;border:none;padding:0;
+    pointer-events:none;background:transparent;
+  }
+  #dateModal .dpreview{color:var(--cyan);font-size:12px;margin-top:10px;min-height:1.2em;word-break:break-all;}
+  #dateModal .hint{color:var(--gray);font-size:12px;margin-top:10px;line-height:1.6;}
+  #dateModal .hint.bad{color:var(--yellow);}
+
   table.kv{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0;}
   table.kv td{padding:3px 8px;border:1px solid var(--border);}
   table.kv td:first-child{color:var(--gray);width:170px;}
@@ -313,10 +330,21 @@
 <div id="dateWrap">
   <div id="dateModal">
     <h3>按日期 / 月份查看消费</h3>
-    <label>日期</label><input id="d_date" type="date">
-    <label>或 月份</label><input id="d_month" type="month">
+    <label>日期 <span class="fmt">统一格式 YYYY-MM-DD</span></label>
+    <div class="drow">
+      <input id="d_date" type="text" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="如 2026-09-18">
+      <button type="button" class="pick" id="d_date_pick" title="用日历选择">📅</button>
+      <input id="d_date_native" class="native-pick" type="date" tabindex="-1" aria-hidden="true">
+    </div>
+    <label>或 月份 <span class="fmt">统一格式 YYYY-MM</span></label>
+    <div class="drow">
+      <input id="d_month" type="text" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="如 2026-09">
+      <button type="button" class="pick" id="d_month_pick" title="用月份选择器">📅</button>
+      <input id="d_month_native" class="native-pick" type="month" tabindex="-1" aria-hidden="true">
+    </div>
     <label>类别 (可选)</label><input id="d_cat" list="catlist" placeholder="留空 = 全部类别">
-    <div class="hint" id="d_hint">填日期 → 只看当天；只填月份 → 看整月；两个都填则优先日期。</div>
+    <div class="hint" id="d_hint"></div>
+    <div class="dpreview" id="d_preview"></div>
     <div class="mbtns">
       <button id="d_cancel">取消</button>
       <button id="d_ok">查看</button>
@@ -594,6 +622,45 @@ function parseYMD(s){ // 'YYYY-MM-DD' -> {y,m,d}
   return { y:+m[1], m:+m[2], d:+m[3] };
 }
 function todayYMD(){ const n=new Date(); return fmtY(n); }
+/* ---- 「手动输日期」弹窗的统一格式解析 -------------------------------------
+   目标: 不管用户怎么敲, 一律归一化成与命令 @日期 完全一致的 ISO 写法:
+     日期 → YYYY-MM-DD     月份 → YYYY-MM
+   宽容接受 2026-9-5 / 2026/9/5 / 2026.9.5 / 20260905 / 2026年9月5日 等写法。
+   返回 { ok, value, error }: value 永远是统一格式(空输入返回""), ok=false 时 error 为提示语。 */
+function normDateText(raw, kind){          // kind: "date" | "month"
+  const out = { ok:true, value:"", error:"" };
+  let s = String(raw==null ? "" : raw).trim();
+  if(!s) return out;                        // 留空 = 不填该项(由调用方判断是否允许)
+  s = s.replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))  // 全角数字→半角
+       .replace(/[年月]/g, "-").replace(/[日号]/g, "")
+       .replace(/[／\/．.、]/g, "-")
+       .replace(/[－—–−‐]/g, "-")            // 全角/长破折/减号 都当作 -
+       .replace(/\s+/g, "")
+       .replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+  const seg = s.split("-").filter(x=>x!=="");
+  let y=null, m=null, d=null;
+  if(seg.length===1 && /^\d{8}$/.test(seg[0])){       // 20260918
+    y=+seg[0].slice(0,4); m=+seg[0].slice(4,6); d=+seg[0].slice(6,8);
+  } else if(seg.length===1 && /^\d{6}$/.test(seg[0])){ // 202609
+    y=+seg[0].slice(0,4); m=+seg[0].slice(4,6);
+  } else if(seg.length>=2){
+    y = /^\d{4}$/.test(seg[0]) ? +seg[0] : NaN;        // 年份必须 4 位
+    m = +seg[1];
+    if(seg[2]!==undefined) d = +seg[2];
+  }
+  if(!(y>=1000 && y<=9999)){
+    out.ok=false;
+    out.error = (kind==="date") ? "请按 YYYY-MM-DD 填写完整日期，如 2026-09-18。"
+                                : "请按 YYYY-MM 填写月份，如 2026-09。";
+    return out;
+  }
+  if(!(m>=1 && m<=12)){ out.ok=false; out.error = "月份要在 01~12 之间。"; return out; }
+  if(kind==="month"){ out.value = y+"-"+pad2(m); return out; }
+  if(d===null){ out.ok=false; out.error = "日期要写到「日」，如 2026-09-18；若只想看整月，请填上面的「月份」。"; return out; }
+  if(!(d>=1 && d<=lastDay(y,m))){ out.ok=false; out.error = "该月没有 "+d+" 号（"+y+"-"+pad2(m)+" 只有 "+lastDay(y,m)+" 天）。"; return out; }
+  out.value = mkYMD(y,m,d);
+  return out;
+}
 function addMonths(y,m0,delta){ // m0: 1-based month index
   const total = (m0-1)+delta;          // to 0-based
   const yy = y + Math.floor(total/12);
@@ -2020,25 +2087,78 @@ function onListMenuItem(kind){
   else if(kind==="manual") openDateModal();
   scrollBottom();
 }
-/* ---- 手动输入日期/月份查看 ---- */
-function openDateModal(){
-  document.getElementById("d_date").value="";
-  document.getElementById("d_month").value="";
-  document.getElementById("d_cat").value="";
-  document.getElementById("d_hint").textContent="填日期 → 只看当天；只填月份 → 看整月；两个都填则优先日期。";
-  document.getElementById("dateWrap").classList.add("open");
-  document.getElementById("d_date").focus();
+/* ---- 手动输入日期/月份查看 ----
+   两个输入框统一为 ISO 文本: 日期 YYYY-MM-DD、月份 YYYY-MM(与命令 @日期 一致),
+   旁边 📅 仍可调原生日历/月份选择器, 选完同样回填成统一格式。 */
+const DATE_HINT = "格式统一: 日期 YYYY-MM-DD、月份 YYYY-MM（等同命令 @2026-09-18 / @2026-09）；填日期 → 只看当天，只填月份 → 看整月，两个都填则优先日期。";
+function dateModalEl(id){ return document.getElementById(id); }
+function normDateField(id, kind){                    // 读取并归一化某个输入框
+  const el = dateModalEl(id);
+  return { el, raw: el.value.trim(), ...normDateText(el.value, kind) };
 }
-function closeDateModal(){ document.getElementById("dateWrap").classList.remove("open"); }
+function setDateHint(text, bad){
+  const h = dateModalEl("d_hint");
+  h.textContent = text;
+  h.classList.toggle("bad", !!bad);
+}
+/* 实时校验 + 预览将要执行的命令(始终用统一格式显示) */
+function updateDatePreview(){
+  const d  = normDateField("d_date","date");
+  const m  = normDateField("d_month","month");
+  const cat = dateModalEl("d_cat").value.trim();
+  if(d.raw && !d.ok)      setDateHint("日期格式: "+d.error, true);
+  else if(m.raw && !m.ok) setDateHint("月份格式: "+m.error, true);
+  else                    setDateHint(DATE_HINT, false);
+  const when = d.value ? ("@"+d.value) : (m.value ? ("@"+m.value) : "");
+  const pv = dateModalEl("d_preview");
+  pv.textContent = when ? ("将执行:  list"+(cat?(" "+cat):"")+" "+when)
+                        : "将执行:  (请先填写「日期」或「月份」)";
+  pv.style.color = d.value ? "var(--green)" : (m.value ? "var(--cyan)" : "#3c4b41");
+  return { d, m, cat, when };
+}
+/* 失焦即把写法归一化: 2026/9/5 → 2026-09-05 */
+function normalizeDateField(id, kind){
+  const f = normDateField(id, kind);
+  if(f.ok && f.raw) f.el.value = f.value;
+  updateDatePreview();
+}
+function openDateModal(){
+  ["d_date","d_month","d_cat"].forEach(id=>{ dateModalEl(id).value=""; });
+  ["d_date_native","d_month_native"].forEach(id=>{ dateModalEl(id).value=""; });
+  setDateHint(DATE_HINT,false);
+  updateDatePreview();
+  dateModalEl("dateWrap").classList.add("open");
+  dateModalEl("d_date").focus();
+}
+function closeDateModal(){ dateModalEl("dateWrap").classList.remove("open"); }
 function applyDateModal(){
-  const d = document.getElementById("d_date").value;
-  const m = document.getElementById("d_month").value;
-  const cat = document.getElementById("d_cat").value.trim();
-  if(!d && !m){ document.getElementById("d_hint").textContent="请至少填写「日期」或「月份」。"; return; }
+  const st = updateDatePreview();
+  if(st.d.raw && !st.d.ok){ dateModalEl("d_date").focus(); return; }
+  if(st.m.raw && !st.m.ok){ dateModalEl("d_month").focus(); return; }
+  if(!st.when){ setDateHint("请至少填写「日期」或「月份」。", true); dateModalEl("d_date").focus(); return; }
+  dateModalEl("d_date").value  = st.d.value;   // 回填统一格式, 下次打开看到的就是规范写法
+  dateModalEl("d_month").value = st.m.value;
   closeDateModal();
-  const when = d ? ("@"+d) : ("@"+m);
-  runCommand("list"+(cat?(" "+cat):"")+" "+when);
+  runCommand("list"+(st.cat?(" "+st.cat):"")+" "+st.when);
   scrollBottom();
+}
+/* 📅 按钮 → 原生选择器; 选中后把 ISO 结果填回文本输入框 */
+function openNativePicker(nativeId, textId, kind){
+  const nat = dateModalEl(nativeId);
+  const f = normDateField(textId, kind);
+  nat.value = f.ok ? f.value : "";
+  try{
+    if(typeof nat.showPicker === "function"){ nat.showPicker(); return; }
+  }catch(e){ /* 少数浏览器/环境不允许, 退回到下面提示手动输入 */ }
+  setDateHint(((kind==="month")?"月份":"日期")+"请直接按 "+(kind==="month"?"YYYY-MM":"YYYY-MM-DD")+" 输入（当前浏览器不支持弹出选择器）。", true);
+  dateModalEl(textId).focus();
+}
+function onNativePick(nativeId, textId, kind){
+  const v = dateModalEl(nativeId).value;
+  if(!v) return;
+  const f = normDateText(v, kind);               // 原生控件给的是 ISO, 再统一一次更稳
+  dateModalEl(textId).value = f.ok ? f.value : v;
+  updateDatePreview();
 }
 function bindModal(){
   document.getElementById("btnCancel").addEventListener("click",closeModal);
@@ -2056,11 +2176,22 @@ function bindModal(){
   document.getElementById("b_daily_save").addEventListener("click",saveDailyBudget);
   document.getElementById("b_daily_off").addEventListener("click",clearDailyBudget);
   document.getElementById("b_daily").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveDailyBudget(); });
-  // 按日期/月份查看弹窗
+  // 按日期/月份查看弹窗(日期/月份统一为 ISO 文本 + 原生选择器)
   document.getElementById("d_cancel").addEventListener("click",closeDateModal);
   document.getElementById("d_ok").addEventListener("click",applyDateModal);
   document.getElementById("dateWrap").addEventListener("click",(e)=>{ if(e.target.id==="dateWrap") closeDateModal(); });
-  ["d_date","d_month","d_cat"].forEach(id=>document.getElementById(id).addEventListener("keydown",(e)=>{ if(e.key==="Enter") applyDateModal(); }));
+  document.getElementById("d_date_pick").addEventListener("click",()=>openNativePicker("d_date_native","d_date","date"));
+  document.getElementById("d_month_pick").addEventListener("click",()=>openNativePicker("d_month_native","d_month","month"));
+  document.getElementById("d_date_native").addEventListener("change",()=>onNativePick("d_date_native","d_date","date"));
+  document.getElementById("d_month_native").addEventListener("change",()=>onNativePick("d_month_native","d_month","month"));
+  [["d_date","date"],["d_month","month"]].forEach(([id,kind])=>{
+    const el = document.getElementById(id);
+    el.addEventListener("input",updateDatePreview);
+    el.addEventListener("blur",()=>normalizeDateField(id,kind));
+    el.addEventListener("keydown",(e)=>{ if(e.key==="Enter") applyDateModal(); });
+  });
+  document.getElementById("d_cat").addEventListener("input",updateDatePreview);
+  document.getElementById("d_cat").addEventListener("keydown",(e)=>{ if(e.key==="Enter") applyDateModal(); });
 }
 /* ===================== Tab 命令补全 ===================== */
 const CMD_WORDS = ["help","set","add","list","del","update","pay","summary","export","assets","forecast","undo","redo","config","cls","budget"];
