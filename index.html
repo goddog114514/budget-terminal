@@ -360,7 +360,7 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.3";         // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.0.4";         // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
 /* 可调投资比例：总花费(占用) = 消费 ÷ N, 其中 N = 消费占比(默认 0.85)、
    投资占比 = 1 - N (默认 0.15)。投资池内部仍按原始 13:2 比例拆分货币/指数。
@@ -383,7 +383,8 @@ const INV_EPS  = 1e-9;                          // 判定"是否需要投资 / �
 const INV_UNIT = 1e6;                           // 全额投资分摊用的整数单位(1e-6 元)
 function consumeShare(){                        // N: 消费占总花费(占用)的比例
   const v = (state && state.settings) ? state.settings.consumeShare : undefined;
-  return (typeof v==="number" && v>0 && v<1) ? v : CONSUME_SHARE;
+  // 允许 N=1 (100% 消费 / 不投资), 与文档的 50%~100% 区间一致
+  return (typeof v==="number" && v>0 && v<=1) ? v : CONSUME_SHARE;
 }
 function investShare(){ return r6(1 - consumeShare()); }   // 1-N: 投资比例
 /* 投资池内部拆分: 保持原始 13:2 比例, 按投资占比整体缩放 */
@@ -406,36 +407,99 @@ function defaultSettings(){
            dailyBudget:null };   // 手动设置的"每日可用余额"(null = 未设置)
 }
 function loadState(){
-  try{
-    state = JSON.parse(localStorage.getItem(LS_KEY));
-  }catch(e){ state = null; }
-  if(!state){
-    state = { settings: defaultSettings(), seq: 0, records: [] };
-  } else {
-    // normalize legacy / partial states
-    if(!state.settings) state.settings = {};
-    const def = defaultSettings();
-    for(const k in def){ if(state.settings[k]===undefined) state.settings[k]=def[k]; }
-    if(!Array.isArray(state.records)) state.records=[];
-    if(typeof state.seq!=="number") state.seq = state.records.length;
-    // migrate investment fields: mm/idx (应投, 6位精度) + 金额制 moneyInv/indexInv (已投金额)
-    for(const r of state.records){
-      const oldMm = r.mm||0, oldIdx = r.idx||0;
-      const mInv0 = typeof r.moneyInv==="number" ? r.moneyInv : (r.mmPaid ? oldMm : 0);
-      const iInv0 = typeof r.indexInv==="number" ? r.indexInv : (r.idxPaid ? oldIdx : 0);
-      if(typeof r.amount==="number" && r.amount>0){ const inv=investOf(r.amount); r.mm=inv.mm; r.idx=inv.idx; }
-      // 旧数据里已标记"已投足"的, 重算后要吸附到新的应投额, 避免因精度变化退回"部分/未投"
-      const wasFullM = oldMm>0 && mInv0 >= oldMm - 0.005;
-      const wasFullI = oldIdx>0 && iInv0 >= oldIdx - 0.005;
-      r.moneyInv = wasFullM ? (r.mm||0) : Math.min(r.mm||0, mInv0);
-      r.indexInv = wasFullI ? (r.idx||0) : Math.min(r.idx||0, iInv0);
+  let parsed = null;
+  try{ parsed = JSON.parse(localStorage.getItem(LS_KEY)); }catch(e){ parsed = null; }
+  if(!parsed || typeof parsed!=="object") parsed = {};
+  state = { settings: normalizeSettings(parsed.settings), seq: 0, records: [] };
+  const norm = normalizeRecords(parsed.records);
+  state.records = norm.records;
+  state.seq = Math.max(
+    (typeof parsed.seq==="number" && isFinite(parsed.seq)) ? Math.round(parsed.seq) : 0,
+    state.records.reduce((m,r)=>Math.max(m,r.id), 0));   // 序号必须大于所有已有 id, 否则新增会撞号
+  ensureEpoch();      // 账本起点对齐到真实周期边界(旧数据/改过周期设置的数据都会在这里修正)
+  save();
+  return norm.dropped;
+}
+/* --- 设置归一化: 手改过的/跨版本导入的 settings 也能安全使用 ---
+   缺失项回落默认值, 非法值(类型错/越界/被写成 null)一律丢弃, 避免后面 [...thresholds] 之类直接抛错。 */
+function normalizeSettings(raw){
+  const def = defaultSettings();
+  const s = Object.assign({}, def, (raw && typeof raw==="object") ? raw : {});
+  if(!(typeof s.budget==="number" && isFinite(s.budget) && s.budget>0)) s.budget = def.budget;
+  if(!(Number.isInteger(s.monthStart) && s.monthStart>=1 && s.monthStart<=28)) s.monthStart = def.monthStart;
+  if(s.weekStart!=="mon" && s.weekStart!=="sun") s.weekStart = def.weekStart;
+  const th = Array.isArray(s.thresholds) ? s.thresholds.map(Number).filter(x=>isFinite(x)&&x>0&&x<=100) : [];
+  s.thresholds = [...new Set(th)].sort((a,b)=>a-b);
+  if(!s.thresholds.length) s.thresholds = def.thresholds.slice();
+  if(s.periodMode!=="month" && s.periodMode!=="rolling") s.periodMode = def.periodMode;
+  if(!(Number.isInteger(s.lengthDays) && s.lengthDays>=2 && s.lengthDays<=90)) s.lengthDays = def.lengthDays;
+  if(!isYMDish(s.anchor)) s.anchor = null;
+  if(!isYMDish(s.epoch))  s.epoch  = null;
+  if(!(typeof s.consumeShare==="number" && isFinite(s.consumeShare) && s.consumeShare>=0.5 && s.consumeShare<=1)) s.consumeShare = def.consumeShare;
+  if(!(typeof s.rateMoney==="number" && isFinite(s.rateMoney) && s.rateMoney>=0 && s.rateMoney<=1)) s.rateMoney = def.rateMoney;
+  if(!(typeof s.rateIndex==="number" && isFinite(s.rateIndex) && s.rateIndex>=0 && s.rateIndex<=1)) s.rateIndex = def.rateIndex;
+  const pb = {};
+  if(s.periodBudget && typeof s.periodBudget==="object"){
+    for(const k in s.periodBudget){
+      const v = Number(s.periodBudget[k]);
+      if(/^\d{4}-\d{2}-\d{2}$/.test(k) && isFinite(v) && v>0) pb[k] = r2(v);
     }
   }
-  // ensure a ledger epoch exists (start of the current budget period)
-  state.settings.epoch = state.settings.epoch || currentPeriod().start;
-  save();
+  s.periodBudget = pb;
+  if(!(typeof s.dailyBudget==="number" && isFinite(s.dailyBudget) && s.dailyBudget>0)) s.dailyBudget = null;
+  return s;
 }
-function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); scheduleFileWrite(); }
+function isYMDish(v){ return typeof v==="string" && /^\d{4}-\d{2}-\d{2}$/.test(v); }
+/* 宽松解析日期(兼容 2026/9/5、2026年9月5日、时间戳等), 返回 'YYYY-MM-DD' 或 null */
+function repairDate(v){
+  if(v instanceof Date && !isNaN(v)) return fmtY(v);
+  if(typeof v==="number" && isFinite(v)){ const d = new Date(v); if(!isNaN(d)) return fmtY(d); }
+  const t = normDateText(v, "date");
+  return (t.ok && t.value) ? t.value : null;
+}
+/* --- 记录归一化: 应投额按当前比例重算, 已投金额(含旧版 mmPaid/idxPaid 布尔字段)转成金额制 ---
+   关键: 导入备份(restoreFromText)必须和加载 localStorage 走同一套规则, 否则同一份旧文件
+   经"导入"和经"浏览器存储"会得到不同结果(旧版已投状态会丢)。无法修复的记录(金额/日期非法)丢弃。 */
+function normalizeRecords(raw){
+  const out = [], usedIds = new Set();
+  let dropped = 0;
+  for(const src of (Array.isArray(raw) ? raw : [])){
+    if(!src || typeof src!=="object"){ dropped++; continue; }
+    const amount = r2(Number(src.amount));
+    const date = repairDate(src.date);
+    if(!isFinite(amount) || amount<=0 || !date){ dropped++; continue; }
+    let id = (typeof src.id==="number" && isFinite(src.id) && src.id>0) ? Math.round(src.id) : 0;
+    while(!id || usedIds.has(id)) id = (id ? id+1 : 1);   // id 缺失/重复时顺延, 保证唯一
+    usedIds.add(id);
+    const oldMm = Number(src.mm)||0, oldIdx = Number(src.idx)||0;   // 重算前的应投(旧口径)
+    const mInv0 = (typeof src.moneyInv==="number" && isFinite(src.moneyInv)) ? src.moneyInv : (src.mmPaid ? oldMm : 0);
+    const iInv0 = (typeof src.indexInv==="number" && isFinite(src.indexInv)) ? src.indexInv : (src.idxPaid ? oldIdx : 0);
+    const inv = investOf(amount);
+    const cat = String(src.category==null ? "" : src.category).trim() || "其他";
+    const note = src.note==null ? "" : String(src.note);
+    const created = repairDate(src.created) || date;
+    // 旧数据里已标记"已投足"的, 重算后要吸附到新的应投额, 避免因精度变化退回"部分/未投"
+    const wasFullM = oldMm>0 && mInv0 >= oldMm - 0.005;
+    const wasFullI = oldIdx>0 && iInv0 >= oldIdx - 0.005;
+    const cl = (x, cap)=> r6(Math.max(0, Math.min(cap, isFinite(x) ? x : 0)));
+    out.push({ id, amount, category:cat, note, date, created,
+               mm:inv.mm, idx:inv.idx,
+               moneyInv: wasFullM ? inv.mm : cl(mInv0, inv.mm),
+               indexInv: wasFullI ? inv.idx : cl(iInv0, inv.idx) });
+  }
+  return { records: out, dropped };
+}
+function save(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  catch(e){
+    // 隐私模式/禁用存储/某些 data: 打开方式下 setItem 会抛错; 不能让保存失败把整个应用打挂
+    if(!save.silentWarned){
+      save.silentWarned = true;
+      if(typeof line==="function") line([{t:"⚠ 浏览器不允许写入本地存储(localStorage)，本次数据仅存在于内存中。请用 [备份 .json] 保存。", c:"#ff4d5e"}]);
+    }
+  }
+  scheduleFileWrite();
+}
 
 /* ======================= 撤销 / 重做 (undo / redo) ======================= */
 const HISTORY_MAX = 200;
@@ -484,7 +548,8 @@ function refreshHistoryUI(){
    方式: 导出/导入 .json (全浏览器可用) + 存到本地目录自动写盘
    (File System Access API, 需 Chrome/Edge; 用 IndexedDB 记住所选目录) */
 let dirHandle = null;               // 本地目录句柄(内存, 本次会话)
-let fileWritePending = false;
+let fileWritePending = false;       // 是否正在写盘
+let fileWriteDirty = false;         // 写盘期间是否又发生了改动(写完补写一次)
 let autosaveOn = false;
 function supportsFSA(){ return typeof window!=="undefined" && ("showDirectoryPicker" in window); }
 function fsLog(msg, color){ if(typeof line==="function") line([{t:msg, c:color||"#4de8ff"}]); }
@@ -498,14 +563,23 @@ function restoreFromText(text){
   const data = JSON.parse(text);
   if(!data || typeof data!=="object" || !Array.isArray(data.records)) throw new Error("不是有效的备份文件");
   if(data.app && data.app!=="budget_term") throw new Error("备份文件不匹配本应用");
+  let dropped = 0;
   mutate(()=>{
-    state.settings = Object.assign(state.settings||{}, data.settings||{});
-    state.seq = (typeof data.seq==="number")? data.seq : data.records.length;
-    state.records = data.records;
+    // 备份里的设置整体生效(备份中缺失的项回落默认值, 不再残留上一份数据里的旧设置),
+    // 记录走与 loadState 相同的归一化: 旧版布尔已投字段会转成金额, 脏记录被丢弃。
+    state.settings = normalizeSettings(data.settings);
+    const norm     = normalizeRecords(data.records);
+    state.records  = norm.records;
+    dropped        = norm.dropped;
+    state.seq      = Math.max(
+      (typeof data.seq==="number" && isFinite(data.seq)) ? Math.round(data.seq) : 0,
+      state.records.reduce((m,r)=>Math.max(m,r.id), 0));   // 防止后续新增记录与备份里的 id 撞号
+    ensureEpoch();
     save();
   });
   refreshHeader();
   fsLog("✓ 已从备份恢复 "+state.records.length+" 条记录、预算与设置已更新 (可 undo 撤销)。", "#3dff7a");
+  if(dropped) fsLog("⚠ 其中 "+dropped+" 条记录金额或日期无效, 已跳过(其余记录正常导入)。", "#ffd23d");
 }
 function doBackupDownload(){
   const blob = new Blob([serializeState()], {type:"application/json;charset=utf-8"});
@@ -542,9 +616,12 @@ async function doAutosaveToggle(){
   }
 }
 async function scheduleFileWrite(){
-  if(!autosaveOn || fileWritePending) return;
+  if(!autosaveOn) return;
+  if(fileWritePending){ fileWriteDirty = true; return; }   // 正在写盘时又有改动: 标记, 写完后再补一次(以前会直接丢掉这次改动)
   fileWritePending = true;
-  try{ await writeToFolder(); }
+  try{
+    do{ fileWriteDirty = false; await writeToFolder(); }while(fileWriteDirty);
+  }
   catch(e){ /* 目录被移除等: 保持 localStorage 兜底 */ }
   finally{ fileWritePending = false; }
 }
@@ -687,7 +764,9 @@ function periodBounds(dateStr){
     const L = state.settings.lengthDays || 15;
     let A = state.settings.anchor;
     if(!A){ A = dateStr; state.settings.anchor = A; }      // anchor falls back to queried date
-    if(dateStr < A) A = dateStr;                            // never query before anchor
+    // k 允许为负: 锚点之前的日期也落在同一条 (A + n×L) 网格上。
+    // 修复: 旧实现把 A 直接钳到 dateStr, 使"锚点之前"的周期起点跟着查询日期漂移,
+    // 于是发放链(periodStartsUpTo)会与真实周期起点错位。
     const k = Math.floor(daysBetween(A, dateStr) / L);
     const start = addDaysYMD(A, k*L);
     const end   = addDaysYMD(start, L-1);
@@ -799,7 +878,7 @@ function investAmount(kind, amt){ // 按比例把 amt 投给该种未投池; kin
   const alloc = entries.map(e=>{ const exact = lotU*e.remU/totU; const base=Math.floor(exact); return {e, base, frac: exact-base}; });
   let rem = lotU - alloc.reduce((s,a)=>s+a.base,0);
   alloc.sort((a,b)=>b.frac-a.frac);
-  for(const a of alloc){ if(rem<=0)break; const add=Math.min(a.e.remU-a.base, rem); a.base+=add; rem-=add; }
+  // 单次分配即可分完: sum(remU)==totU>=lotU, 每笔最多补到自己的 remU
   for(const a of alloc){ if(rem<=0)break; const add=Math.min(a.e.remU-a.base, rem); a.base+=add; rem-=add; }
   // 应用
   let applied=0;
@@ -828,8 +907,16 @@ function recordMoneyInv(r){ return r.moneyInv||0; }
    总预算 B 每周期发放一次; 每笔消费按 E/0.85 记账占用;
    未占用 = 剩余(结转下期), 占用>发放 = 透支(下期扣除)。余额跨期累计。
    支持"当期预算"覆盖: periodBudget[start]=金额 只改某一期。 */
+/* 账本起点(第一笔"发放"所在的周期)。必须落在真实周期边界上:
+   用户改过周期长度/锚点/月起始日后, 旧 epoch 可能落在周期中间, 这会让
+   periodStartsUpTo 的发放链与真实周期起点(以及 periodBudget 的覆盖键)错位 ——
+   现象是 `budget set`/弹窗设的"当期预算"不进入"累计可用余额"。 */
 function ensureEpoch(){
-  if(!state.settings.epoch) state.settings.epoch = currentPeriod().start;
+  const cur = currentPeriod().start;
+  const e = state.settings.epoch;
+  if(!(typeof e==="string") || !/^\d{4}-\d{2}-\d{2}$/.test(e)){ state.settings.epoch = cur; return; }
+  const snap = periodBounds(e).start;      // 映射到"包含该日期的那一期"的起点
+  if(snap !== e) state.settings.epoch = snap;
 }
 function nextPeriodStart(startStr){
   if(state.settings.periodMode === "rolling") return addDaysYMD(startStr, state.settings.lengthDays||15);
@@ -998,7 +1085,7 @@ const HELP_LINES = [
   ["update <id> <金额> <类别> [..]", "修改某条记录并自动重算投资额"],
   ["pay <id> [mm|idx|all|none]", "标记投资已投状态 (货币基金 mm / 指数基金 idx)"],
   ["summary [day|week|month] [类别]", "总结: 无参数=当前记账周期; month=自然月; 可加类别筛选, 如 summary week 餐饮"],
-  ["summary month @YYYY-MM", "指定某自然月的总结, 例 summary month 2026-08 餐饮"],
+  ["summary month @YYYY-MM", "指定某自然月的总结, 例 summary month 2026-08 餐饮 (也可直接写 summary 2026-08)"],
   ["summary cat [类别]", "当前记账周期各类别占比"],
   ["export [md|txt]", "导出报告文件(浏览器下载)"],
   ["assets [N年]", "资产看板: 现金+基金本金+复利预估(默认10年)与增长曲线"],
@@ -1025,10 +1112,26 @@ function printHelp(){
   blank();
 }
 
+/* 分词: 支持单/双引号; 引号内支持反斜杠转义(\" 和 \\)。
+   修复: 旧实现用 /"[^"]*"/ 匹配, 遇到备注里的转义引号(如 记一笔 "说 \"A\"" )会被截断成
+   `说 \` + `A\`, 备注内容被破坏。
+   注意: 引号"外"的反斜杠不当转义符, 保持字面量 —— 否则 Windows 路径备注
+   (add 50 学习 C:\temp\a) 里的反斜杠会被吃掉。 */
 function tokenize(str){
-  // split respecting double/single quotes
-  const out=[]; const re=/([^\s"']+|"[^"]*"|'[^']*')/g; let m;
-  while((m=re.exec(str))){ let t=m[1]; if((t[0]==='"'&&t[t.length-1]==='"')||(t[0]==="'"&&t[t.length-1]==="'")) t=t.slice(1,-1); out.push(t); }
+  const out=[]; let cur=null, quote=null;
+  for(let i=0;i<str.length;i++){
+    const ch = str[i];
+    if(quote){                                   // 引号内: 支持 \" \\ 转义
+      if(ch==="\\" && i+1<str.length && (str[i+1]===quote || str[i+1]==="\\")){ cur += str[++i]; continue; }
+      if(ch===quote){ out.push(cur); cur=null; quote=null; continue; }
+      cur += ch; continue;
+    }
+    if(ch==='"' || ch==="'"){ quote = ch; cur = ""; continue; }
+    if(/\s/.test(ch)){ if(cur!==null){ out.push(cur); cur=null; } continue; }
+    if(cur===null) cur = "";
+    cur += ch;                                   // 引号外: 反斜杠原样保留
+  }
+  if(cur!==null) out.push(cur);
   return out;
 }
 function parseCmd(raw){
@@ -1104,36 +1207,40 @@ function doSet(tokens){
     line([{t:"✓ 默认预算已设为 ",c:"#3dff7a"},{t:"¥"+money(r2(n)),c:"#ffffff",cls:"hl"},
           {t:"  (各期生效; 只想改本期可用 budget set <金额>)",c:"#5d6b62"}]);
     showForecastLine();
+    refreshHeader();     // 顶栏"可用余额/发放进度"由预算派生, 改完必须立即重画(否则显示旧数字)
   } else if(sub==="monthstart"){
     const v = (tokens[1]||"").toLowerCase();
     let d;
     if(v==="natural"||v==="自然月"||v==="1") d=1;
     else d = numeric(tokens[1]);
     if(d==null || d<1 || d>28){ line([{t:"用法: set monthstart <1-28>  (1=自然月, 例 15 表示每月15日~下月14日)",c:"#ffd23d"}]); return; }
-    state.settings.monthStart = d; state.settings.periodMode = "month"; save();
+    state.settings.monthStart = d; state.settings.periodMode = "month"; ensureEpoch(); save();
     const p = currentPeriod();
     line([{t:"✓ 切换为按月周期, 起始日 "+(d===1?"自然月":"每月 "+d+" 日")+"。当前周期: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]);
+    refreshHeader();
   } else if(sub==="period"||sub==="cycle"||sub==="length"){
     // set period 15        → 滚动 15 天周期
     // set period natural|month → 回到按月周期
     const v=(tokens[1]||"").toLowerCase();
     const n = numeric(tokens[1]);
-    if(v==="natural"||v==="month"||v==="月"||v==="自然月"){ state.settings.periodMode="month"; save(); const p=currentPeriod(); line([{t:"✓ 已切回按月周期, 当前: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]); return; }
+    if(v==="natural"||v==="month"||v==="月"||v==="自然月"){ state.settings.periodMode="month"; ensureEpoch(); save(); const p=currentPeriod(); line([{t:"✓ 已切回按月周期, 当前: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]); refreshHeader(); return; }
     if(n==null || !Number.isInteger(n) || n<2 || n>90){ line([{t:"用法: set period <N天>  例 set period 15  → 每15天滚动一期;  set period natural 回到自然月",c:"#ffd23d"}]); return; }
     state.settings.periodMode="rolling";
     state.settings.lengthDays=n;
     // 起点：若尚未设 anchor 或想在今天重启，则从今天起算新一期
     state.settings.anchor = state.settings.anchor || todayYMD();
-    save();
+    ensureEpoch(); save();
     const p = currentPeriod();
     line([{t:"✓ 已切换为滚动 "+n+" 天周期, 从 "+state.settings.anchor+" 起每 "+n+" 天滚动结算。当前期: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]);
+    refreshHeader();
   } else if(sub==="periodstart"||sub==="anchor"){
     const d = cleanDateStr(tokens[1]);
     if(!d){ line([{t:"用法: set periodstart <YYYY-MM-DD>  设滚动周期起点(锚点)",c:"#ffd23d"}]); return; }
     state.settings.periodMode = state.settings.periodMode || "rolling";
-    state.settings.anchor = d; save();
+    state.settings.anchor = d; ensureEpoch(); save();
     const p = currentPeriod();
     line([{t:"✓ 滚动周期起点设为 "+d+"。当前期: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]);
+    refreshHeader();
   } else if(sub==="weekstart"){
     const v=(tokens[1]||"").toLowerCase();
     if(v==="mon"||v==="周一"||v==="一") state.settings.weekStart="mon";
@@ -1141,11 +1248,13 @@ function doSet(tokens){
     else { line([{t:"用法: set weekstart <mon|sun>",c:"#ffd23d"}]); return; }
     save();
     line([{t:"✓ 周起始日设为 "+(state.settings.weekStart==="mon"?"周一":"周日"),c:"#3dff7a"}]);
+    refreshHeader();
   } else if(sub==="alert"||sub==="threshold"||sub==="thresholds"){
     const rest = tokens.slice(1).join("").split(/[,，]/).map(x=>parseFloat(x)).filter(x=>!isNaN(x)&&x>0&&x<=100);
     if(!rest.length){ line([{t:"用法: set alert <p1,p2,...>  例 set alert 80,100",c:"#ffd23d"}]); return; }
     state.settings.thresholds = [...new Set(rest)].sort((a,b)=>a-b); save();
     line([{t:"✓ 预警阈值设为 "+state.settings.thresholds.join("% , ")+"%",c:"#3dff7a"}]);
+    refreshHeader();     // 阈值决定顶栏红黄绿圆点与进度条颜色
   } else if(sub==="rate"||sub==="rates"){
     // set rate money 2 / set rate index 8  (年化百分比)
     const which = (tokens[1]||"").toLowerCase();
@@ -1166,7 +1275,8 @@ function doSet(tokens){
     if(pct==null){ line([{t:usage,c:"#ffd23d"}]); return; }
     if(!asInvest && pct>0 && pct<=1) pct = pct*100;            // 允许 0.85 / 0.9 小数写法
     const newConsume = asInvest ? (1 - pct/100) : (pct/100);
-    if(!(newConsume>0.5 && newConsume<1)){
+    // 区间取闭区间: 文档写的是"消费占比 50%~100% (投资 0%~50%)", 50/100 这些端点必须能用
+    if(!(newConsume>=0.5 && newConsume<=1)){
       line([{t:"比例超出范围: 消费占比需在 50%~100% 之间 (即投资比例 0%~50%)。",c:"#ffd23d"}]);
       line([{t:usage,c:"#ffd23d"}]); return;
     }
@@ -1284,10 +1394,7 @@ function showBudget(){
 function validateCategory(cat){
   const c = String(cat||"").trim();
   if(!c){ line([{t:"类别不能为空。例: add 50 餐饮 午餐",c:"#ffd23d"}]); return null; }
-  if(!PREDEFINED.has(c)){ // register custom category color
-    PREDEFINED.set(c, "#8be9fd");
-    PREDEFINED.forEach((v,k)=>{}); 
-  }
+  if(!PREDEFINED.has(c)) PREDEFINED.set(c, "#8be9fd");   // register custom category color
   refreshCatlist();
   return c;
 }
@@ -1356,7 +1463,16 @@ function renderRecordRow(r){
   addSeg(d,{t:"  ", c:"#5d6b62"});
   const b = document.createElement("button"); b.type="button"; b.className="tbtn";
   b.title = "把 #"+r.id+" 应投货币/指数全部标记已投 (等同 pay "+r.id+" all), 再点重置";
+  // 行是否还指向 state 里的同一条记录: undo/redo 或 del 之后, 旧行会变成"悬空"行,
+  // 不能再让它按钮上报成功(否则看起来改了数据, 实际什么都没发生)
+  const alive = ()=> state.records.indexOf(r) >= 0;
   const refresh = ()=>{
+    if(!alive()){
+      invSpan.textContent = ""; stSpan.textContent = "  已失效"; stSpan.style.color = "#5d6b62";
+      b.disabled = true; b.className = "tbtn dimmed"; b.textContent = "已失效";
+      b.title = "该行对应的记录已被删除或撤销, 请重新 list";
+      return;
+    }
     const noNeed = recNoNeed(r);
     const mInv=r.moneyInv||0, iInv=r.indexInv||0;
     const parts=[]; if(mInv>0) parts.push("已投货币¥"+money(mInv)); if(iInv>0) parts.push("已投指数¥"+money(iInv));
@@ -1377,6 +1493,7 @@ function renderRecordRow(r){
     }
   };
   b.addEventListener("click", ()=>{
+    if(!alive()){ line([{t:"#"+r.id+" 所在行已失效(记录已被删除或撤销), 请重新执行 list 查看最新数据。", c:"#ffd23d"}]); refresh(); return; }
     if(recNoNeed(r)){ line([{t:"#"+r.id+" 应投货币/指数均为 ¥0.00, 无需投资。", c:"#ffd23d"}]); return; }
     mutate(()=>{
       if(recFullyMoney(r) && recFullyIndex(r)){ r.moneyInv=0; r.indexInv=0; }
@@ -1399,6 +1516,7 @@ function renderRecordRow(r){
    - 其余非数字 token 视为类别 */
 function filterByTokens(tokens){
   let cat=null, month=null, date=null, range=null, limit=null;
+  const bad = [];                      // 无法识别的 @条件(以前会被静默忽略, 于是 list @写错 就变成"列出全部")
   const keyword = (s)=>{
     const low = String(s).toLowerCase();
     if(low==="today" || s==="今日" || s==="当日"){ date = todayYMD(); return true; }
@@ -1411,9 +1529,10 @@ function filterByTokens(tokens){
     if(raw[0]==="@"){
       const s = raw.slice(1);
       if(keyword(s)) continue;
-      if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)){ const p=parseYMD(s); if(p) date = mkYMD(p.y,p.m,p.d); }
-      else if(/^\d{4}-\d{1,2}$/.test(s)){ const p=parseYMD(s+"-01"); if(p) month = mkYMD(p.y,p.m,1).slice(0,7); }
-      else { const p=parseYMD(s); if(p) month = mkYMD(p.y,p.m,1).slice(0,7); }
+      if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)){ const p=parseYMD(s); if(p){ date = mkYMD(p.y,p.m,p.d); continue; } }
+      else if(/^\d{4}-\d{1,2}$/.test(s)){ const p=parseYMD(s+"-01"); if(p){ month = mkYMD(p.y,p.m,1).slice(0,7); continue; } }
+      else { const p=parseYMD(s); if(p){ month = mkYMD(p.y,p.m,1).slice(0,7); continue; } }
+      bad.push(raw);
       continue;
     }
     if(/^(cat|类别|category)$/i.test(raw)) continue;
@@ -1421,7 +1540,7 @@ function filterByTokens(tokens){
     if(keyword(raw)) continue;
     cat = raw;
   }
-  return {cat,month,date,range,limit};
+  return {cat,month,date,range,limit,bad};
 }
 function doList(tokens){
   const f = filterByTokens(tokens);
@@ -1439,6 +1558,8 @@ function doList(tokens){
   else if(f.month) desc.push("月份="+f.month);
   if(f.limit) desc.push("最近 "+f.limit+" 条");
   const descTxt = desc.length ? ("  [筛选: "+desc.join("  ")+"]") : "";
+  if(f.bad.length) line([{t:"⚠ 无法识别的日期条件: "+f.bad.join(" ")+"  可用 @YYYY-MM-DD / @YYYY-MM / @today / @period / @month",
+                          c:"#ffd23d"}]);
   if(!rows.length){
     line([{t:"(暂无匹配记录)"+descTxt+"   add 一笔试试吧",c:"#5d6b62"}]);
     const cats=[...new Set(state.records.map(r=>r.category))];
@@ -1643,8 +1764,9 @@ function doSummary(tokens){
   } else if(kind==="cat"||kind==="category"||kind==="类别"){
     const p=currentPeriod(); win=collectWindow(p.start,p.end,cat);
     name="周期分类 · "+p.label; budgetRef=p;
-  } else if(kind==="month"||kind==="月"||kind==="natural"){
+  } else if(kind==="month"||kind==="月"||kind==="natural"||(!kind && ref)){
     // 自然月：固定从当月 1 日到月末，与记账周期(滚动/自定义)无关
+    // (kind 为空但给了月份, 如 `summary 2026-08`: 以前会静默忽略这个月份, 现在按该自然月统计)
     let r = todayYMD();
     if(ref){
       const p = parseYMD(ref) || (/^\d{4}-\d{1,2}$/.test(ref) ? parseYMD(ref+"-01") : null);
@@ -1789,10 +1911,14 @@ function forecastData(){
 function showForecastLine(){
   const f = forecastData();
   const color = f.projLeft < 0 ? "#ff4d5e" : "#3dff7a";
+  // 剩余 0 天(本周期最后一天)时不再说"每天可花", 否则会显示"还剩 0 天, 每天可花 ¥850"
+  const tail = f.remaining > 0
+    ? ("  (还剩 "+f.remaining+" 天, 每天可花 ¥"+money(Math.max(0,f.perDayLeft))+")")
+    : ("  (本周期已到最后一天, 还可消费 ¥"+money(Math.max(0,f.leftConsume))+")");
   line([{t:"  燃尽预测: 日均 ¥"+money(f.dailyAvg)+"/天", c:"#5d6b62"},
         {t:"  →  期末预计"+(f.projLeft<0?"超支 ":"结余 "), c:"#5d6b62"},
-        {t:(f.projLeft<0?"":"")+"¥"+money(Math.abs(f.projLeft)), c:color, cls:"glow"},
-        {t:"  (还剩 "+f.remaining+" 天, 每天可花 ¥"+money(Math.max(0,f.perDayLeft))+")", c:"#5d6b62"}]);
+        {t:"¥"+money(Math.abs(f.projLeft)), c:color, cls:"glow"},
+        {t:tail, c:"#5d6b62"}]);
 }
 function doForecast(){
   const f = forecastData();
@@ -1803,11 +1929,13 @@ function doForecast(){
   const row=(k,v,c)=>line([{t:("  "+k).padEnd(22," "),c:"#5d6b62"},{t:v,c:c||"#d7ffe0"}]);
   row("周期天数", f.total+" 天");
   row("已过 / 剩余", f.elapsed+" 天 / "+f.remaining+" 天");
-  row("本期消费额度(85%)", "¥"+money(f.allow), "#4de8ff");
+  row("本期消费额度("+consumePct()+"%)", "¥"+money(f.allow), "#4de8ff");
   row("已消费", "¥"+money(f.spent), "#ffffff");
   row("日均消费", "¥"+money(f.dailyAvg), "#ffd23d");
   row("剩余可消费", "¥"+money(f.leftConsume), f.leftConsume<0?"#ff4d5e":"#3dff7a");
-  row("每日可花(剩余)", "¥"+money(Math.max(0,f.perDayLeft))+"/天", f.perDayLeft<0?"#ff4d5e":"#3dff7a");
+  // 剩余 0 天时"每天可花"没有意义(以前仍显示 ¥850.00/天)
+  if(f.remaining > 0) row("每日可花(剩余)", "¥"+money(Math.max(0,f.perDayLeft))+"/天", f.perDayLeft<0?"#ff4d5e":"#3dff7a");
+  else                row("每日可花(剩余)", "本周期已到最后一天, 不再摊到每天", "#5d6b62");
   line([{t:"  "+"─".repeat(40), c:"#5d6b62"}]);
   row("期末预测消费", "¥"+money(f.projConsumption), "#ffffff");
   row("期末预测占用", "¥"+money(f.projUsed)+" / 发放 ¥"+money(f.B), f.projRatio>1?"#ff4d5e":"#d7ffe0");
@@ -1989,15 +2117,21 @@ function openBudgetModal(){
   document.getElementById("b_amt").focus();
 }
 function closeBudgetModal(){ document.getElementById("budgetWrap").classList.remove("open"); }
-/* 每日可用余额提示(带红黄绿圆点预览) */
+/* 每日可用余额提示(带红黄绿圆点预览)。
+   修复: 以前只读已保存的 dailyBudget, 输入框里改了数字提示不跟着变;
+   现在优先按"输入框里当前的值"预览, 与 README 说的"实时预览"一致。 */
 function updateDailyHint(){
   const el = document.getElementById("b_daily_hint");
   if(!el) return;
-  const db = state.settings.dailyBudget;
+  const typedRaw = document.getElementById("b_daily").value;
+  const typed = input2num(typedRaw);
+  const useTyped = (typed!=null && typed>0);
+  const db = useTyped ? typed : state.settings.dailyBudget;
   const ts = todaySnapshot();
   if(typeof db==="number" && db>0){
-    const inf = ratioDot(ts.ratio);
-    el.textContent = "当前每日额度 ¥"+money(db)+"   今日已消费 ¥"+money(ts.consumption)
+    const inf = ratioDot(ts.consumption/db);
+    el.textContent = (useTyped ? "保存后 " : "当前 ") + "每日额度 ¥"+money(db)
+                   + "   今日已消费 ¥"+money(ts.consumption)
                    + "   → [" + "● " + inf.text + "]";
   } else {
     el.textContent = "未设置每日额度：右上角「今日预算」将显示为灰点(未设置)。";
@@ -2035,7 +2169,7 @@ function submitModal(){
   runCommand(cmd);
 }
 function input2num(v){ const n=parseFloat(String(v).replace(/,/g,"")); return isNaN(n)?null:n; }
-function quote(s){ return '"'+s.replace(/"/g,'\\"')+'"'; }
+function quote(s){ return '"'+String(s).replace(/\\/g,"\\\\").replace(/"/g,'\\"')+'"'; }
 function alertModal(msg){ const old=document.getElementById("btnSubmit").textContent; document.getElementById("btnSubmit").textContent=msg; setTimeout(()=>{document.getElementById("btnSubmit").textContent="确认";},1400); }
 
 /* toolbar */
@@ -2175,6 +2309,7 @@ function bindModal(){
   // 每日可用余额
   document.getElementById("b_daily_save").addEventListener("click",saveDailyBudget);
   document.getElementById("b_daily_off").addEventListener("click",clearDailyBudget);
+  document.getElementById("b_daily").addEventListener("input",updateDailyHint);   // 输入即预览红黄绿圆点
   document.getElementById("b_daily").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveDailyBudget(); });
   // 按日期/月份查看弹窗(日期/月份统一为 ISO 文本 + 原生选择器)
   document.getElementById("d_cancel").addEventListener("click",closeDateModal);
@@ -2361,12 +2496,13 @@ function recordHistory(c){ if(c && c!==history[history.length-1]) history.push(c
 /* live clock in input prompt? keep simple */
 
 function boot(){
-  loadState();
+  const dropped = loadState();
   refreshCatlist();
   refreshHeader();
   bindToolbar(); bindModal(); bindInput();
   armAutoReconnect();
   refreshHistoryUI();
+  if(dropped) line([{t:"⚠ 本地数据里有 "+dropped+" 条记录金额/日期损坏, 已跳过(其余记录照常加载)。", c:"#ffd23d"}]);
   // banner
   const t=todayYMD();
   line([{t:"╔══════════════════════════════════════════════════════╗",c:"#3dff7a"}]);
