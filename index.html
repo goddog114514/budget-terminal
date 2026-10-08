@@ -35,6 +35,15 @@
     --magenta:#ff5ef0;
     --gray:#5d6b62;
     --border:#142018;
+    /* ---- 扩展令牌: 供 JS 终端输出与表达式取值(见 JS 里的 COLOR 表) ---- */
+    --index:#f1fa8c;                /* 指数(应投/基金)强调色 */
+    --pure:#ffffff;                 /* 纯白: 金额等强强调文本(区别于柔和的 --white) */
+    --faint:#3c4b41;                /* 极暗: 提示语/占位文字 */
+    --cat-fallback:#8be9fd;         /* 未登记类别的兜底配色 */
+    /* ---- 面板层次(避免同一底色在多处硬编码) ---- */
+    --panel-2:#07090a;              /* 二级面板: 弹窗 / 下拉 / 理财条 */
+    --panel-3:#080a0b;              /* 工具栏底色 */
+    --field:#0c100e;                /* 输入框底色 */
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;}
@@ -84,7 +93,7 @@
   /* ---- button toolbar (auxiliary mouse support) ---- */
   nav.toolbar{
     flex:0 0 auto;display:flex;gap:6px;padding:6px 14px;
-    background:#080a0b;border-bottom:1px solid var(--border);flex-wrap:wrap;
+    background:var(--panel-3);border-bottom:1px solid var(--border);flex-wrap:wrap;
   }
   nav.toolbar button{
     background:transparent;color:var(--green);border:1px solid var(--border);
@@ -98,7 +107,7 @@
   nav.toolbar .dd{position:relative;display:inline-block;}
   nav.toolbar .dd-menu{
     position:absolute;top:calc(100% + 4px);left:0;min-width:158px;z-index:30;
-    background:#07090a;border:1px solid var(--green);border-radius:4px;padding:4px;
+    background:var(--panel-2);border:1px solid var(--green);border-radius:4px;padding:4px;
     box-shadow:0 8px 20px rgba(0,0,0,.65);display:none;flex-direction:column;gap:2px;
   }
   nav.toolbar .dd.open .dd-menu{display:flex;}
@@ -122,11 +131,11 @@
   /* ---- 理财条：应投货币 / 应投指数 池 + 一键投资 ---- */
   #investbar{
     flex:0 0 auto;display:flex;gap:22px;align-items:center;flex-wrap:wrap;
-    padding:5px 14px;background:#07090a;border-bottom:1px solid var(--border);font-size:12.5px;
+    padding:5px 14px;background:var(--panel-2);border-bottom:1px solid var(--border);font-size:12.5px;
   }
   .inv-cl{display:flex;align-items:center;gap:9px;}
   .inv-kind{color:var(--gray);}
-  .inv-kind.m{color:#4de8ff;}.inv-kind.i{color:#f1fa8c;}
+  .inv-kind.m{color:var(--cyan);}.inv-kind.i{color:var(--index);}
   .inv-pool{font-weight:bold;font-size:13px;color:var(--yellow);}
   .inv-pool.ready{color:var(--green);text-shadow:0 0 7px var(--green);}
   .inv-done{color:var(--gray);}
@@ -136,7 +145,7 @@
   }
   .inv-btn:hover{background:rgba(61,255,122,.12);}
   .inv-btn[disabled]{opacity:.35;cursor:not-allowed;border-color:var(--border);color:var(--gray);}
-  .inv-hint{color:#3c4b41;margin-left:4px;}
+  .inv-hint{color:var(--faint);margin-left:4px;}
 
   /* ---- terminal output ---- */
   #term{
@@ -158,14 +167,7 @@
   .cmd{color:var(--cyan);}
   .prompt{color:var(--magenta);}
   .sep{border-bottom:1px solid var(--border);margin:4px 0;}
-  .error{color:var(--red);}
   .hl{background:rgba(61,255,122,.14);}
-  .line0,.line1,.line2,.line3,.line4,.line5{border-left:2px solid transparent;padding-left:8px;margin:2px 0;}
-  .lvl-0{border-color:var(--green);}
-  .lvl-1{border-color:var(--yellow);}
-  .lvl-2{border-color:var(--orange);}
-  .lvl-3{border-color:var(--red);}
-  .lvl-4{border-color:var(--magenta);}
 
   /* ---- input ---- */
   footer{
@@ -193,13 +195,13 @@
   #modalWrap.open,#budgetWrap.open,#dateWrap.open{display:flex;}
   #modal,#budgetModal,#dateModal{
     width:min(560px,94vw);max-height:90vh;overflow:auto;
-    background:#07090a;border:1px solid var(--green);border-radius:6px;padding:18px 20px;
+    background:var(--panel-2);border:1px solid var(--green);border-radius:6px;padding:18px 20px;
     box-shadow:0 0 30px rgba(61,255,122,.15);
   }
   #modal h3,#budgetModal h3,#dateModal h3{color:var(--cyan);font-size:15px;letter-spacing:1px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;}
   #modal label,#budgetModal label,#dateModal label{display:block;color:var(--gray);font-size:12px;margin:10px 0 4px;}
   #modal input,#modal select,#budgetModal input,#dateModal input{
-    width:100%;background:#0c100e;border:1px solid var(--border);color:var(--white);
+    width:100%;background:var(--field);border:1px solid var(--border);color:var(--white);
     font-family:inherit;font-size:14px;padding:6px 8px;border-radius:3px;outline:none;
   }
   #modal input:focus,#modal select:focus,#budgetModal input:focus,#dateModal input:focus{border-color:var(--green);}
@@ -224,7 +226,7 @@
   #budgetModal .hint{color:var(--gray);font-size:12px;margin-top:12px;line-height:1.6;}
 
   /* ---- 「手动输日期」弹窗: 日期/月份统一为 ISO 文本 + 原生选择器辅助按钮 ---- */
-  #dateModal label .fmt{color:#3c4b41;font-size:11px;margin-left:6px;letter-spacing:.5px;}
+  #dateModal label .fmt{color:var(--faint);font-size:11px;margin-left:6px;letter-spacing:.5px;}
   #dateModal .drow{position:relative;display:flex;gap:6px;align-items:stretch;}
   #dateModal .drow > input[type="text"]{flex:1 1 auto;min-width:0;}
   #dateModal .drow .pick{
@@ -239,14 +241,6 @@
   #dateModal .dpreview{color:var(--cyan);font-size:12px;margin-top:10px;min-height:1.2em;word-break:break-all;}
   #dateModal .hint{color:var(--gray);font-size:12px;margin-top:10px;line-height:1.6;}
   #dateModal .hint.bad{color:var(--yellow);}
-
-  table.kv{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0;}
-  table.kv td{padding:3px 8px;border:1px solid var(--border);}
-  table.kv td:first-child{color:var(--gray);width:170px;}
-  table.kv td:last-child{color:var(--white);}
-  .tag{color:var(--cyan);}
-  .bar-track{display:inline-block;width:200px;background:#10241a;margin:0 8px;vertical-align:middle;height:14px;border:1px solid var(--border);}
-  .bar-fill{display:block;height:100%;}
 </style>
 </head>
 <body>
@@ -332,13 +326,13 @@
     <h3>按日期 / 月份查看消费</h3>
     <label>日期 <span class="fmt">统一格式 YYYY-MM-DD</span></label>
     <div class="drow">
-      <input id="d_date" type="text" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="如 2026-09-18">
+      <input id="d_date" type="text" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="如 2027-08-18">
       <button type="button" class="pick" id="d_date_pick" title="用日历选择">📅</button>
       <input id="d_date_native" class="native-pick" type="date" tabindex="-1" aria-hidden="true">
     </div>
     <label>或 月份 <span class="fmt">统一格式 YYYY-MM</span></label>
     <div class="drow">
-      <input id="d_month" type="text" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="如 2026-09">
+      <input id="d_month" type="text" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="如 2027-08">
       <button type="button" class="pick" id="d_month_pick" title="用月份选择器">📅</button>
       <input id="d_month_native" class="native-pick" type="month" tabindex="-1" aria-hidden="true">
     </div>
@@ -360,20 +354,50 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.4";         // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.0.5";         // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
 /* 可调投资比例：总花费(占用) = 消费 ÷ N, 其中 N = 消费占比(默认 0.85)、
    投资占比 = 1 - N (默认 0.15)。投资池内部仍按原始 13:2 比例拆分货币/指数。
    下面四个常量是"默认/基准值"，运行时的真实比例见 consumeShare()/rateSplit()。 */
 const CONSUME_SHARE = 0.85;           // 基准: 总预算中用于"消费"的比例 N (可用 set invest/consume 调)
-const INVEST_SHARE  = 0.15;           // 基准: 投资占比 1-N = 0.13 + 0.02
 const MM_RATE   = 0.13;               // 基准: 其中货币基金占比(占总投资池 13/15)
 const IDX_RATE  = 0.02;               // 基准: 其中指数基金占比(占总投资池 2/15)
 /* 一键投资的触发/单笔额度: 应投货币池累计≥100、应投指数池累计≥20 时可投入该额度 */
 const INVEST_MONEY_LOT = 100;         // 货币基金每次投入额(触发阈值)
 const INVEST_INDEX_LOT = 20;          // 指数基金每次投入额(触发阈值)
 const DEFAULT_CATEGORIES = ["餐饮","交通","购物","娱乐","居住","医疗","教育","人情","旅行","其他"];
-const PREDEFINED = new Map(DEFAULT_CATEGORIES.map((c,i)=>[c,["#3dff7a","#4de8ff","#ffd23d","#ff9d3d","#ff5ef0","#ff4d5e","#2dcc9f","#c58bff","#8be9fd","#f1fa8c"][i % 10]]));
+
+/* ======================= 颜色表 (单一数据源) =======================
+   终端输出里的颜色以前是散落各处的 "#rrggbb" 字面量(220+ 处), 想换主题就得全文件替换。
+   现在统一到这里: 每个名字对应 :root 里的同名 CSS 变量, 启动时读取真实值,
+   读不到(无布局/无 CSS 环境, 例如离线测试)就退回下面的字面量默认值。
+   改配色 = 只改 <style> 里的 :root 一处(或在这里覆盖默认值)。 */
+const COLOR = (function(){
+  const def = {
+    green:"#3dff7a", greenDim:"#1e9e54", white:"#d7ffe0", pure:"#ffffff",
+    yellow:"#ffd23d", orange:"#ff9d3d", red:"#ff4d5e", cyan:"#4de8ff",
+    magenta:"#ff5ef0", gray:"#5d6b62", index:"#f1fa8c", faint:"#3c4b41",
+    catFallback:"#8be9fd"
+  };
+  const map = { green:"--green", greenDim:"--green-dim", white:"--white", pure:"--pure",
+                yellow:"--yellow", orange:"--orange", red:"--red", cyan:"--cyan",
+                magenta:"--magenta", gray:"--gray", index:"--index", faint:"--faint",
+                catFallback:"--cat-fallback" };
+  try{
+    const cs = getComputedStyle(document.documentElement);
+    if(cs && typeof cs.getPropertyValue === "function"){
+      for(const k in map){
+        const v = String(cs.getPropertyValue(map[k])||"").trim();
+        if(v) def[k] = v;                      // 以 CSS 令牌为准
+      }
+    }
+  }catch(e){ /* 拿不到计算样式时用字面量默认值 */ }
+  return def;
+})();
+/* 类别配色: 前 6 个复用主题色, 后 2 个是仅用于类别的扩展色, 最后两个兜底 */
+const CAT_PALETTE = [COLOR.green, COLOR.cyan, COLOR.yellow, COLOR.orange, COLOR.magenta,
+                     COLOR.red, "#2dcc9f", "#c58bff", COLOR.catFallback, COLOR.index];
+const PREDEFINED = new Map(DEFAULT_CATEGORIES.map((c,i)=>[c, CAT_PALETTE[i % CAT_PALETTE.length]]));
 
 /* ---------- 可调投资比例: 运行时读取的消费/投资比率 ---------- */
 function r6(x){ return Math.round(x*1e6)/1e6; }
@@ -450,7 +474,7 @@ function normalizeSettings(raw){
   return s;
 }
 function isYMDish(v){ return typeof v==="string" && /^\d{4}-\d{2}-\d{2}$/.test(v); }
-/* 宽松解析日期(兼容 2026/9/5、2026年9月5日、时间戳等), 返回 'YYYY-MM-DD' 或 null */
+/* 宽松解析日期(兼容 2027/8/5、2027年8月5日、时间戳等), 返回 'YYYY-MM-DD' 或 null */
 function repairDate(v){
   if(v instanceof Date && !isNaN(v)) return fmtY(v);
   if(typeof v==="number" && isFinite(v)){ const d = new Date(v); if(!isNaN(d)) return fmtY(d); }
@@ -495,7 +519,7 @@ function save(){
     // 隐私模式/禁用存储/某些 data: 打开方式下 setItem 会抛错; 不能让保存失败把整个应用打挂
     if(!save.silentWarned){
       save.silentWarned = true;
-      if(typeof line==="function") line([{t:"⚠ 浏览器不允许写入本地存储(localStorage)，本次数据仅存在于内存中。请用 [备份 .json] 保存。", c:"#ff4d5e"}]);
+      if(typeof line==="function") line([{t:"⚠ 浏览器不允许写入本地存储(localStorage)，本次数据仅存在于内存中。请用 [备份 .json] 保存。", c:COLOR.red}]);
     }
   }
   scheduleFileWrite();
@@ -522,21 +546,21 @@ function applyState(json){
   save(); refreshHeader(); refreshHistoryUI();
 }
 function undo(){
-  if(!undoStack.length){ line([{t:"没有可撤销的操作。", c:"#ffd23d"}]); return; }
+  if(!undoStack.length){ line([{t:"没有可撤销的操作。", c:COLOR.yellow}]); return; }
   const cur = snapshotState();
   const prev = undoStack.pop();
   redoStack.push(cur);
   applyState(prev);
-  line([{t:"↩ 已撤销 (可重做 "+redoStack.length+" 步)", c:"#ffd23d"}]);
+  line([{t:"↩ 已撤销 (可重做 "+redoStack.length+" 步)", c:COLOR.yellow}]);
   scrollBottom();
 }
 function redo(){
-  if(!redoStack.length){ line([{t:"没有可重做的操作。", c:"#ffd23d"}]); return; }
+  if(!redoStack.length){ line([{t:"没有可重做的操作。", c:COLOR.yellow}]); return; }
   const cur = snapshotState();
   const next = redoStack.pop();
   undoStack.push(cur);
   applyState(next);
-  line([{t:"↪ 已重做 (可撤销 "+undoStack.length+" 步)", c:"#3dff7a"}]);
+  line([{t:"↪ 已重做 (可撤销 "+undoStack.length+" 步)", c:COLOR.green}]);
   scrollBottom();
 }
 function refreshHistoryUI(){
@@ -552,7 +576,7 @@ let fileWritePending = false;       // 是否正在写盘
 let fileWriteDirty = false;         // 写盘期间是否又发生了改动(写完补写一次)
 let autosaveOn = false;
 function supportsFSA(){ return typeof window!=="undefined" && ("showDirectoryPicker" in window); }
-function fsLog(msg, color){ if(typeof line==="function") line([{t:msg, c:color||"#4de8ff"}]); }
+function fsLog(msg, color){ if(typeof line==="function") line([{t:msg, c:color||COLOR.cyan}]); }
 
 function serializeState(){
   return JSON.stringify({ app:"budget_term", version:2,
@@ -578,8 +602,8 @@ function restoreFromText(text){
     save();
   });
   refreshHeader();
-  fsLog("✓ 已从备份恢复 "+state.records.length+" 条记录、预算与设置已更新 (可 undo 撤销)。", "#3dff7a");
-  if(dropped) fsLog("⚠ 其中 "+dropped+" 条记录金额或日期无效, 已跳过(其余记录正常导入)。", "#ffd23d");
+  fsLog("✓ 已从备份恢复 "+state.records.length+" 条记录、预算与设置已更新 (可 undo 撤销)。", COLOR.green);
+  if(dropped) fsLog("⚠ 其中 "+dropped+" 条记录金额或日期无效, 已跳过(其余记录正常导入)。", COLOR.yellow);
 }
 function doBackupDownload(){
   const blob = new Blob([serializeState()], {type:"application/json;charset=utf-8"});
@@ -587,7 +611,7 @@ function doBackupDownload(){
   const a = document.createElement("a"); a.href=url; a.download="budget_backup_"+todayYMD()+".json";
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url), 400);
-  fsLog("✓ 已下载完整备份 .json (含所有记录/设置)。", "#3dff7a");
+  fsLog("✓ 已下载完整备份 .json (含所有记录/设置)。", COLOR.green);
 }
 /* --- 存到本地目录: 选择目录并立即写入 budget_term_backup.json, 之后每改一次自动写盘 --- */
 async function writeToFolder(){
@@ -604,15 +628,15 @@ async function writeToFolder(){
   refreshAutosaveUI();
 }
 async function doAutosaveToggle(){
-  if(autosaveOn){ autosaveOn=false; refreshAutosaveUI(); fsLog("已关闭本地自动写盘(localStorage 仍在保存)。","#ffd23d"); return; }
+  if(autosaveOn){ autosaveOn=false; refreshAutosaveUI(); fsLog("已关闭本地自动写盘(localStorage 仍在保存)。",COLOR.yellow); return; }
   try{
-    if(!supportsFSA()){ fsLog("当前浏览器不支持“存到本地目录”(请改用 Chrome/Edge), 可用 [备份 .json] 手动导出。","#ff4d5e"); return; }
-    fsLog("请在弹出框中选择一个文件夹存放备份(budget_term_backup.json)…","#4de8ff");
+    if(!supportsFSA()){ fsLog("当前浏览器不支持“存到本地目录”(请改用 Chrome/Edge), 可用 [备份 .json] 手动导出。",COLOR.red); return; }
+    fsLog("请在弹出框中选择一个文件夹存放备份(budget_term_backup.json)…",COLOR.cyan);
     await writeToFolder();
-    fsLog("✓ 已存到所选文件夹。此后每次改动都会自动写盘；刷新页面点一次 [存到本地目录] 重新连接即可(或浏览器仍授权时会自动重连)。","#3dff7a");
+    fsLog("✓ 已存到所选文件夹。此后每次改动都会自动写盘；刷新页面点一次 [存到本地目录] 重新连接即可(或浏览器仍授权时会自动重连)。",COLOR.green);
   }catch(e){
-    if(e && (e.name==="AbortError"||/abort/i.test(String(e.message)))){ fsLog("已取消选择文件夹。","#5d6b62"); }
-    else { fsLog("存到本地目录失败: "+(e&&e.message||e),"#ff4d5e"); }
+    if(e && (e.name==="AbortError"||/abort/i.test(String(e.message)))){ fsLog("已取消选择文件夹。",COLOR.gray); }
+    else { fsLog("存到本地目录失败: "+(e&&e.message||e),COLOR.red); }
   }
 }
 async function scheduleFileWrite(){
@@ -658,7 +682,7 @@ async function restoreLocalHandleQuiet(){
     dirHandle = h;
     try{ autosaveOn=true; await writeToFolder(); }catch(e){ autosaveOn=false; }
     refreshAutosaveUI();
-    fsLog("已自动重连本地文件夹 “"+(h.name||"")+"”，改动将自动写盘。","#3dff7a");
+    fsLog("已自动重连本地文件夹 “"+(h.name||"")+"”，改动将自动写盘。",COLOR.green);
   }catch(e){ /* 忽略 */ }
 }
 /* 每次打开: 若上次授权因新会话过期, 在第一次用户交互时自动重新申请(无需再点专门按钮) */
@@ -681,7 +705,7 @@ function armAutoReconnect(){
       dirHandle = h;
       try{ autosaveOn=true; await writeToFolder(); }catch(e){ autosaveOn=false; }
       refreshAutosaveUI();
-      fsLog("已重新连接本地文件夹 “"+(h.name||"")+"”，自动写盘已开启。","#3dff7a");
+      fsLog("已重新连接本地文件夹 “"+(h.name||"")+"”，自动写盘已开启。",COLOR.green);
     }catch(e){}
   };
   const guard = ()=>{ once(); window.removeEventListener("pointerdown",guard); window.removeEventListener("keydown",guard); };
@@ -702,7 +726,7 @@ function todayYMD(){ const n=new Date(); return fmtY(n); }
 /* ---- 「手动输日期」弹窗的统一格式解析 -------------------------------------
    目标: 不管用户怎么敲, 一律归一化成与命令 @日期 完全一致的 ISO 写法:
      日期 → YYYY-MM-DD     月份 → YYYY-MM
-   宽容接受 2026-9-5 / 2026/9/5 / 2026.9.5 / 20260905 / 2026年9月5日 等写法。
+   宽容接受 2027-8-5 / 2027/8/5 / 2027.8.5 / 20270805 / 2027年8月5日 等写法。
    返回 { ok, value, error }: value 永远是统一格式(空输入返回""), ok=false 时 error 为提示语。 */
 function normDateText(raw, kind){          // kind: "date" | "month"
   const out = { ok:true, value:"", error:"" };
@@ -716,9 +740,9 @@ function normDateText(raw, kind){          // kind: "date" | "month"
        .replace(/-+/g, "-").replace(/^-+|-+$/g, "");
   const seg = s.split("-").filter(x=>x!=="");
   let y=null, m=null, d=null;
-  if(seg.length===1 && /^\d{8}$/.test(seg[0])){       // 20260918
+  if(seg.length===1 && /^\d{8}$/.test(seg[0])){       // 20270818
     y=+seg[0].slice(0,4); m=+seg[0].slice(4,6); d=+seg[0].slice(6,8);
-  } else if(seg.length===1 && /^\d{6}$/.test(seg[0])){ // 202609
+  } else if(seg.length===1 && /^\d{6}$/.test(seg[0])){ // 202708
     y=+seg[0].slice(0,4); m=+seg[0].slice(4,6);
   } else if(seg.length>=2){
     y = /^\d{4}$/.test(seg[0]) ? +seg[0] : NaN;        // 年份必须 4 位
@@ -727,13 +751,13 @@ function normDateText(raw, kind){          // kind: "date" | "month"
   }
   if(!(y>=1000 && y<=9999)){
     out.ok=false;
-    out.error = (kind==="date") ? "请按 YYYY-MM-DD 填写完整日期，如 2026-09-18。"
-                                : "请按 YYYY-MM 填写月份，如 2026-09。";
+    out.error = (kind==="date") ? "请按 YYYY-MM-DD 填写完整日期，如 2027-08-18。"
+                                : "请按 YYYY-MM 填写月份，如 2027-08。";
     return out;
   }
   if(!(m>=1 && m<=12)){ out.ok=false; out.error = "月份要在 01~12 之间。"; return out; }
   if(kind==="month"){ out.value = y+"-"+pad2(m); return out; }
-  if(d===null){ out.ok=false; out.error = "日期要写到「日」，如 2026-09-18；若只想看整月，请填上面的「月份」。"; return out; }
+  if(d===null){ out.ok=false; out.error = "日期要写到「日」，如 2027-08-18；若只想看整月，请填上面的「月份」。"; return out; }
   if(!(d>=1 && d<=lastDay(y,m))){ out.ok=false; out.error = "该月没有 "+d+" 号（"+y+"-"+pad2(m)+" 只有 "+lastDay(y,m)+" 天）。"; return out; }
   out.value = mkYMD(y,m,d);
   return out;
@@ -813,7 +837,7 @@ function weekBounds(dateStr){
 function inRange(dateStr, start, end){
   return dateStr >= start && dateStr <= end;
 }
-function catColor(cat){ return PREDEFINED.get(cat) || "#8be9fd"; }
+function catColor(cat){ return PREDEFINED.get(cat) || COLOR.catFallback; }
 
 /* --------------------------- investment calc ---------------------------- */
 /* 核心换算: 一笔消费 E 对应占用总花费 E/N (N=消费占比, 默认0.85, 可调);
@@ -837,7 +861,6 @@ function money(x){
   const neg = x<0; const s = Math.abs(x).toFixed(2);
   return (neg?"-":"")+s;
 }
-function catNameOfRecord(r){ return r.category; }
 
 /* ===================== 投资池：应投货币 / 应投指数 ===================== */
 /* 未投资部分累加(跨期累计): 每笔记录应投 mm/idx, 已投 moneyInv/indexInv(金额制) */
@@ -851,11 +874,11 @@ function recFullyMoney(r){ const need=r.mm||0; return need<=INV_EPS || (r.moneyI
 function recFullyIndex(r){ const need=r.idx||0; return need<=INV_EPS || (r.indexInv||0) >= need - INV_EPS; }
 function recNoNeed(r){ return (r.mm||0)<=INV_EPS && (r.idx||0)<=INV_EPS; }
 function recStatus(r){
-  if(recNoNeed(r)) return {t:"无需", c:"#5d6b62"};   // 应投恒为 0, 无需投资
+  if(recNoNeed(r)) return {t:"无需", c:COLOR.gray};   // 应投恒为 0, 无需投资
   const m = recFullyMoney(r), i = recFullyIndex(r);
-  if(m && i) return {t:"已投", c:"#3dff7a"};
-  if(!(r.moneyInv||0) && !(r.indexInv||0)) return {t:"未投", c:"#5d6b62"};
-  return {t:"部分", c:"#ffd23d"};
+  if(m && i) return {t:"已投", c:COLOR.green};
+  if(!(r.moneyInv||0) && !(r.indexInv||0)) return {t:"未投", c:COLOR.gray};
+  return {t:"部分", c:COLOR.yellow};
 }
 /* 把某类阈值额度(lot)按比例分摊到未投记录上(支持部分投入), 返回描述文字 */
 function investAmount(kind, amt){ // 按比例把 amt 投给该种未投池; kind 'money'|'index'
@@ -901,8 +924,6 @@ function investFull(kind){
   if(pend < lot - 0.005) return null;
   return investAmount(kind, pend);
 }
-function recordMoneyInv(r){ return r.moneyInv||0; }
-
 /* 预算 / 结转 / 超额 派生指标：
    总预算 B 每周期发放一次; 每笔消费按 E/0.85 记账占用;
    未占用 = 剩余(结转下期), 占用>发放 = 透支(下期扣除)。余额跨期累计。
@@ -984,20 +1005,37 @@ function line(segs){ // segs: string | [{t,c,cls}]
   term.appendChild(el);
   return el;
 }
-function boxLines(arr){ // arr of lines already with color -> wrapped
-  for(const l of arr){ line(l); }
-}
-function hr(){ const el=document.createElement("div"); el.className="sep l"; term.appendChild(el); }
 function blank(){ line(""); }
-function tableRow(cols, widths, color){ // render table using unicode box minimal
-  let s="";
-  for(let i=0;i<cols.length;i++){
-    const cell = String(cols[i]===undefined?"":cols[i]);
-    const w = widths[i]||0;
-    const t = w>0 ? cell.slice(0,w).padEnd(w," ") : cell;
-    s += t + "  ";
-  }
-  return { t:s.replace(/\s+$/,""), c:color };
+
+/* ===================== 统一的"标签 : 值"行渲染器 =====================
+   以前总结/燃尽/资产/配置各写一套(rows 数组 + padEnd(24)、两份逐字节相同的 row() 闭包 + padEnd(22)、
+   配置页手写空格), 列宽互不相同; 现在全部走 kvRow(), 列宽按当前窗口宽度自适应。 */
+const KV_MIN = 14, KV_MAX = 24;      // 标签列宽(字符): 窄窗口也能让数值留在同一行
+let _kvW = 0;                        // 缓存的列宽(窗口尺寸变化后失效重算, 避免每行都触发布局计算)
+/* 终端当前可容纳的等宽字符数(拿不到布局信息时返回 0) */
+function termCols(){
+  let px = 0;
+  try{ px = (term && term.clientWidth) || (typeof window!=="undefined" && window.innerWidth) || 0; }catch(e){}
+  if(!(px > 0)) return 0;
+  let charPx = 0;
+  try{ charPx = textWidthPx("0000000000", term) / 10; }catch(e){}
+  return Math.floor(px / (charPx > 0 ? charPx : 8));   // 兜底: 14px 等宽字体约 8px/字
+}
+/* 标签列宽: 约占终端宽度 1/4, 夹在 [KV_MIN, KV_MAX] */
+function kvColWidth(){
+  if(_kvW) return _kvW;
+  const cols = termCols();
+  _kvW = cols ? Math.max(KV_MIN, Math.min(KV_MAX, Math.round(cols * 0.26))) : KV_MAX;
+  return _kvW;
+}
+if(typeof window!=="undefined" && window.addEventListener){
+  window.addEventListener("resize", ()=>{ _kvW = 0; });   // 分辨率/窗口大小变化 → 下次输出重新计算列宽
+}
+/* kvRow("本期消费", "¥300.00") 或 kvRow(key, value, width, color, glow) */
+function kvRow(key, value, width, color, glow){
+  const w = (typeof width==="number" && width>0) ? width : kvColWidth();
+  return line([{ t:("  "+key).padEnd(w," "), c:COLOR.gray },
+               { t:String(value==null?"":value), c:color||COLOR.white, cls:glow?"glow":"" }]);
 }
 
 /* progress bar with level color */
@@ -1007,7 +1045,7 @@ function barLevel(ratio){
   for(const p of th){ if(ratio*100 >= p) lvl++; }
   return Math.min(lvl,4);
 }
-const LEVEL_COLOR = ["#3dff7a","#ffd23d","#ff9d3d","#ff4d5e","#ff5ef0"];
+const LEVEL_COLOR = [COLOR.green,COLOR.yellow,COLOR.orange,COLOR.red,COLOR.magenta];
 function progressBar(ratio, width){
   width = width || 26;
   ratio = Math.max(0, Math.min(1, ratio));
@@ -1019,23 +1057,23 @@ function progressBar(ratio, width){
 function alertWord(ratio){
   const p = ratio*100;
   const th = [...state.settings.thresholds].sort((a,b)=>a-b);
-  if(th.length && p>=th[th.length-1]) return {t:"已超额 ⚠", c:"#ff4d5e"};
-  for(let i=th.length-1;i>=0;i--){ if(p>=th[i]) return {t:"接近预算 ⚠ "+th[i]+"%", c:"#ffd23d"}; }
-  return {t:"预算内 ✓", c:"#3dff7a"};
+  if(th.length && p>=th[th.length-1]) return {t:"已超额 ⚠", c:COLOR.red};
+  for(let i=th.length-1;i>=0;i--){ if(p>=th[i]) return {t:"接近预算 ⚠ "+th[i]+"%", c:COLOR.yellow}; }
+  return {t:"预算内 ✓", c:COLOR.green};
 }
 
 /* ============ 红黄绿"实心圆点"指示器 (规则与原预警阈值一致, 不闪烁) ============
    绿: 未达最低阈值 → 显示"剩余 X%";  黄: 达到最低阈值 → "接近上限 X%";
    红: 达到最高阈值(默认100) → "已超额 X%";  灰(n): 未设置额度 */
 function ratioDot(ratio){
-  if(ratio==null || !isFinite(ratio)) return {cls:"n", word:"未设", dot:"#5d6b62", text:"未设置额度"};
+  if(ratio==null || !isFinite(ratio)) return {cls:"n", word:"未设", dot:COLOR.gray, text:"未设置额度"};
   const p = ratio*100;
   const th = [...state.settings.thresholds].sort((a,b)=>a-b);
   const over = th.length ? th[th.length-1] : 100;
   const warn = th.length ? th[0] : over;
-  if(p >= over) return {cls:"r", word:"红", dot:"#ff4d5e", text:"已超额"+p.toFixed(0)+"%"};
-  if(p >= warn) return {cls:"y", word:"黄", dot:"#ffd23d", text:"接近上限"+p.toFixed(0)+"%"};
-  return {cls:"g", word:"绿", dot:"#3dff7a", text:"剩余"+Math.max(0,100-p).toFixed(0)+"%"};
+  if(p >= over) return {cls:"r", word:"红", dot:COLOR.red, text:"已超额"+p.toFixed(0)+"%"};
+  if(p >= warn) return {cls:"y", word:"黄", dot:COLOR.yellow, text:"接近上限"+p.toFixed(0)+"%"};
+  return {cls:"g", word:"绿", dot:COLOR.green, text:"剩余"+Math.max(0,100-p).toFixed(0)+"%"};
 }
 /* 今日快照: 今日消费 vs 手动设置的"每日可用余额" */
 function todaySnapshot(){
@@ -1047,7 +1085,7 @@ function todaySnapshot(){
 }
 /* 终端文本版: "周期预算：●已超额114%" (颜色由圆点本身表示, 圆点前不放文字) */
 function dotLine(label, info){
-  return [{t:label+"：",c:"#5d6b62"},{t:"●",c:info.dot},{t:info.text,c:"#d7ffe0"}];
+  return [{t:label+"：",c:COLOR.gray},{t:"●",c:info.dot},{t:info.text,c:COLOR.white}];
 }
 /* DOM 版圆点组合 */
 function dotPair(label, info){
@@ -1061,54 +1099,76 @@ function dotPair(label, info){
 
 /* ============================== input / dispatch ========================= */
 const input = document.getElementById("cmdline");
-// Help entries: [command-text, description-or-__HEADER/__INFO]
-const HELP_LINES = [
-  ["▓ 命令参考", "__HEADER"],
-  ["help", "查看帮助"],
-  ["set budget <金额>", "设置每周期固定预算, 如 set budget 1000"],
-  ["set daily <金额>", "手动设置每日可用余额(今日预算红黄绿提示), 如 set daily 100; off=取消"],
-  ["set period <N天>", "滚动N天周期结算预算, 如 set period 15;  natural 回到按月"],
-  ["set periodstart <日期>", "设滚动周期起点(锚点), 例 set periodstart 2026-09-04"],
-  ["set monthstart <1-28>", "(按月模式)起始日; 1=自然月; 15=每月15日起"],
-  ["set weekstart <mon|sun>", "周总结起始日(周一/周日)"],
-  ["set alert <p1,p2..>", "自定义预警阈值(百分比), 默认 80,100"],
-  ["set invest <投资比例%>", "可调投资比例, 如 set invest 15 (消费占比=1-投资比例); 0~50%"],
-  ["set consume <消费占比%>", "直接设消费占比 N, 如 set consume 85 或 set ratio 0.85; 总花费=消费÷N"],
-  ["set rate <money|index> <%>", "设置基金年化(收益模拟用), 例 set rate index 8"],
-  ["budget", "当前周期预算进度(含进度条)"],
-  ["budget set <金额>", "只调整当前周期的预算, 例 budget set 1200"],
-  ["budget default <金额>", "调整默认预算(以后各期), budget reset 取消当期覆盖"],
-  ["forecast", "燃尽预测: 按日均消费预测期末结余/超支与每日可花"],
-  ["add <金额> <类别> [备注..] [@日期]", "add 50 餐饮 午餐  或  add @2025-03-05 300 购物 外套"],
-  ["list [类别X] [@日期/月份]", "消费列表: list 餐饮 / list @2026-09-18 / list @2026-09 / list @today|@period|@month"],
-  ["del <id>", "删除指定记录(id 见 list)"],
-  ["update <id> <金额> <类别> [..]", "修改某条记录并自动重算投资额"],
-  ["pay <id> [mm|idx|all|none]", "标记投资已投状态 (货币基金 mm / 指数基金 idx)"],
-  ["summary [day|week|month] [类别]", "总结: 无参数=当前记账周期; month=自然月; 可加类别筛选, 如 summary week 餐饮"],
-  ["summary month @YYYY-MM", "指定某自然月的总结, 例 summary month 2026-08 餐饮 (也可直接写 summary 2026-08)"],
-  ["summary cat [类别]", "当前记账周期各类别占比"],
-  ["export [md|txt]", "导出报告文件(浏览器下载)"],
-  ["assets [N年]", "资产看板: 现金+基金本金+复利预估(默认10年)与增长曲线"],
-  ["undo  /  redo", "撤销 / 重做上一次改动 (Ctrl+Z / Ctrl+Y)"],
-  ["cls", "清屏"],
-  ["换算: 消费÷N 占用总花费(N=消费占比, 默认85%); 其中(1-N)=投资(默认15%, 货币13/指数2); set invest 15 可调", "__INFO"],
+/* ======================= 命令登记表 (单一数据源) =======================
+   M1 修复: 命令清单以前在三个地方各自维护 —— dispatch() 的 switch(含各别名)、
+   HELP_LINES(help 输出)、CMD_WORDS(Tab 补全) —— 于是不断出现漂移:
+   `config`/`settings` 能用但 help 里查不到; 别名只在 dispatch 里存在; 补全词又各自抄一份。
+   现在只有这一份清单: help 内容、别名解析(canonicalCmd)、补全词(CMD_WORDS) 全部由它派生,
+   新增命令只需在这里登记一次, 并补上 dispatch 里对应的 case(有测试双向守着)。
+   字段: n = 命令名数组(第 1 个是主名, 其余是别名); u = help 里显示的用法; d = 说明;
+        sub = true 表示这只是主命令的子用法(只出现在 help, 不参与别名与补全)。 */
+const COMMANDS = [
+  { n:["help","?","h"],                            u:"help",                            d:"查看帮助" },
+  { n:["set"],                                     u:"set budget <金额>",               d:"设置每周期固定预算, 如 set budget 1000" },
+  { n:["set"], sub:true,                           u:"set daily <金额>",                d:"手动设置每日可用余额(今日预算红黄绿提示), 如 set daily 100; off=取消" },
+  { n:["set"], sub:true,                           u:"set period <N天>",                d:"滚动N天周期结算预算, 如 set period 15;  natural 回到按月" },
+  { n:["set"], sub:true,                           u:"set periodstart <日期>",           d:"设滚动周期起点(锚点), 例 set periodstart 2027-08-04" },
+  { n:["set"], sub:true,                           u:"set monthstart <1-28>",           d:"(按月模式)起始日; 1=自然月; 15=每月15日起" },
+  { n:["set"], sub:true,                           u:"set weekstart <mon|sun>",         d:"周总结起始日(周一/周日)" },
+  { n:["set"], sub:true,                           u:"set alert <p1,p2..>",             d:"自定义预警阈值(百分比), 默认 80,100" },
+  { n:["set"], sub:true,                           u:"set invest <投资比例%>",           d:"可调投资比例, 如 set invest 15 (消费占比=1-投资比例); 0~50%" },
+  { n:["set"], sub:true,                           u:"set consume <消费占比%>",          d:"直接设消费占比 N, 如 set consume 85 或 set ratio 0.85; 总花费=消费÷N" },
+  { n:["set"], sub:true,                           u:"set rate <money|index> <%>",      d:"设置基金年化(收益模拟用), 例 set rate index 8" },
+  { n:["budget"],                                  u:"budget",                          d:"当前周期预算进度(含进度条)" },
+  { n:["budget"], sub:true,                        u:"budget set <金额>",                d:"只调整当前周期的预算, 例 budget set 1200" },
+  { n:["budget"], sub:true,                        u:"budget default <金额>",            d:"调整默认预算(以后各期), budget reset 取消当期覆盖" },
+  { n:["forecast","burn","predict"],               u:"forecast",                        d:"燃尽预测: 按日均消费预测期末结余/超支与每日可花" },
+  { n:["add","a"],                                 u:"add <金额> <类别> [备注..] [@日期]", d:"add 50 餐饮 午餐  或  add @2025-03-05 300 购物 外套" },
+  { n:["list","ls"],                               u:"list [类别X] [@日期/月份]",         d:"消费列表: list 餐饮 / list @2027-08-18 / list @2027-08 / list @today|@period|@month" },
+  { n:["del","rm","delete"],                       u:"del <id>",                        d:"删除指定记录(id 见 list)" },
+  { n:["update","edit"],                           u:"update <id> <金额> <类别> [..]",    d:"修改某条记录并自动重算投资额" },
+  { n:["pay","invest"],                            u:"pay <id> [mm|idx|all|none]",      d:"标记投资已投状态 (货币基金 mm / 指数基金 idx)" },
+  { n:["summary","sum"],                           u:"summary [day|week|month] [类别]",  d:"总结: 无参数=当前记账周期; month=自然月; 可加类别筛选, 如 summary week 餐饮" },
+  { n:["summary"], sub:true,                       u:"summary month @YYYY-MM",          d:"指定某自然月的总结, 例 summary month 2027-07 餐饮 (也可直接写 summary 2027-07)" },
+  { n:["summary"], sub:true,                       u:"summary cat [类别]",               d:"当前记账周期各类别占比" },
+  { n:["export"],                                  u:"export [md|txt]",                 d:"导出报告文件(浏览器下载)" },
+  { n:["assets","asset","networth"],               u:"assets [N年]",                     d:"资产看板: 现金+基金本金+复利预估(默认10年)与增长曲线" },
+  { n:["undo","u"],                                u:"undo",                            d:"撤销上一次数据改动 (Ctrl+Z)" },
+  { n:["redo"],                                    u:"redo",                            d:"重做上一次被撤销的改动 (Ctrl+Y)" },
+  { n:["config","settings","thresholds","alerts"],  u:"config",                          d:"查看当前配置(阈值/比例/版本号等)" },
+  { n:["cls","clear"],                             u:"cls",                             d:"清屏" },
 ];
+const CMD_ALIAS = {};        // 别名 -> 主名
+const COMMAND_NAMES = [];    // 主名(按登记顺序, 供补全)
+for(const c of COMMANDS){
+  if(c.sub) continue;
+  if(!COMMAND_NAMES.includes(c.n[0])) COMMAND_NAMES.push(c.n[0]);
+  for(const name of c.n) if(name!==c.n[0]) CMD_ALIAS[name] = c.n[0];
+}
+/* 把任意写法(含别名)解析成主名; 未知命令原样返回, 交给 dispatch 报"未知命令" */
+function canonicalCmd(name){ return CMD_ALIAS[name] || name; }
+const HELP_PAD = 34;         // help 的命令列宽(超出则说明换到下一行)
+const HELP_ALIAS_WIDTH = 76; // 别名对照行的换行宽度
 function printHelp(){
-  for(const [cmdText, desc] of HELP_LINES){
-    if(desc==="__HEADER"){ line([{t:"  "+cmdText, c:"#4de8ff", cls:"glow"}]); continue; }
-    if(desc==="__INFO"){ line([{t:"  ⚙ "+cmdText, c:"#5d6b62"}]); continue; }
-    // command column (fixed-ish width; long command wraps to next line)
-    const padW = 34;
-    let cmdPad = cmdText;
-    let descIndent = 2+padW+2;
-    let extraPrefix="";
-    if(cmdText.length>padW){ cmdPad = cmdText; descIndent = 2+3+2; }
-    const cmdStr = "  "+cmdPad;
-    const descStr = descIndent>cmdStr.length ? " ".repeat(descIndent-cmdStr.length)+desc : "\n"+" ".repeat(descIndent)+desc;
-    line([
-      {t:cmdStr,c:"#ffd23d"},{t:descStr,c:"#d7ffe0"}
-    ]);
+  line([{t:"  ▓ 命令参考", c:COLOR.cyan, cls:"glow"}]);
+  for(const c of COMMANDS){
+    const cmdText = c.u, desc = c.d;
+    const descIndent = (cmdText.length > HELP_PAD) ? (2+3+2) : (2+HELP_PAD+2);
+    const cmdStr = "  "+cmdText;
+    const descStr = descIndent>cmdStr.length ? " ".repeat(descIndent-cmdStr.length)+desc
+                                            : "\n"+" ".repeat(descIndent)+desc;
+    line([{t:cmdStr,c:COLOR.yellow},{t:descStr,c:COLOR.white}]);
   }
+  // 别名对照: 由登记表派生, 不再手工维护(以前 help 里根本没有别名)
+  const pairs = COMMANDS.filter(c=>!c.sub && c.n.length>1).map(c=>c.n[0]+" = "+c.n.slice(1).join("/"));
+  line([{t:"  ▓ 命令别名", c:COLOR.cyan, cls:"glow"}]);
+  let row = "  ";
+  for(const p of pairs){
+    if(row.trim() && row.length + p.length + 4 > HELP_ALIAS_WIDTH){ line([{t:row.replace(/\s+$/,""), c:COLOR.gray}]); row = "  "; }
+    row += p + "    ";
+  }
+  if(row.trim()) line([{t:row.replace(/\s+$/,""), c:COLOR.gray}]);
+  line([{t:"  ⚙ 换算: 消费÷N 占用总花费(N=消费占比, 默认85%); 其中(1-N)=投资(默认15%, 货币13/指数2); set invest 15 可调", c:COLOR.gray}]);
   blank();
 }
 
@@ -1162,36 +1222,38 @@ function runCommand(raw){
   echoCommand(raw);
   const {cmd, tokens} = parseCmd(raw);
   try{
-    if(cmd==="undo" || cmd==="redo") dispatch(cmd, tokens);   // 本身不改数据, 不进入撤销栈
+    // 用主名判断: 否则 `u`(undo 的别名)会走 mutate 包一层, 撤销后又被当成"新改动"压栈并把 redo 清空
+    const c = canonicalCmd(cmd);
+    if(c==="undo" || c==="redo") dispatch(cmd, tokens);   // 本身不改数据, 不进入撤销栈
     else mutate(()=>dispatch(cmd, tokens));
   }catch(e){
-    line([{t:"[ERR] "+ (e && e.message ? e.message : e), c:"#ff4d5e"}]);
+    line([{t:"[ERR] "+ (e && e.message ? e.message : e), c:COLOR.red}]);
     if(e && e.stack) console.error(e);
   }
 }
 
-/* dispatch main logic */
-function dispatch(cmd, tokens, rest){
-  switch(cmd){
-    case "help": case "?": case "h": printHelp(); break;
-    case "cls": case "clear": term.innerHTML=""; break;
-    case "set": doSet(tokens); break;
-    case "budget": case "budget show": doBudget(tokens); break;
-    case "forecast": case "burn": case "predict": doForecast(); break;
-    case "add": case "a": doAdd(tokens); break;
-    case "list": case "ls": doList(tokens); break;
-    case "del": case "rm": case "delete": doDelete(tokens); break;
-    case "update": case "edit": doUpdate(tokens); break;
-    case "pay": case "invest": doPay(tokens); break;
-    case "summary": case "sum": doSummary(tokens); break;
-    case "export": doExport(tokens); break;
-    case "assets": case "asset": case "networth": doAssets(tokens); break;
-    case "undo": case "u": undo(); break;
-    case "redo": redo(); break;
-    case "thresholds": case "alerts": showSettings(); break;
-    case "settings": case "config": showSettings(); break;
+/* dispatch main logic: 只按"主名"分派, 别名在入口统一解析(见上面的 COMMANDS 登记表)。
+   这里每个 case 都必须与 COMMANDS 里某个主名一一对应(测试双向校验, 防漂移)。 */
+function dispatch(cmd, tokens){
+  switch(canonicalCmd(cmd)){
+    case "help":     printHelp(); break;
+    case "cls":      term.innerHTML=""; break;
+    case "set":      doSet(tokens); break;
+    case "budget":   doBudget(tokens); break;
+    case "forecast": doForecast(); break;
+    case "add":      doAdd(tokens); break;
+    case "list":     doList(tokens); break;
+    case "del":      doDelete(tokens); break;
+    case "update":   doUpdate(tokens); break;
+    case "pay":      doPay(tokens); break;
+    case "summary":  doSummary(tokens); break;
+    case "export":   doExport(tokens); break;
+    case "assets":   doAssets(tokens); break;
+    case "undo":     undo(); break;
+    case "redo":     redo(); break;
+    case "config":   showSettings(); break;
     default:
-      line([{t:"未知命令: "+cmd+"。输入 help 查看用法。", c:"#ffd23d"}]);
+      line([{t:"未知命令: "+cmd+"。输入 help 查看用法。", c:COLOR.yellow}]);
   }
 }
 
@@ -1202,10 +1264,10 @@ function doSet(tokens){
   if(sub==="budget"){
     const v = tokens[1];
     const n = numeric(v);
-    if(n==null || n<=0){ line([{t:"用法: set budget <金额>  例 set budget 1000",c:"#ffd23d"}]); return; }
+    if(n==null || n<=0){ line([{t:"用法: set budget <金额>  例 set budget 1000",c:COLOR.yellow}]); return; }
     state.settings.budget = r2(n); save();
-    line([{t:"✓ 默认预算已设为 ",c:"#3dff7a"},{t:"¥"+money(r2(n)),c:"#ffffff",cls:"hl"},
-          {t:"  (各期生效; 只想改本期可用 budget set <金额>)",c:"#5d6b62"}]);
+    line([{t:"✓ 默认预算已设为 ",c:COLOR.green},{t:"¥"+money(r2(n)),c:COLOR.pure,cls:"hl"},
+          {t:"  (各期生效; 只想改本期可用 budget set <金额>)",c:COLOR.gray}]);
     showForecastLine();
     refreshHeader();     // 顶栏"可用余额/发放进度"由预算派生, 改完必须立即重画(否则显示旧数字)
   } else if(sub==="monthstart"){
@@ -1213,58 +1275,58 @@ function doSet(tokens){
     let d;
     if(v==="natural"||v==="自然月"||v==="1") d=1;
     else d = numeric(tokens[1]);
-    if(d==null || d<1 || d>28){ line([{t:"用法: set monthstart <1-28>  (1=自然月, 例 15 表示每月15日~下月14日)",c:"#ffd23d"}]); return; }
+    if(d==null || d<1 || d>28){ line([{t:"用法: set monthstart <1-28>  (1=自然月, 例 15 表示每月15日~下月14日)",c:COLOR.yellow}]); return; }
     state.settings.monthStart = d; state.settings.periodMode = "month"; ensureEpoch(); save();
     const p = currentPeriod();
-    line([{t:"✓ 切换为按月周期, 起始日 "+(d===1?"自然月":"每月 "+d+" 日")+"。当前周期: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]);
+    line([{t:"✓ 切换为按月周期, 起始日 "+(d===1?"自然月":"每月 "+d+" 日")+"。当前周期: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]);
     refreshHeader();
   } else if(sub==="period"||sub==="cycle"||sub==="length"){
     // set period 15        → 滚动 15 天周期
     // set period natural|month → 回到按月周期
     const v=(tokens[1]||"").toLowerCase();
     const n = numeric(tokens[1]);
-    if(v==="natural"||v==="month"||v==="月"||v==="自然月"){ state.settings.periodMode="month"; ensureEpoch(); save(); const p=currentPeriod(); line([{t:"✓ 已切回按月周期, 当前: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]); refreshHeader(); return; }
-    if(n==null || !Number.isInteger(n) || n<2 || n>90){ line([{t:"用法: set period <N天>  例 set period 15  → 每15天滚动一期;  set period natural 回到自然月",c:"#ffd23d"}]); return; }
+    if(v==="natural"||v==="month"||v==="月"||v==="自然月"){ state.settings.periodMode="month"; ensureEpoch(); save(); const p=currentPeriod(); line([{t:"✓ 已切回按月周期, 当前: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]); refreshHeader(); return; }
+    if(n==null || !Number.isInteger(n) || n<2 || n>90){ line([{t:"用法: set period <N天>  例 set period 15  → 每15天滚动一期;  set period natural 回到自然月",c:COLOR.yellow}]); return; }
     state.settings.periodMode="rolling";
     state.settings.lengthDays=n;
     // 起点：若尚未设 anchor 或想在今天重启，则从今天起算新一期
     state.settings.anchor = state.settings.anchor || todayYMD();
     ensureEpoch(); save();
     const p = currentPeriod();
-    line([{t:"✓ 已切换为滚动 "+n+" 天周期, 从 "+state.settings.anchor+" 起每 "+n+" 天滚动结算。当前期: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]);
+    line([{t:"✓ 已切换为滚动 "+n+" 天周期, 从 "+state.settings.anchor+" 起每 "+n+" 天滚动结算。当前期: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]);
     refreshHeader();
   } else if(sub==="periodstart"||sub==="anchor"){
     const d = cleanDateStr(tokens[1]);
-    if(!d){ line([{t:"用法: set periodstart <YYYY-MM-DD>  设滚动周期起点(锚点)",c:"#ffd23d"}]); return; }
+    if(!d){ line([{t:"用法: set periodstart <YYYY-MM-DD>  设滚动周期起点(锚点)",c:COLOR.yellow}]); return; }
     state.settings.periodMode = state.settings.periodMode || "rolling";
     state.settings.anchor = d; ensureEpoch(); save();
     const p = currentPeriod();
-    line([{t:"✓ 滚动周期起点设为 "+d+"。当前期: ",c:"#3dff7a"},{t:p.label,c:"#4de8ff"}]);
+    line([{t:"✓ 滚动周期起点设为 "+d+"。当前期: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]);
     refreshHeader();
   } else if(sub==="weekstart"){
     const v=(tokens[1]||"").toLowerCase();
     if(v==="mon"||v==="周一"||v==="一") state.settings.weekStart="mon";
     else if(v==="sun"||v==="周日"||v==="日") state.settings.weekStart="sun";
-    else { line([{t:"用法: set weekstart <mon|sun>",c:"#ffd23d"}]); return; }
+    else { line([{t:"用法: set weekstart <mon|sun>",c:COLOR.yellow}]); return; }
     save();
-    line([{t:"✓ 周起始日设为 "+(state.settings.weekStart==="mon"?"周一":"周日"),c:"#3dff7a"}]);
+    line([{t:"✓ 周起始日设为 "+(state.settings.weekStart==="mon"?"周一":"周日"),c:COLOR.green}]);
     refreshHeader();
   } else if(sub==="alert"||sub==="threshold"||sub==="thresholds"){
     const rest = tokens.slice(1).join("").split(/[,，]/).map(x=>parseFloat(x)).filter(x=>!isNaN(x)&&x>0&&x<=100);
-    if(!rest.length){ line([{t:"用法: set alert <p1,p2,...>  例 set alert 80,100",c:"#ffd23d"}]); return; }
+    if(!rest.length){ line([{t:"用法: set alert <p1,p2,...>  例 set alert 80,100",c:COLOR.yellow}]); return; }
     state.settings.thresholds = [...new Set(rest)].sort((a,b)=>a-b); save();
-    line([{t:"✓ 预警阈值设为 "+state.settings.thresholds.join("% , ")+"%",c:"#3dff7a"}]);
+    line([{t:"✓ 预警阈值设为 "+state.settings.thresholds.join("% , ")+"%",c:COLOR.green}]);
     refreshHeader();     // 阈值决定顶栏红黄绿圆点与进度条颜色
   } else if(sub==="rate"||sub==="rates"){
     // set rate money 2 / set rate index 8  (年化百分比)
     const which = (tokens[1]||"").toLowerCase();
     const pct = numeric(tokens[2]);
-    if(pct==null || pct<0 || pct>100){ line([{t:"用法: set rate <money|index> <年化%>  例 set rate index 8",c:"#ffd23d"}]); return; }
+    if(pct==null || pct<0 || pct>100){ line([{t:"用法: set rate <money|index> <年化%>  例 set rate index 8",c:COLOR.yellow}]); return; }
     if(which==="money"||which==="m"||which==="货币"){ state.settings.rateMoney = pct/100; }
     else if(which==="index"||which==="idx"||which==="i"||which==="指数"){ state.settings.rateIndex = pct/100; }
-    else { line([{t:"用法: set rate <money|index> <年化%>",c:"#ffd23d"}]); return; }
+    else { line([{t:"用法: set rate <money|index> <年化%>",c:COLOR.yellow}]); return; }
     save();
-    line([{t:"✓ 货币年化 "+(state.settings.rateMoney*100).toFixed(2)+"%  |  指数年化 "+(state.settings.rateIndex*100).toFixed(2)+"%",c:"#3dff7a"}]);
+    line([{t:"✓ 货币年化 "+(state.settings.rateMoney*100).toFixed(2)+"%  |  指数年化 "+(state.settings.rateIndex*100).toFixed(2)+"%",c:COLOR.green}]);
   } else if(sub==="invest"||sub==="investment"||sub==="consume"||sub==="ratio"||sub==="share"){
     // set invest <投资占比%>   → 消费占比 N = 1 - 投资占比
     // set consume <消费占比%>  → 直接设 N (也接受 set ratio 0.85 小数写法)
@@ -1272,76 +1334,75 @@ function doSet(tokens){
     const asInvest = (sub==="invest"||sub==="investment");
     const usage = "用法: set invest <投资比例%>   例 set invest 15   (消费占比 = 1 - 投资比例)"
                 + "\n      set consume <消费占比%>  例 set consume 85   (或 set ratio 0.85)";
-    if(pct==null){ line([{t:usage,c:"#ffd23d"}]); return; }
+    if(pct==null){ line([{t:usage,c:COLOR.yellow}]); return; }
     if(!asInvest && pct>0 && pct<=1) pct = pct*100;            // 允许 0.85 / 0.9 小数写法
     const newConsume = asInvest ? (1 - pct/100) : (pct/100);
     // 区间取闭区间: 文档写的是"消费占比 50%~100% (投资 0%~50%)", 50/100 这些端点必须能用
     if(!(newConsume>=0.5 && newConsume<=1)){
-      line([{t:"比例超出范围: 消费占比需在 50%~100% 之间 (即投资比例 0%~50%)。",c:"#ffd23d"}]);
-      line([{t:usage,c:"#ffd23d"}]); return;
+      line([{t:"比例超出范围: 消费占比需在 50%~100% 之间 (即投资比例 0%~50%)。",c:COLOR.yellow}]);
+      line([{t:usage,c:COLOR.yellow}]); return;
     }
     const oldPct = consumePct();
     state.settings.consumeShare = r6(newConsume);
     recomputeAllInvest();                                      // 历史记录按新比例重算应投
     save();
     const sp = rateSplit();
-    line([{t:"✓ 投资比例已更新: ",c:"#3dff7a"},
-          {t:"消费占比 "+consumePct()+"%",c:"#ffffff"},
-          {t:"  |  投资占比 "+invPct()+"%",c:"#4de8ff"},
-          {t:"  (货币 "+r2(sp.mm*100)+"% + 指数 "+r2(sp.idx*100)+"%)",c:"#f1fa8c"}]);
+    line([{t:"✓ 投资比例已更新: ",c:COLOR.green},
+          {t:"消费占比 "+consumePct()+"%",c:COLOR.pure},
+          {t:"  |  投资占比 "+invPct()+"%",c:COLOR.cyan},
+          {t:"  (货币 "+r2(sp.mm*100)+"% + 指数 "+r2(sp.idx*100)+"%)",c:COLOR.index}]);
     line([{t:"  换算: 占用 = 消费 ÷ "+consumePct()+"%  →  消费¥100 ⇒ 占用¥"+money(100/consumeShare())
-          +" (消费¥100 + 应投¥"+money(100/consumeShare()*(1-consumeShare()))+")",c:"#5d6b62"}]);
-    line([{t:"  ※ 已按新比例重算全部记录的应投额 (已投金额不会超过新的应投额)。",c:"#5d6b62"}]);
-    if(oldPct!==consumePct()) line([{t:"  原消费占比 "+oldPct+"%",c:"#5d6b62"}]);
+          +" (消费¥100 + 应投¥"+money(100/consumeShare()*(1-consumeShare()))+")",c:COLOR.gray}]);
+    line([{t:"  ※ 已按新比例重算全部记录的应投额 (已投金额不会超过新的应投额)。",c:COLOR.gray}]);
+    if(oldPct!==consumePct()) line([{t:"  原消费占比 "+oldPct+"%",c:COLOR.gray}]);
     refreshHeader(); renderInvestBar();
   } else if(sub==="daily"||sub==="daybudget"||sub==="每日"){
     // set daily <金额>  手动设置"每日可用余额"(用于右上角今日预算红黄绿提示); set daily off 取消
     const v=(tokens[1]||"").toLowerCase();
     if(v==="off"||v==="none"||v==="clear"||v==="取消"||v==="关"){
       state.settings.dailyBudget=null; save();
-      line([{t:"✓ 已清除每日可用余额 (右上角「今日预算」转为灰点未设置)",c:"#3dff7a"}]);
+      line([{t:"✓ 已清除每日可用余额 (右上角「今日预算」转为灰点未设置)",c:COLOR.green}]);
     } else {
       const n=numeric(tokens[1]);
-      if(n==null||n<=0){ line([{t:"用法: set daily <金额>  例 set daily 100  (每日可用余额;  set daily off 取消)",c:"#ffd23d"}]); return; }
+      if(n==null||n<=0){ line([{t:"用法: set daily <金额>  例 set daily 100  (每日可用余额;  set daily off 取消)",c:COLOR.yellow}]); return; }
       state.settings.dailyBudget=r2(n); save();
       const ts=todaySnapshot();
-      line([{t:"✓ 每日可用余额已设为 ",c:"#3dff7a"},{t:"¥"+money(r2(n)),c:"#ffffff",cls:"hl"},
-            {t:"  今日已消费 ¥"+money(ts.consumption),c:"#5d6b62"}]);
+      line([{t:"✓ 每日可用余额已设为 ",c:COLOR.green},{t:"¥"+money(r2(n)),c:COLOR.pure,cls:"hl"},
+            {t:"  今日已消费 ¥"+money(ts.consumption),c:COLOR.gray}]);
       line(dotLine("今日预算", ratioDot(ts.ratio)));
     }
     refreshHeader();
   } else {
-    line([{t:"set 支持: budget | daily <每日可用余额> | invest <投资比例%> | consume <消费占比%> | period <N天> | periodstart <日期> | monthstart | weekstart | alert | rate",c:"#ffd23d"}]);
+    line([{t:"set 支持: budget | daily <每日可用余额> | invest <投资比例%> | consume <消费占比%> | period <N天> | periodstart <日期> | monthstart | weekstart | alert | rate",c:COLOR.yellow}]);
   }
 }
 
 /* ------------------------------- budget -------------------------------- */
-function periodSpend(p){ return state.records.filter(r=>inRange(r.date,p.start,p.end)).reduce((s,r)=>s+r.amount,0); }
 /* 配置预算: budget set <金额>=仅改当期; budget default <金额>=以后各期; budget reset=取消当期覆盖 */
 function doBudget(tokens){
   const sub = (tokens[0]||"").toLowerCase();
   const p = currentPeriod();
   if(sub==="set" || sub==="now" || sub==="current"){
     const n = numeric(tokens[1]);
-    if(n==null || n<=0){ line([{t:"用法: budget set <金额>   例 budget set 1200 (仅调整当前周期)",c:"#ffd23d"}]); return; }
+    if(n==null || n<=0){ line([{t:"用法: budget set <金额>   例 budget set 1200 (仅调整当前周期)",c:COLOR.yellow}]); return; }
     state.settings.periodBudget = state.settings.periodBudget || {};
     state.settings.periodBudget[p.start] = r2(n); save();
-    line([{t:"✓ 当期预算已设为 ",c:"#3dff7a"},{t:"¥"+money(r2(n)),c:"#ffffff",cls:"hl"},
-          {t:"  仅影响当前周期 "+p.label+"；以后各期仍为 ¥"+money(state.settings.budget),c:"#5d6b62"}]);
+    line([{t:"✓ 当期预算已设为 ",c:COLOR.green},{t:"¥"+money(r2(n)),c:COLOR.pure,cls:"hl"},
+          {t:"  仅影响当前周期 "+p.label+"；以后各期仍为 ¥"+money(state.settings.budget),c:COLOR.gray}]);
     refreshHeader(); showForecastLine();
     return;
   }
   if(sub==="default"){
     const n = numeric(tokens[1]);
-    if(n==null || n<=0){ line([{t:"用法: budget default <金额>   例 budget default 1000 (改默认, 各期生效)",c:"#ffd23d"}]); return; }
+    if(n==null || n<=0){ line([{t:"用法: budget default <金额>   例 budget default 1000 (改默认, 各期生效)",c:COLOR.yellow}]); return; }
     state.settings.budget = r2(n); save();
-    line([{t:"✓ 默认预算已设为 ",c:"#3dff7a"},{t:"¥"+money(r2(n)),c:"#ffffff",cls:"hl"},{t:" (未单独覆盖的周期都用它)",c:"#5d6b62"}]);
+    line([{t:"✓ 默认预算已设为 ",c:COLOR.green},{t:"¥"+money(r2(n)),c:COLOR.pure,cls:"hl"},{t:" (未单独覆盖的周期都用它)",c:COLOR.gray}]);
     refreshHeader(); showForecastLine();
     return;
   }
   if(sub==="reset" || sub==="clear"){
     if(state.settings.periodBudget){ delete state.settings.periodBudget[p.start]; save(); }
-    line([{t:"✓ 已取消当前周期的预算覆盖，恢复默认 ¥"+money(state.settings.budget),c:"#3dff7a"}]);
+    line([{t:"✓ 已取消当前周期的预算覆盖，恢复默认 ¥"+money(state.settings.budget),c:COLOR.green}]);
     refreshHeader(); showForecastLine();
     return;
   }
@@ -1355,23 +1416,23 @@ function showBudget(){
   const carry = r2(st.usedUnits - b);            // >0 透支, <=0 本期可结转(=剩余)
   const bal = availableBalance();
   blank();
-  line([{t:"▍周期预算  ( ",c:"#4de8ff"},{t:p.label,c:"#ffffff"},{t:" )",c:"#4de8ff"}]);
+  line([{t:"▍周期预算  ( ",c:COLOR.cyan},{t:p.label,c:COLOR.pure},{t:" )",c:COLOR.cyan}]);
   line([
-    {t:"本期发放 ",c:"#d7ffe0"},{t:"¥"+money(b),c:"#3dff7a"},
-    {t:"   消费 ",c:"#d7ffe0"},{t:"¥"+money(st.consumption),c:"#ffffff"},
-    {t:"   应投合计 ",c:"#d7ffe0"},{t:"¥"+money(st.invest),c:"#4de8ff"},
+    {t:"本期发放 ",c:COLOR.white},{t:"¥"+money(b),c:COLOR.green},
+    {t:"   消费 ",c:COLOR.white},{t:"¥"+money(st.consumption),c:COLOR.pure},
+    {t:"   应投合计 ",c:COLOR.white},{t:"¥"+money(st.invest),c:COLOR.cyan},
   ]);
   line([
-    {t:"已占用(含应投) ",c:"#5d6b62"},{t:"¥"+money(st.usedUnits),c:bar.color,cls:"glow"},
-    {t:"   累计可用余额(含结转) ",c:"#5d6b62"},{t:"¥"+money(bal),c:(bal<0?"#ff4d5e":"#3dff7a"),cls:"glow"},
+    {t:"已占用(含应投) ",c:COLOR.gray},{t:"¥"+money(st.usedUnits),c:bar.color,cls:"glow"},
+    {t:"   累计可用余额(含结转) ",c:COLOR.gray},{t:"¥"+money(bal),c:(bal<0?COLOR.red:COLOR.green),cls:"glow"},
   ]);
   line([
-    {t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%  ",c:"#d7ffe0"}
+    {t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%  ",c:COLOR.white}
   ]);
   if(carry > 0){
-    line([{t:"⚠ 本期已透支 ¥"+money(carry)+" (将自下期发放中扣除)",c:"#ff4d5e",cls:"glow"}]);
+    line([{t:"⚠ 本期已透支 ¥"+money(carry)+" (将自下期发放中扣除)",c:COLOR.red,cls:"glow"}]);
   } else {
-    line([{t:"本期可结转 ¥"+money(-carry),c:"#3dff7a"}]);
+    line([{t:"本期可结转 ¥"+money(-carry),c:COLOR.green}]);
   }
   line([{t:aw.t,c:aw.c,cls:"glow"}]);
   // 红黄绿实心圆点: 今日预算(需手动设每日额度) + 周期预算
@@ -1380,11 +1441,11 @@ function showBudget(){
   line(dotLine("周期预算", ratioDot(st.ratio)));
   blank();
   line([{t:"换算口径: 消费 ¥"+money(st.consumption)+" → 占用 ¥"+money(st.usedUnits)
-        +" = 消费÷"+consumePct()+"%; 其中应投 "+invPct()+"% = 应投货币 ",c:"#5d6b62"},
-        {t:"¥"+money(st.mm),c:"#4de8ff"},{t:" + 应投指数 ",c:"#5d6b62"},
-        {t:"¥"+money(st.idx),c:"#f1fa8c"}]);
+        +" = 消费÷"+consumePct()+"%; 其中应投 "+invPct()+"% = 应投货币 ",c:COLOR.gray},
+        {t:"¥"+money(st.mm),c:COLOR.cyan},{t:" + 应投指数 ",c:COLOR.gray},
+        {t:"¥"+money(st.idx),c:COLOR.index}]);
   if(hasBudgetOverride(p)){
-    line([{t:"  ※ 本期为自定义预算 ¥"+money(b)+" (默认 ¥"+money(state.settings.budget)+"); budget reset 可恢复", c:"#ffd23d"}]);
+    line([{t:"  ※ 本期为自定义预算 ¥"+money(b)+" (默认 ¥"+money(state.settings.budget)+"); budget reset 可恢复", c:COLOR.yellow}]);
   }
   showForecastLine();
   blank();
@@ -1393,39 +1454,39 @@ function showBudget(){
 /* ------------------------------- add ----------------------------------- */
 function validateCategory(cat){
   const c = String(cat||"").trim();
-  if(!c){ line([{t:"类别不能为空。例: add 50 餐饮 午餐",c:"#ffd23d"}]); return null; }
-  if(!PREDEFINED.has(c)) PREDEFINED.set(c, "#8be9fd");   // register custom category color
+  if(!c){ line([{t:"类别不能为空。例: add 50 餐饮 午餐",c:COLOR.yellow}]); return null; }
+  if(!PREDEFINED.has(c)) PREDEFINED.set(c, COLOR.catFallback);   // register custom category color
   refreshCatlist();
   return c;
 }
 function doAdd(tokens){
-  if(!tokens.length){ line([{t:"用法: add <金额> <类别> [备注..] [@日期]   例 add 50 餐饮 午餐",c:"#ffd23d"}]); return; }
+  if(!tokens.length){ line([{t:"用法: add <金额> <类别> [备注..] [@日期]   例 add 50 餐饮 午餐",c:COLOR.yellow}]); return; }
   const {tokens:rest, date:rawDate} = findDateToken(tokens);
   const amt = numeric(rest[0]);
-  if(amt==null||amt<=0){ line([{t:"金额无效。例 add 50 餐饮 午餐",c:"#ffd23d"}]); return; }
+  if(amt==null||amt<=0){ line([{t:"金额无效。例 add 50 餐饮 午餐",c:COLOR.yellow}]); return; }
   const cat = validateCategory(rest[1]);
   if(!cat) return;
   const note = rest.slice(2).join(" ");
   const date = cleanDateStr(rawDate);
-  if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:"#ffd23d"}]); return; }
+  if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
   const rec = makeRecord(amt, cat, note, date);
   state.records.push(rec); save();
   const st = periodSnapshot();
   const bar = progressBar(st.ratio);
-  line([{t:"✓ 已记入 #",c:"#3dff7a"},{t:rec.id,c:"#ffffff",cls:"hl"},
+  line([{t:"✓ 已记入 #",c:COLOR.green},{t:rec.id,c:COLOR.pure,cls:"hl"},
         {t:"  "+cat+" ",c:catColor(cat)},
-        {t:"¥"+money(rec.amount),c:"#ffffff"}, {t:"  ("+date+")",c:"#5d6b62"}]);
-  line([{t:"  占用预算 ",c:"#5d6b62"},{t:"¥"+money(rec.amount/consumeShare()),c:"#d7ffe0"},
-        {t:"  (消费÷"+consumePct()+"%)  应投货币 ",c:"#5d6b62"},{t:"¥"+money(rec.mm),c:"#4de8ff"},
-        {t:"  + 应投指数 ",c:"#5d6b62"},{t:"¥"+money(rec.idx),c:"#f1fa8c"},
-        {t:"  = ",c:"#5d6b62"},{t:"¥"+money(rec.mm+rec.idx),c:"#3dff7a"}]);
+        {t:"¥"+money(rec.amount),c:COLOR.pure}, {t:"  ("+date+")",c:COLOR.gray}]);
+  line([{t:"  占用预算 ",c:COLOR.gray},{t:"¥"+money(rec.amount/consumeShare()),c:COLOR.white},
+        {t:"  (消费÷"+consumePct()+"%)  应投货币 ",c:COLOR.gray},{t:"¥"+money(rec.mm),c:COLOR.cyan},
+        {t:"  + 应投指数 ",c:COLOR.gray},{t:"¥"+money(rec.idx),c:COLOR.index},
+        {t:"  = ",c:COLOR.gray},{t:"¥"+money(rec.mm+rec.idx),c:COLOR.green}]);
   // overspend notice for this period
   const aw = alertWord(st.ratio);
   if(aw.t!=="预算内 ✓"){
     line([
-      {t:"⚠ 本期占用 ",c:"#ffd23d"},{t:"¥"+money(st.usedUnits),c:"#ffd23d",cls:"glow"},
-      {t:" / 发放 ¥"+money(st.B),c:"#d7ffe0"},
-      {t:"  ("+bar.pct+"%)  ",c:"#ffd23d"},
+      {t:"⚠ 本期占用 ",c:COLOR.yellow},{t:"¥"+money(st.usedUnits),c:COLOR.yellow,cls:"glow"},
+      {t:" / 发放 ¥"+money(st.B),c:COLOR.white},
+      {t:"  ("+bar.pct+"%)  ",c:COLOR.yellow},
       {t:aw.t,c:aw.c,cls:"glow"}
     ]);
   }
@@ -1450,17 +1511,17 @@ function mkSpan(t,c){ const s=document.createElement("span"); s.textContent=t; i
 /* 每条记录一行; 点右侧"投资状态"按钮后, 行内状态/已投小计即时刷新(修复点了仍显示未投) */
 function renderRecordRow(r){
   const d = document.createElement("div"); d.className = "l";
-  addSeg(d,{t:"#"+r.id, c:"#4de8ff"});
-  addSeg(d,{t:"  "+r.date+"  ", c:"#5d6b62"});
+  addSeg(d,{t:"#"+r.id, c:COLOR.cyan});
+  addSeg(d,{t:"  "+r.date+"  ", c:COLOR.gray});
   addSeg(d,{t:r.category.padEnd(6," "), c:catColor(r.category)});
-  addSeg(d,{t:"¥"+money(r.amount).padStart(8," "), c:"#ffffff"});
-  addSeg(d,{t:"  应投货币 ",c:"#4de8ff"}); addSeg(d,{t:"¥"+money(r.mm), c:"#d7ffe0"});
-  addSeg(d,{t:"  应投指数 ",c:"#f1fa8c"}); addSeg(d,{t:"¥"+money(r.idx), c:"#d7ffe0"});
-  const invSpan = mkSpan("", "#5d6b62");       // 已投小计
-  const stSpan  = mkSpan("", "#5d6b62");       // 状态
+  addSeg(d,{t:"¥"+money(r.amount).padStart(8," "), c:COLOR.pure});
+  addSeg(d,{t:"  应投货币 ",c:COLOR.cyan}); addSeg(d,{t:"¥"+money(r.mm), c:COLOR.white});
+  addSeg(d,{t:"  应投指数 ",c:COLOR.index}); addSeg(d,{t:"¥"+money(r.idx), c:COLOR.white});
+  const invSpan = mkSpan("", COLOR.gray);       // 已投小计
+  const stSpan  = mkSpan("", COLOR.gray);       // 状态
   d.appendChild(invSpan); d.appendChild(stSpan);
-  if(r.note) addSeg(d,{t:"  · "+r.note, c:"#5d6b62"});
-  addSeg(d,{t:"  ", c:"#5d6b62"});
+  if(r.note) addSeg(d,{t:"  · "+r.note, c:COLOR.gray});
+  addSeg(d,{t:"  ", c:COLOR.gray});
   const b = document.createElement("button"); b.type="button"; b.className="tbtn";
   b.title = "把 #"+r.id+" 应投货币/指数全部标记已投 (等同 pay "+r.id+" all), 再点重置";
   // 行是否还指向 state 里的同一条记录: undo/redo 或 del 之后, 旧行会变成"悬空"行,
@@ -1468,7 +1529,7 @@ function renderRecordRow(r){
   const alive = ()=> state.records.indexOf(r) >= 0;
   const refresh = ()=>{
     if(!alive()){
-      invSpan.textContent = ""; stSpan.textContent = "  已失效"; stSpan.style.color = "#5d6b62";
+      invSpan.textContent = ""; stSpan.textContent = "  已失效"; stSpan.style.color = COLOR.gray;
       b.disabled = true; b.className = "tbtn dimmed"; b.textContent = "已失效";
       b.title = "该行对应的记录已被删除或撤销, 请重新 list";
       return;
@@ -1477,7 +1538,7 @@ function renderRecordRow(r){
     const mInv=r.moneyInv||0, iInv=r.indexInv||0;
     const parts=[]; if(mInv>0) parts.push("已投货币¥"+money(mInv)); if(iInv>0) parts.push("已投指数¥"+money(iInv));
     invSpan.textContent = parts.length? "  ["+parts.join(" ")+"]" : "";
-    invSpan.style.color = "#5d6b62";
+    invSpan.style.color = COLOR.gray;
     const st = recStatus(r);
     stSpan.textContent = "  "+st.t; stSpan.style.color = st.c;
     const f2 = !noNeed && recFullyMoney(r) && recFullyIndex(r);
@@ -1493,8 +1554,8 @@ function renderRecordRow(r){
     }
   };
   b.addEventListener("click", ()=>{
-    if(!alive()){ line([{t:"#"+r.id+" 所在行已失效(记录已被删除或撤销), 请重新执行 list 查看最新数据。", c:"#ffd23d"}]); refresh(); return; }
-    if(recNoNeed(r)){ line([{t:"#"+r.id+" 应投货币/指数均为 ¥0.00, 无需投资。", c:"#ffd23d"}]); return; }
+    if(!alive()){ line([{t:"#"+r.id+" 所在行已失效(记录已被删除或撤销), 请重新执行 list 查看最新数据。", c:COLOR.yellow}]); refresh(); return; }
+    if(recNoNeed(r)){ line([{t:"#"+r.id+" 应投货币/指数均为 ¥0.00, 无需投资。", c:COLOR.yellow}]); return; }
     mutate(()=>{
       if(recFullyMoney(r) && recFullyIndex(r)){ r.moneyInv=0; r.indexInv=0; }
       else { r.moneyInv=r.mm; r.indexInv=r.idx; }
@@ -1502,7 +1563,7 @@ function renderRecordRow(r){
     });
     const f2 = recFullyMoney(r) && recFullyIndex(r);
     refresh();
-    line([{t:"✓ #"+r.id+" "+r.category+" ¥"+money(r.amount)+" 投资 → "+(f2?"已投资":"未投资"), c: f2?"#3dff7a":"#ffd23d"}]);
+    line([{t:"✓ #"+r.id+" "+r.category+" ¥"+money(r.amount)+" 投资 → "+(f2?"已投资":"未投资"), c: f2?COLOR.green:COLOR.yellow}]);
     refreshHeader(); scrollBottom();
   });
   d.appendChild(b);
@@ -1559,37 +1620,37 @@ function doList(tokens){
   if(f.limit) desc.push("最近 "+f.limit+" 条");
   const descTxt = desc.length ? ("  [筛选: "+desc.join("  ")+"]") : "";
   if(f.bad.length) line([{t:"⚠ 无法识别的日期条件: "+f.bad.join(" ")+"  可用 @YYYY-MM-DD / @YYYY-MM / @today / @period / @month",
-                          c:"#ffd23d"}]);
+                          c:COLOR.yellow}]);
   if(!rows.length){
-    line([{t:"(暂无匹配记录)"+descTxt+"   add 一笔试试吧",c:"#5d6b62"}]);
+    line([{t:"(暂无匹配记录)"+descTxt+"   add 一笔试试吧",c:COLOR.gray}]);
     const cats=[...new Set(state.records.map(r=>r.category))];
-    if(cats.length) line([{t:"现有类别: "+cats.join("   "),c:"#5d6b62"}]);
+    if(cats.length) line([{t:"现有类别: "+cats.join("   "),c:COLOR.gray}]);
     return;
   }
   const sum = r2(rows.reduce((s,r)=>s+r.amount,0));
   blank();
-  line([{t:" 消费记录  ("+rows.length+" 条)",c:"#4de8ff"},{t:descTxt,c:"#ffd23d"}]);
-  line([{t:" 合计 ¥"+money(sum)+"   点每行右侧 [标记已投资] 一键勾选, 再点取消。",c:"#5d6b62"}]);
+  line([{t:" 消费记录  ("+rows.length+" 条)",c:COLOR.cyan},{t:descTxt,c:COLOR.yellow}]);
+  line([{t:" 合计 ¥"+money(sum)+"   点每行右侧 [标记已投资] 一键勾选, 再点取消。",c:COLOR.gray}]);
   for(const r of rows){ renderRecordRow(r); }
   blank();
 }
 function doDelete(tokens){
   const id = numeric(tokens[0]);
-  if(id==null){ line([{t:"用法: del <id>",c:"#ffd23d"}]); return; }
+  if(id==null){ line([{t:"用法: del <id>",c:COLOR.yellow}]); return; }
   const i = state.records.findIndex(r=>r.id===id);
-  if(i<0){ line([{t:"未找到 #"+id+"。用 list 查看编号",c:"#ffd23d"}]); return; }
+  if(i<0){ line([{t:"未找到 #"+id+"。用 list 查看编号",c:COLOR.yellow}]); return; }
   const [rm] = state.records.splice(i,1); save();
-  line([{t:"✗ 已删除 #",c:"#ff4d5e"},{t:rm.id,c:"#ff4d5e"},{t:"  "+rm.category+" ¥"+money(rm.amount),c:"#d7ffe0"}]);
+  line([{t:"✗ 已删除 #",c:COLOR.red},{t:rm.id,c:COLOR.red},{t:"  "+rm.category+" ¥"+money(rm.amount),c:COLOR.white}]);
   refreshHeader();
 }
 function doUpdate(tokens){
-  if(tokens.length<3){ line([{t:"用法: update <id> <金额> <类别> [备注..] [@日期]",c:"#ffd23d"}]); return; }
+  if(tokens.length<3){ line([{t:"用法: update <id> <金额> <类别> [备注..] [@日期]",c:COLOR.yellow}]); return; }
   const id = numeric(tokens[0]);
   const rec = state.records.find(r=>r.id===id);
-  if(!rec){ line([{t:"未找到 #"+id,c:"#ffd23d"}]); return; }
+  if(!rec){ line([{t:"未找到 #"+id,c:COLOR.yellow}]); return; }
   const {tokens:rest, date:rawDate} = findDateToken(tokens.slice(1));
   const amt = numeric(rest[0]);
-  if(amt==null||amt<=0){ line([{t:"金额无效",c:"#ffd23d"}]); return; }
+  if(amt==null||amt<=0){ line([{t:"金额无效",c:COLOR.yellow}]); return; }
   const cat = validateCategory(rest[1]); if(!cat) return;
   const note = rest.slice(2).join(" ");
   rec.amount = r2(amt); rec.category = cat; rec.note = note;
@@ -1598,15 +1659,15 @@ function doUpdate(tokens){
   rec.moneyInv = Math.min(rec.moneyInv||0, rec.mm);
   rec.indexInv = Math.min(rec.indexInv||0, rec.idx);
   save();
-  line([{t:"✓ 已更新 #",c:"#3dff7a"},{t:id,c:"#ffffff"},{t:"  "+cat+" ¥"+money(rec.amount)+" 应投重新计算: 货币¥"+money(rec.mm)+" 指数¥"+money(rec.idx),c:"#d7ffe0"}]);
+  line([{t:"✓ 已更新 #",c:COLOR.green},{t:id,c:COLOR.pure},{t:"  "+cat+" ¥"+money(rec.amount)+" 应投重新计算: 货币¥"+money(rec.mm)+" 指数¥"+money(rec.idx),c:COLOR.white}]);
   refreshHeader();
 }
 function doPay(tokens){
   const id = numeric(tokens[0]);
-  if(id==null){ line([{t:"用法: pay <id> [mm|idx|all|none]   例 pay 3 all",c:"#ffd23d"}]); return; }
+  if(id==null){ line([{t:"用法: pay <id> [mm|idx|all|none]   例 pay 3 all",c:COLOR.yellow}]); return; }
   const rec = state.records.find(r=>r.id===id);
-  if(!rec){ line([{t:"未找到 #"+id,c:"#ffd23d"}]); return; }
-  if(recNoNeed(rec)){ line([{t:"#"+id+" 应投货币/指数均为 ¥0.00, 无需投资。",c:"#ffd23d"}]); return; }
+  if(!rec){ line([{t:"未找到 #"+id,c:COLOR.yellow}]); return; }
+  if(recNoNeed(rec)){ line([{t:"#"+id+" 应投货币/指数均为 ¥0.00, 无需投资。",c:COLOR.yellow}]); return; }
   const kind = (tokens[1]||"all").toLowerCase();
   let label="", verb;
   const fm = recFullyMoney(rec), fi = recFullyIndex(rec);
@@ -1619,10 +1680,10 @@ function doPay(tokens){
     rec.moneyInv = fm ? 0 : rec.mm; label = fm ? "货币 重置未投" : "货币 记已投";
   } else if(kind==="idx"||kind==="index"){
     rec.indexInv = fi ? 0 : rec.idx; label = fi ? "指数 重置未投" : "指数 记已投";
-  } else { line([{t:"kind 应为 mm | idx | all | none",c:"#ffd23d"}]); return; }
+  } else { line([{t:"kind 应为 mm | idx | all | none",c:COLOR.yellow}]); return; }
   save();
   const st2 = recStatus(rec);
-  line([{t:"✓ #"+id+" "+label+" → "+st2.t, c: st2.c==="#3dff7a"?"#3dff7a":"#ffd23d"}]);
+  line([{t:"✓ #"+id+" "+label+" → "+st2.t, c: st2.c===COLOR.green?COLOR.green:COLOR.yellow}]);
   refreshHeader();
 }
 
@@ -1633,12 +1694,12 @@ function doInvestFull(kind){
   const r = mutate(()=>investFull(kind));
   if(!r){
     const pend = kind==="money" ? moneyPending() : indexPending();
-    if(pend <= INV_EPS) line([{t:name+" 未投池为空，暂无可投。", c:"#ffd23d"}]);
-    else line([{t:name+" 未投池仅 ¥"+money(pend)+"，需累计至 ¥"+lot+" 才能全额投资。", c:"#ffd23d"}]);
+    if(pend <= INV_EPS) line([{t:name+" 未投池为空，暂无可投。", c:COLOR.yellow}]);
+    else line([{t:name+" 未投池仅 ¥"+money(pend)+"，需累计至 ¥"+lot+" 才能全额投资。", c:COLOR.yellow}]);
     return;
   }
-  line([{t:"✓ 已全额投资 ",c:"#3dff7a"},{t:name,c:kind==="money"?"#4de8ff":"#f1fa8c"},
-        {t:" ¥"+money(r.amt)+" (池已清零; 分摊到 "+r.applied+" 笔未投记录)",c:"#d7ffe0"}]);
+  line([{t:"✓ 已全额投资 ",c:COLOR.green},{t:name,c:kind==="money"?COLOR.cyan:COLOR.index},
+        {t:" ¥"+money(r.amt)+" (池已清零; 分摊到 "+r.applied+" 笔未投记录)",c:COLOR.white}]);
   refreshHeader();
   renderInvestBar();
   scrollBottom();
@@ -1658,7 +1719,10 @@ function collectWindow(start,end,category){
   const days = Math.max(1, daysBetween(start,end)+1);
   return {rows,count:rows.length,total,mmT,idxT,cats,start,end,days,category:catFilter};
 }
-function printSummaryReport(win, windowName, budgetRef, opts){
+/* 总结报告渲染。注意: 表里的"预算行"(本期发放/占用/结余/累计余额)始终是
+   **当前记账周期**口径 —— 预算按周期发放与结转, 不随统计窗口或类别变化,
+   所以这里不接收"窗口对应的周期"参数(旧的 budgetRef 形参传了但从未被读取)。 */
+function printSummaryReport(win, windowName, opts){
   opts = opts || {};
   const st = periodSnapshot();                 // 当前(含窗口所在)周期口径
   const bar = progressBar(st.ratio);
@@ -1666,52 +1730,52 @@ function printSummaryReport(win, windowName, budgetRef, opts){
   const carry = r2(st.usedUnits - st.B);       // >0 透支; <=0 本期剩余可结转
   const bal = availableBalance();
   const title = windowName;
-  line([{t:"═ "+title+" 总结 ═", c:"#4de8ff"}]);
+  line([{t:"═ "+title+" 总结 ═", c:COLOR.cyan}]);
   const invTotal = r2(win.mmT+win.idxT);
   // stat table rows: [key, value, color, glow?]
   const rows=[
-    ["窗口总消费", "¥"+money(win.total), "#ffffff"],
-    ["消费笔数", String(win.count), "#d7ffe0"],
+    ["窗口总消费", "¥"+money(win.total), COLOR.pure],
+    ["消费笔数", String(win.count), COLOR.white],
   ];
   for(const [cat,amt] of win.cats){
     const pct = win.total>0? (amt/win.total*100).toFixed(1)+"%":"0%";
     rows.push(["  类别·"+cat, "¥"+money(amt)+"  ("+pct+")", catColor(cat)]);
   }
-  rows.push(["应投货币("+mmPct()+"%)", "¥"+money(win.mmT), "#4de8ff"]);
-  rows.push(["应投指数("+idxPct()+"%)", "¥"+money(win.idxT), "#f1fa8c"]);
-  rows.push(["应投合计", "¥"+money(invTotal), "#3dff7a"]);
-  rows.push(["本期发放(基准)", "¥"+money(st.B), "#d7ffe0"]);
-  rows.push(["本期消费", "¥"+money(st.consumption), "#ffffff"]);
-  rows.push(["本期占用(消费+应投)", "¥"+money(st.usedUnits), (st.ratio>1?"#ff4d5e":"#d7ffe0")]);
-  rows.push(["本期结余/透支", (carry>0?"透支 -":"可结转 +")+money(Math.abs(carry)), carry>0?"#ff4d5e":"#3dff7a"]);
-  rows.push(["累计可用余额(含结转)", "¥"+money(bal), bal<0?"#ff4d5e":"#3dff7a"]);
+  rows.push(["应投货币("+mmPct()+"%)", "¥"+money(win.mmT), COLOR.cyan]);
+  rows.push(["应投指数("+idxPct()+"%)", "¥"+money(win.idxT), COLOR.index]);
+  rows.push(["应投合计", "¥"+money(invTotal), COLOR.green]);
+  rows.push(["本期发放(基准)", "¥"+money(st.B), COLOR.white]);
+  rows.push(["本期消费", "¥"+money(st.consumption), COLOR.pure]);
+  rows.push(["本期占用(消费+应投)", "¥"+money(st.usedUnits), (st.ratio>1?COLOR.red:COLOR.white)]);
+  rows.push(["本期结余/透支", (carry>0?"透支 -":"可结转 +")+money(Math.abs(carry)), carry>0?COLOR.red:COLOR.green]);
+  rows.push(["累计可用余额(含结转)", "¥"+money(bal), bal<0?COLOR.red:COLOR.green]);
   rows.push(["超额状态", aw.t, aw.c]);
   for(const [k,v,color] of rows){
-    line([{t:("  "+k).padEnd(24," "), c:"#5d6b62"},{t:v, c:color, cls:(/透支|超额/.test(k)&&(carry>0||aw.t!=="预算内 ✓"))?"glow":""}]);
+    kvRow(k, v, 0, color, /透支|超额/.test(k) && (carry>0 || aw.t!=="预算内 ✓"));
   }
   // visual bar for the period
-  line([{t:" 本期发放进度 ",c:"#5d6b62"},{t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%",c:"#d7ffe0"}]);
-  line([{t:" 换算口径: 消费÷"+consumePct()+"%=占用; 占用×"+invPct()+"% 应投(货币"+mmPct()+"%/指数"+idxPct()+"%)", c:"#5d6b62"}]);
+  line([{t:" 本期发放进度 ",c:COLOR.gray},{t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%",c:COLOR.white}]);
+  line([{t:" 换算口径: 消费÷"+consumePct()+"%=占用; 占用×"+invPct()+"% 应投(货币"+mmPct()+"%/指数"+idxPct()+"%)", c:COLOR.gray}]);
   // category mini-bars
   if(win.cats.length && win.total>0){
-    line([{t:" 类别占比(按消费):",c:"#5d6b62"}]);
+    line([{t:" 类别占比(按消费):",c:COLOR.gray}]);
     for(const [cat,amt] of win.cats){
       const ratioC = amt/win.total;
       const w = Math.round(ratioC*20);
       const col = catColor(cat);
-      line([{t:"   "+cat,c:col},{t:"  "+"█".repeat(w)+"░".repeat(20-w)+"  ",c:col},{t:(ratioC*100).toFixed(1)+"%",c:"#d7ffe0"}]);
+      line([{t:"   "+cat,c:col},{t:"  "+"█".repeat(w)+"░".repeat(20-w)+"  ",c:col},{t:(ratioC*100).toFixed(1)+"%",c:COLOR.white}]);
     }
   }
   // investment payment status recap (未投部分 != 0)
   const unpaid = win.rows.filter(r=> !(recFullyMoney(r) && recFullyIndex(r)));
   if(unpaid.length){
-    line([{t:" 未完全投资 ("+unpaid.length+" 笔): 用 pay <id> all 或点右侧按钮", c:"#ffd23d"}]);
+    line([{t:" 未完全投资 ("+unpaid.length+" 笔): 用 pay <id> all 或点右侧按钮", c:COLOR.yellow}]);
     unpaid.slice(0,10).forEach(r=>{
       const mmInv=r.moneyInv||0, idxInv=r.indexInv||0;
       const invNote = (mmInv||idxInv) ? "  (已投货币¥"+money(mmInv)+" 指数¥"+money(idxInv)+")":"";
-      line([{t:"   #"+r.id+" "+r.category+" ¥"+money(r.amount)+"  (应投货币¥"+money(r.mm)+" 指数¥"+money(r.idx)+")"+invNote,c:"#d7ffe0"}]);
+      line([{t:"   #"+r.id+" "+r.category+" ¥"+money(r.amount)+"  (应投货币¥"+money(r.mm)+" 指数¥"+money(r.idx)+")"+invNote,c:COLOR.white}]);
     });
-    if(unpaid.length>10) line([{t:"   ... 等 "+(unpaid.length-10)+" 笔",c:"#5d6b62"}]);
+    if(unpaid.length>10) line([{t:"   ... 等 "+(unpaid.length-10)+" 笔",c:COLOR.gray}]);
   }
   // 平均每日消费（summary day 不计算）
   if(!opts.isDay){
@@ -1720,17 +1784,17 @@ function printSummaryReport(win, windowName, budgetRef, opts){
     const endEff = (win.end && win.end < today) ? win.end : today;
     const usedDays = Math.max(1, daysBetween(win.start, endEff) + 1);
     const avg = r2(win.total / usedDays);
-    line([{t:" ── 平均每日消费 ──", c:"#5d6b62"}]);
+    line([{t:" ── 平均每日消费 ──", c:COLOR.gray}]);
     line([
-      {t:" 日均 ", c:"#5d6b62"},
-      {t:"¥"+money(avg), c:"#4de8ff", cls:"glow"},
-      {t:"   = 窗口总消费 ¥"+money(win.total)+" ÷ "+usedDays+" 天", c:"#5d6b62"}
+      {t:" 日均 ", c:COLOR.gray},
+      {t:"¥"+money(avg), c:COLOR.cyan, cls:"glow"},
+      {t:"   = 窗口总消费 ¥"+money(win.total)+" ÷ "+usedDays+" 天", c:COLOR.gray}
     ]);
     line([
-      {t:" 统计口径: ", c:"#5d6b62"},
+      {t:" 统计口径: ", c:COLOR.gray},
       {t:(usedDays<totalDays
           ? ("窗口 "+totalDays+" 天, 已过 "+usedDays+" 天")
-          : ("窗口 "+totalDays+" 天 (已结束)")), c:"#5d6b62"}
+          : ("窗口 "+totalDays+" 天 (已结束)")), c:COLOR.gray}
     ]);
   }
   blank();
@@ -1746,7 +1810,7 @@ function parseSummaryArgs(tokens){
   for(const tk of rest){
     if(!tk) continue;
     if(tk[0]==="@"){ ref = tk.slice(1); continue; }
-    if(/^\d{4}-\d{1,2}(-\d{1,2})?$/.test(tk)){ ref = tk; continue; } // 形如 2026-08 / 2026-08-01
+    if(/^\d{4}-\d{1,2}(-\d{1,2})?$/.test(tk)){ ref = tk; continue; } // 形如 2027-07 / 2027-07-01
     cat = tk;                                                        // 其余非日期 token 视为类别
   }
   return {kind, cat, ref};
@@ -1755,7 +1819,7 @@ function doSummary(tokens){
   const {kind, cat, ref} = parseSummaryArgs(tokens);
   const isDay = (kind==="day"||kind==="日"||kind==="today");
   const tag = cat ? "  [类别: "+cat+"]" : "";
-  let win, name, budgetRef=null;
+  let win, name;
   if(isDay){
     const t=todayYMD(); win=collectWindow(t,t,cat); name="今日 "+t;
   } else if(kind==="week"||kind==="周"){
@@ -1763,10 +1827,10 @@ function doSummary(tokens){
     name="本周 "+w.start+" ~ "+w.end+" (周"+(state.settings.weekStart==="mon"?"一":"日")+"起)";
   } else if(kind==="cat"||kind==="category"||kind==="类别"){
     const p=currentPeriod(); win=collectWindow(p.start,p.end,cat);
-    name="周期分类 · "+p.label; budgetRef=p;
+    name="周期分类 · "+p.label;
   } else if(kind==="month"||kind==="月"||kind==="natural"||(!kind && ref)){
     // 自然月：固定从当月 1 日到月末，与记账周期(滚动/自定义)无关
-    // (kind 为空但给了月份, 如 `summary 2026-08`: 以前会静默忽略这个月份, 现在按该自然月统计)
+    // (kind 为空但给了月份, 如 `summary 2027-07`: 以前会静默忽略这个月份, 现在按该自然月统计)
     let r = todayYMD();
     if(ref){
       const p = parseYMD(ref) || (/^\d{4}-\d{1,2}$/.test(ref) ? parseYMD(ref+"-01") : null);
@@ -1775,19 +1839,17 @@ function doSummary(tokens){
     const m = calendarMonthBounds(r);
     win = collectWindow(m.start, m.end, cat);
     name = "本月(自然月 1日~月末) "+m.label;
-    budgetRef = currentPeriod();
   } else { // default: current accounting period
     const p=currentPeriod(); win=collectWindow(p.start,p.end,cat);
     const w1 = p.mode==="rolling" ? "本周期(每"+p.len+"天)" : "本月周期";
     name = w1+" "+p.label;
-    budgetRef=p;
   }
   if(cat && win.count===0){
-    line([{t:"⚠ 该窗口内没有“"+cat+"”的记录，已按 0 显示。", c:"#ffd23d"}]);
+    line([{t:"⚠ 该窗口内没有“"+cat+"”的记录，已按 0 显示。", c:COLOR.yellow}]);
     const used = [...new Set(state.records.map(r=>r.category))];
-    if(used.length) line([{t:"  现有类别: "+used.join("  "), c:"#5d6b62"}]);
+    if(used.length) line([{t:"  现有类别: "+used.join("  "), c:COLOR.gray}]);
   }
-  printSummaryReport(win, name+tag, budgetRef, {isDay, catFilter:cat});
+  printSummaryReport(win, name+tag, {isDay, catFilter:cat});
 }
 
 /* ------------------------------ export --------------------------------- */
@@ -1798,7 +1860,7 @@ function buildReportText(md){
   const push=(k,v)=> L.push(md? "**"+k+"**: "+v : k+": "+v);
   const H=(s)=> L.push(md? "## "+s : "── "+s+" ──");
   const HR=()=> L.push(md?"---":"─".repeat(40));
-  const moneyF=(x)=> md? "¥"+money(x) : "¥"+money(x);
+  const moneyF=(x)=> "¥"+money(x);      // md/txt 两种格式的金额写法一致(原先是个恒等的三元)
   const r2s=(x)=> (x*100).toFixed(1)+"%";
   const st = periodSnapshot();
   const bal = availableBalance();
@@ -1858,7 +1920,7 @@ function doExport(tokens){
   const t=todayYMD();
   const fname = "budget_report_"+t+(md?".md":".txt");
   download(fname, content, md?"text/markdown":"text/plain;charset=utf-8");
-  line([{t:"✓ 已导出报告: ",c:"#3dff7a"},{t:fname,c:"#4de8ff",cls:"glow"},{t:"  (文件已下载)",c:"#5d6b62"}]);
+  line([{t:"✓ 已导出报告: ",c:COLOR.green},{t:fname,c:COLOR.cyan,cls:"glow"},{t:"  (文件已下载)",c:COLOR.gray}]);
 }
 
 function showSettings(){
@@ -1866,23 +1928,22 @@ function showSettings(){
   const modeDesc = s.periodMode==="rolling"
     ? ("滚动 "+s.lengthDays+" 天 / 起点 "+(s.anchor||"-"))
     : (s.monthStart===1?"自然月(每月1日)":"每月 "+s.monthStart+" 日起");
+  const kv = (k,v)=>kvRow(k,v,0,COLOR.pure);      // 统一渲染器: 配置页不再手写空格对齐
   blank();
-  line([{t:" 当前配置",c:"#4de8ff"},{t:"   "+APP_VERSION,c:"#5d6b62"}]);
-  line([{t:"  默认周期预算    ",c:"#5d6b62"},{t:"¥"+money(s.budget),c:"#ffffff"}]);
+  line([{t:" 当前配置",c:COLOR.cyan},{t:"   "+APP_VERSION,c:COLOR.gray}]);
+  kv("默认周期预算", "¥"+money(s.budget));
   const cp = currentPeriod();
-  line([{t:"  当期预算        ",c:"#5d6b62"},
-        {t: hasBudgetOverride(cp) ? ("¥"+money(effectiveBudget(cp))+"  (自定义, 默认 ¥"+money(s.budget)+")") : ("¥"+money(effectiveBudget(cp))+"  (跟随默认)"), c:"#ffffff"}]);
-  line([{t:"  周期模式        ",c:"#5d6b62"},{t:modeDesc,c:"#ffffff"}]);
-  line([{t:"  周起始日        ",c:"#5d6b62"},{t:s.weekStart==="mon"?"周一":"周日",c:"#ffffff"}]);
+  kv("当期预算", hasBudgetOverride(cp) ? ("¥"+money(effectiveBudget(cp))+"  (自定义, 默认 ¥"+money(s.budget)+")")
+                                       : ("¥"+money(effectiveBudget(cp))+"  (跟随默认)"));
+  kv("周期模式", modeDesc);
+  kv("周起始日", s.weekStart==="mon"?"周一":"周日");
   const dbv = (typeof s.dailyBudget==="number" && s.dailyBudget>0) ? ("¥"+money(s.dailyBudget)) : "未设置";
-  line([{t:"  每日可用余额    ",c:"#5d6b62"},{t:dbv+"   (set daily <金额> 可改)",c:"#ffffff"}]);
-  line([{t:"  预警阈值        ",c:"#5d6b62"},{t:s.thresholds.join("% , ")+"%",c:"#ffffff"}]);
-  line([{t:"  年化(货币/指数) ",c:"#5d6b62"},{t:(s.rateMoney*100).toFixed(2)+"% / "+(s.rateIndex*100).toFixed(2)+"%",c:"#ffffff"}]);
+  kv("每日可用余额", dbv+"   (set daily <金额> 可改)");
+  kv("预警阈值", s.thresholds.join("% , ")+"%");
+  kv("年化(货币/指数)", (s.rateMoney*100).toFixed(2)+"% / "+(s.rateIndex*100).toFixed(2)+"%");
   const sp = rateSplit();
-  line([{t:"  消费/投资比例  ",c:"#5d6b62"},
-        {t:"消费 "+consumePct()+"%  |  投资 "+invPct()+"%  (货币 "+r2(sp.mm*100)+"% + 指数 "+r2(sp.idx*100)+"%)",c:"#ffffff"}]);
-  line([{t:"  换算(占用)      ",c:"#5d6b62"},
-        {t:"占用 = 消费 ÷ "+consumePct()+"%   (set invest 15 / set consume 85 可调)",c:"#ffffff"}]);
+  kv("消费/投资比例", "消费 "+consumePct()+"%  |  投资 "+invPct()+"%  (货币 "+r2(sp.mm*100)+"% + 指数 "+r2(sp.idx*100)+"%)");
+  kv("换算(占用)", "占用 = 消费 ÷ "+consumePct()+"%   (set invest 15 / set consume 85 可调)");
   blank();
 }
 
@@ -1910,38 +1971,38 @@ function forecastData(){
 /* budget 命令末尾的一行简报 */
 function showForecastLine(){
   const f = forecastData();
-  const color = f.projLeft < 0 ? "#ff4d5e" : "#3dff7a";
+  const color = f.projLeft < 0 ? COLOR.red : COLOR.green;
   // 剩余 0 天(本周期最后一天)时不再说"每天可花", 否则会显示"还剩 0 天, 每天可花 ¥850"
   const tail = f.remaining > 0
     ? ("  (还剩 "+f.remaining+" 天, 每天可花 ¥"+money(Math.max(0,f.perDayLeft))+")")
     : ("  (本周期已到最后一天, 还可消费 ¥"+money(Math.max(0,f.leftConsume))+")");
-  line([{t:"  燃尽预测: 日均 ¥"+money(f.dailyAvg)+"/天", c:"#5d6b62"},
-        {t:"  →  期末预计"+(f.projLeft<0?"超支 ":"结余 "), c:"#5d6b62"},
+  line([{t:"  燃尽预测: 日均 ¥"+money(f.dailyAvg)+"/天", c:COLOR.gray},
+        {t:"  →  期末预计"+(f.projLeft<0?"超支 ":"结余 "), c:COLOR.gray},
         {t:"¥"+money(Math.abs(f.projLeft)), c:color, cls:"glow"},
-        {t:tail, c:"#5d6b62"}]);
+        {t:tail, c:COLOR.gray}]);
 }
 function doForecast(){
   const f = forecastData();
   const bar = progressBar(f.projRatio);
   const over = f.projLeft < 0;
   blank();
-  line([{t:"▍燃尽预测  ( ",c:"#4de8ff"},{t:f.p.label,c:"#ffffff"},{t:" )",c:"#4de8ff"}]);
-  const row=(k,v,c)=>line([{t:("  "+k).padEnd(22," "),c:"#5d6b62"},{t:v,c:c||"#d7ffe0"}]);
+  line([{t:"▍燃尽预测  ( ",c:COLOR.cyan},{t:f.p.label,c:COLOR.pure},{t:" )",c:COLOR.cyan}]);
+  const row=(k,v,c)=>kvRow(k,v,0,c);      // 统一渲染器(列宽按窗口自适应)
   row("周期天数", f.total+" 天");
   row("已过 / 剩余", f.elapsed+" 天 / "+f.remaining+" 天");
-  row("本期消费额度("+consumePct()+"%)", "¥"+money(f.allow), "#4de8ff");
-  row("已消费", "¥"+money(f.spent), "#ffffff");
-  row("日均消费", "¥"+money(f.dailyAvg), "#ffd23d");
-  row("剩余可消费", "¥"+money(f.leftConsume), f.leftConsume<0?"#ff4d5e":"#3dff7a");
+  row("本期消费额度("+consumePct()+"%)", "¥"+money(f.allow), COLOR.cyan);
+  row("已消费", "¥"+money(f.spent), COLOR.pure);
+  row("日均消费", "¥"+money(f.dailyAvg), COLOR.yellow);
+  row("剩余可消费", "¥"+money(f.leftConsume), f.leftConsume<0?COLOR.red:COLOR.green);
   // 剩余 0 天时"每天可花"没有意义(以前仍显示 ¥850.00/天)
-  if(f.remaining > 0) row("每日可花(剩余)", "¥"+money(Math.max(0,f.perDayLeft))+"/天", f.perDayLeft<0?"#ff4d5e":"#3dff7a");
-  else                row("每日可花(剩余)", "本周期已到最后一天, 不再摊到每天", "#5d6b62");
-  line([{t:"  "+"─".repeat(40), c:"#5d6b62"}]);
-  row("期末预测消费", "¥"+money(f.projConsumption), "#ffffff");
-  row("期末预测占用", "¥"+money(f.projUsed)+" / 发放 ¥"+money(f.B), f.projRatio>1?"#ff4d5e":"#d7ffe0");
-  row(over?"预计超支":"预计结余", (over?"-":"+")+"¥"+money(Math.abs(f.projLeft)), over?"#ff4d5e":"#3dff7a");
-  line([{t:"  预测占用进度 ",c:"#5d6b62"},{t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%",c:"#d7ffe0"}]);
-  line([{t:"  提示: 保持当前节奏, "+(over?("本期将透支 ¥"+money(Math.abs(f.projLeft))+" (会从下期发放扣回)"):("本期可结转 ¥"+money(f.projLeft))), c: over?"#ffd23d":"#5d6b62"}]);
+  if(f.remaining > 0) row("每日可花(剩余)", "¥"+money(Math.max(0,f.perDayLeft))+"/天", f.perDayLeft<0?COLOR.red:COLOR.green);
+  else                row("每日可花(剩余)", "本周期已到最后一天, 不再摊到每天", COLOR.gray);
+  line([{t:"  "+"─".repeat(40), c:COLOR.gray}]);
+  row("期末预测消费", "¥"+money(f.projConsumption), COLOR.pure);
+  row("期末预测占用", "¥"+money(f.projUsed)+" / 发放 ¥"+money(f.B), f.projRatio>1?COLOR.red:COLOR.white);
+  row(over?"预计超支":"预计结余", (over?"-":"+")+"¥"+money(Math.abs(f.projLeft)), over?COLOR.red:COLOR.green);
+  line([{t:"  预测占用进度 ",c:COLOR.gray},{t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%",c:COLOR.white}]);
+  line([{t:"  提示: 保持当前节奏, "+(over?("本期将透支 ¥"+money(Math.abs(f.projLeft))+" (会从下期发放扣回)"):("本期可结转 ¥"+money(f.projLeft))), c: over?COLOR.yellow:COLOR.gray}]);
   blank();
 }
 
@@ -1970,27 +2031,27 @@ function doAssets(tokens){
   const totalNow = r2(cash + pm + pi);
   const totalFut = r2(cash + mvM + mvI);
   blank();
-  line([{t:"▍资产看板",c:"#4de8ff"},{t:"   (年化 货币 "+(rm*100).toFixed(2)+"% / 指数 "+(ri*100).toFixed(2)+"%; set rate 可改)",c:"#5d6b62"}]);
+  line([{t:"▍资产看板",c:COLOR.cyan},{t:"   (年化 货币 "+(rm*100).toFixed(2)+"% / 指数 "+(ri*100).toFixed(2)+"%; set rate 可改)",c:COLOR.gray}]);
   // 逐行
-  const row=(k,v,c)=>line([{t:("  "+k).padEnd(22," "),c:"#5d6b62"},{t:v,c:c||"#d7ffe0"}]);
-  row("现金余额(含结转)", "¥"+money(cash), cash<0?"#ff4d5e":"#3dff7a");
-  row("货币基金 本金", "¥"+money(pm), "#4de8ff");
-  row("  货币 "+horizon+"年后", "¥"+money(mvM), "#4de8ff");
-  row("指数基金 本金", "¥"+money(pi), "#f1fa8c");
-  row("  指数 "+horizon+"年后", "¥"+money(mvI), "#f1fa8c");
-  line([{t:"  "+"─".repeat(40), c:"#5d6b62"}]);
-  row("总资产(现金+本金)", "¥"+money(totalNow), "#ffffff");
-  row("总资产("+horizon+"年后预估)", "¥"+money(totalFut), "#3dff7a");
+  const row=(k,v,c)=>kvRow(k,v,0,c);      // 统一渲染器(列宽按窗口自适应)
+  row("现金余额(含结转)", "¥"+money(cash), cash<0?COLOR.red:COLOR.green);
+  row("货币基金 本金", "¥"+money(pm), COLOR.cyan);
+  row("  货币 "+horizon+"年后", "¥"+money(mvM), COLOR.cyan);
+  row("指数基金 本金", "¥"+money(pi), COLOR.index);
+  row("  指数 "+horizon+"年后", "¥"+money(mvI), COLOR.index);
+  line([{t:"  "+"─".repeat(40), c:COLOR.gray}]);
+  row("总资产(现金+本金)", "¥"+money(totalNow), COLOR.pure);
+  row("总资产("+horizon+"年后预估)", "¥"+money(totalFut), COLOR.green);
   const gain = r2(totalFut - totalNow);
-  row("预估增值", (gain>=0?"+":"")+"¥"+money(gain), gain>=0?"#3dff7a":"#ff4d5e");
+  row("预估增值", (gain>=0?"+":"")+"¥"+money(gain), gain>=0?COLOR.green:COLOR.red);
   // ASCII 增长曲线(现金不增长, 仅基金复利)
   const vals = [];
   for(let t=0;t<=horizon;t++){ vals.push(cash + fv(pm,rm,t) + fv(pi,ri,t)); }
-  line([{t:"  增长曲线(0→"+horizon+"年): ",c:"#5d6b62"},{t:sparkline(vals),c:"#3dff7a",cls:"glow"}]);
+  line([{t:"  增长曲线(0→"+horizon+"年): ",c:COLOR.gray},{t:sparkline(vals),c:COLOR.green,cls:"glow"}]);
   const step = Math.max(1, Math.round(horizon/5));
   const labels = [];
   for(let t=0;t<=horizon;t+=step){ labels.push("第"+t+"年"); }
-  line([{t:"  "+labels.join("        "),c:"#5d6b62"}]);
+  line([{t:"  "+labels.join("        "),c:COLOR.gray}]);
   blank();
 }
 
@@ -2025,9 +2086,9 @@ function refreshHeader(){
     const kk=document.createElement("span"); kk.className="k"; kk.textContent=k;
     const vv=document.createElement("span"); vv.className="v"; vv.textContent=v;
     if(k==="可用余额(含结转)") vv.className+= bal<0?" neg":(bal<st.B*0.2?" warn":" ok");
-    else if(k==="已投货币"){ vv.className+=" ok"; vv.style.color="#4de8ff"; }
-    else if(k==="已投指数"){ vv.className+=" ok"; vv.style.color="#f1fa8c"; }
-    else if(k==="总资产(现金+基金)") { vv.className+=" ok"; vv.style.color="#ffffff"; }
+    else if(k==="已投货币"){ vv.className+=" ok"; vv.style.color=COLOR.cyan; }
+    else if(k==="已投指数"){ vv.className+=" ok"; vv.style.color=COLOR.index; }
+    else if(k==="总资产(现金+基金)") { vv.className+=" ok"; vv.style.color=COLOR.pure; }
     d.append(kk,vv); bar.appendChild(d);
   }
   const gap=document.createElement("div"); gap.className="spacer"; bar.appendChild(gap);
@@ -2196,7 +2257,7 @@ function bindToolbar(){
     ev.target.value="";
     if(!file) return;
     try{ await restoreFromText(await file.text()); }
-    catch(e){ line([{t:"导入失败: "+(e&&e.message||e), c:"#ff4d5e"}]); }
+    catch(e){ line([{t:"导入失败: "+(e&&e.message||e), c:COLOR.red}]); }
   });
   // 点空白处收起下拉
   document.addEventListener("click",(ev)=>{
@@ -2224,7 +2285,7 @@ function onListMenuItem(kind){
 /* ---- 手动输入日期/月份查看 ----
    两个输入框统一为 ISO 文本: 日期 YYYY-MM-DD、月份 YYYY-MM(与命令 @日期 一致),
    旁边 📅 仍可调原生日历/月份选择器, 选完同样回填成统一格式。 */
-const DATE_HINT = "格式统一: 日期 YYYY-MM-DD、月份 YYYY-MM（等同命令 @2026-09-18 / @2026-09）；填日期 → 只看当天，只填月份 → 看整月，两个都填则优先日期。";
+const DATE_HINT = "格式统一: 日期 YYYY-MM-DD、月份 YYYY-MM（等同命令 @2027-08-18 / @2027-08）；填日期 → 只看当天，只填月份 → 看整月，两个都填则优先日期。";
 function dateModalEl(id){ return document.getElementById(id); }
 function normDateField(id, kind){                    // 读取并归一化某个输入框
   const el = dateModalEl(id);
@@ -2247,10 +2308,10 @@ function updateDatePreview(){
   const pv = dateModalEl("d_preview");
   pv.textContent = when ? ("将执行:  list"+(cat?(" "+cat):"")+" "+when)
                         : "将执行:  (请先填写「日期」或「月份」)";
-  pv.style.color = d.value ? "var(--green)" : (m.value ? "var(--cyan)" : "#3c4b41");
+  pv.style.color = d.value ? COLOR.green : (m.value ? COLOR.cyan : COLOR.faint);
   return { d, m, cat, when };
 }
-/* 失焦即把写法归一化: 2026/9/5 → 2026-09-05 */
+/* 失焦即把写法归一化: 2027/8/5 → 2027-08-05 */
 function normalizeDateField(id, kind){
   const f = normDateField(id, kind);
   if(f.ok && f.raw) f.el.value = f.value;
@@ -2329,24 +2390,39 @@ function bindModal(){
   document.getElementById("d_cat").addEventListener("keydown",(e)=>{ if(e.key==="Enter") applyDateModal(); });
 }
 /* ===================== Tab 命令补全 ===================== */
-const CMD_WORDS = ["help","set","add","list","del","update","pay","summary","export","assets","forecast","undo","redo","config","cls","budget"];
+/* M1: 补全词同样由 COMMANDS 派生(主名在前, 别名在后), 不再手抄一份 */
+const CMD_WORDS = [...new Set([...COMMAND_NAMES, ...Object.keys(CMD_ALIAS)])];
 function recordIds(){ return state.records.map(r=>String(r.id)); }
 // 已知类别 + 历史记录里出现过的类别(含自定义)，用于补全与提示
 function allCategories(){
   return [...new Set([...PREDEFINED.keys(), ...state.records.map(r=>r.category)])].filter(Boolean);
 }
+/* 参数补全。
+   M2 修复: 以前用"第几个 token"当槽位, 但 `@日期` 是**位置无关**参数
+   (`add @2027-08-18 300 购物` / `add 300 购物 @2027-08-18` 都合法), 数 token 会把后面的槽位顶偏;
+   而且 `add` 干脆忽略槽位(金额位也提示类别)、`update` 又把类别放在金额位(slot 2)、类别位(slot 3)返回空。
+   现在统一成"语义槽位" arg = **已输入的值参数个数**(命令名与 @日期 都不计入):
+     arg=0 是该命令的第 1 个值参数, 依此类推。所有命令共用这一套。 */
 function argCandidates(c0, slot, tokens, cur){
-  const cmd = c0;
+  const cmd = canonicalCmd(c0);      // 别名先归一, 下面的分支只认主名(与 dispatch 同一套)
+  let arg = 0;                       // 语义槽位(0-based)
+  for(let i=1; i<slot && i<tokens.length; i++){
+    const t = tokens[i];
+    if(t && t[0]!=="@") arg++;       // @日期不占槽位
+  }
+  const typingAt = !!(cur && cur[0]==="@");
+  // 正在输入 @条件: 只有 list 支持关键字写法, 其余命令要么接受 ISO 日期(@YYYY-MM-DD), 要么不支持
+  if(typingAt) return (cmd==="list") ? ["@today","@period","@month"] : [];
   if(cmd==="help"||cmd==="config"||cmd==="cls"||cmd==="undo"||cmd==="redo") return [];
-  if(cmd==="assets"||cmd==="forecast"||cmd==="burn"||cmd==="predict") return [];
+  if(cmd==="assets"||cmd==="forecast") return [];
   if(cmd==="budget"){
-    if(slot===1) return ["set","default","reset"];
-    if(slot===2) return ["800","1000","1200","1500","2000"];
+    if(arg===0) return ["set","default","reset"];
+    if(arg===1) return ["800","1000","1200","1500","2000"];
     return [];
   }
   if(cmd==="set"){
-    if(slot===1) return ["budget","daily","invest","consume","ratio","period","periodstart","monthstart","weekstart","alert","rate"];
-    if(slot===2){
+    if(arg===0) return ["budget","daily","invest","consume","ratio","period","periodstart","monthstart","weekstart","alert","rate"];
+    if(arg===1){
       const sub=(tokens[1]||"").toLowerCase();
       if(sub==="daily") return ["off","50","100","150","200"];
       if(sub==="invest") return ["15","10","20","5"];
@@ -2357,34 +2433,37 @@ function argCandidates(c0, slot, tokens, cur){
       if(sub==="alert") return ["80,100","50,100","90"];
       if(sub==="rate") return ["money","index"];
     }
-    if(slot===3){
+    if(arg===2){
       const sub=(tokens[1]||"").toLowerCase();
       if(sub==="rate") return ["2","3","8","10"];
     }
     return [];
   }
-  if(cmd==="add"||cmd==="a") return [...PREDEFINED.keys()];
-  if(cmd==="update"||cmd==="edit"){
-    if(slot===1) return recordIds();
-    if(slot===2) return [...PREDEFINED.keys()];
+  /* add <金额> <类别> [备注..] [@日期]: 金额位不提示(数字自己敲), 类别位给类别, 备注位不给 */
+  if(cmd==="add"){
+    if(arg===1) return [...PREDEFINED.keys()];
     return [];
   }
-  if(cmd==="del"||cmd==="rm"||cmd==="delete") return recordIds();
-  if(cmd==="pay"||cmd==="invest"){
-    if(slot===1) return recordIds();
-    if(slot===2) return ["mm","idx","all","none"];
+  /* update <id> <金额> <类别> [备注..] [@日期]: 修复前类别被放在金额位(slot 2), 类别位(slot 3)返回空 */
+  if(cmd==="update"){
+    if(arg===0) return recordIds();
+    if(arg===2) return [...PREDEFINED.keys()];
     return [];
   }
-  if(cmd==="list"||cmd==="ls"){
-    if(cur[0]==="@") return ["@today","@period","@month"];
+  if(cmd==="del"){ if(arg===0) return recordIds(); return []; }
+  if(cmd==="pay"){
+    if(arg===0) return recordIds();
+    if(arg===1) return ["mm","idx","all","none"];
+    return [];
+  }
+  if(cmd==="list"){                                   // 类别/@日期/条数 顺序自由, 各槽位都给同一组候选
     return ["@today","@period","@month", ...allCategories()];
   }
-  if(cmd==="summary"||cmd==="sum"){
-    if(cur[0]==="@") return [];
-    if(slot<=1) return ["day","week","month","cat", ...allCategories()];
-    return allCategories();          // 类别筛选
+  if(cmd==="summary"){
+    if(arg===0) return ["day","week","month","cat", ...allCategories()];
+    return allCategories();                           // 类别筛选
   }
-  if(cmd==="export"){ if(slot===1) return ["md","txt"]; return []; }
+  if(cmd==="export"){ if(arg===0) return ["md","txt"]; return []; }
   return [];
 }
 function completionCandidates(full){
@@ -2400,8 +2479,8 @@ function completionCandidates(full){
   return { list, slot, cur, hasTrailing, base: full };
 }
 function tabHint(names){
-  line([{t:"Tab 候选: ", c:"#5d6b62"},{t:names.join("   "), c:"#4de8ff"},
-        {t:"   (继续按 Tab 循环, Enter 执行)", c:"#5d6b62"}]);
+  line([{t:"Tab 候选: ", c:COLOR.gray},{t:names.join("   "), c:COLOR.cyan},
+        {t:"   (继续按 Tab 循环, Enter 执行)", c:COLOR.gray}]);
   scrollBottom();
 }
 /* ---- 输入框淡色“将输入”提示(ghost): 唯一候选时显示待补字符 ---- */
@@ -2415,13 +2494,13 @@ function currentGhostSuffix(value){
   return suffix || null;
 }
 let _cv=null, _ctx2=null;
-function textWidthPx(s){
+function textWidthPx(s, el){
   if(!s) return 0;
   try{
     if(!_cv){ _cv = document.createElement("canvas"); _ctx2 = _cv.getContext && _cv.getContext("2d"); }
     if(_ctx2){
       let f="15px monospace";
-      try{ f = getComputedStyle(input).font || f; }catch(e){}
+      try{ f = getComputedStyle(el || input).font || f; }catch(e){}
       _ctx2.font = f;
       return _ctx2.measureText(s).width;
     }
@@ -2491,7 +2570,7 @@ function bindInput(){
 let history=[], hIdx=-1;
 function historyUp(){ if(!history.length) return; if(hIdx<0) hIdx=history.length-1; else hIdx=Math.max(0,hIdx-1); input.value=history[hIdx]; }
 function historyDown(){ if(hIdx<0) return; hIdx++; if(hIdx>=history.length){ hIdx=-1; input.value=""; } else input.value=history[hIdx]; }
-function recordHistory(c){ if(c && c!==history[history.length-1]) history.push(c); hIdx=-1; }
+/* 历史命令在 runCommand() 里入栈(含工具栏/弹窗触发的命令), 这里不再另设入口 */
 
 /* live clock in input prompt? keep simple */
 
@@ -2502,22 +2581,22 @@ function boot(){
   bindToolbar(); bindModal(); bindInput();
   armAutoReconnect();
   refreshHistoryUI();
-  if(dropped) line([{t:"⚠ 本地数据里有 "+dropped+" 条记录金额/日期损坏, 已跳过(其余记录照常加载)。", c:"#ffd23d"}]);
+  if(dropped) line([{t:"⚠ 本地数据里有 "+dropped+" 条记录金额/日期损坏, 已跳过(其余记录照常加载)。", c:COLOR.yellow}]);
   // banner
   const t=todayYMD();
-  line([{t:"╔══════════════════════════════════════════════════════╗",c:"#3dff7a"}]);
-  line([{t:"║  ",c:"#3dff7a"},{t:"BUDGET :: TERM",c:"#4de8ff",cls:"glow"},{t:"  "+APP_VERSION+"   个人记账 · 自动理财规划",c:"#ffffff"},{t:"  ║",c:"#3dff7a"}]);
-  line([{t:"╚══════════════════════════════════════════════════════╝",c:"#3dff7a"}]);
+  line([{t:"╔══════════════════════════════════════════════════════╗",c:COLOR.green}]);
+  line([{t:"║  ",c:COLOR.green},{t:"BUDGET :: TERM",c:COLOR.cyan,cls:"glow"},{t:"  "+APP_VERSION+"   个人记账 · 自动理财规划",c:COLOR.pure},{t:"  ║",c:COLOR.green}]);
+  line([{t:"╚══════════════════════════════════════════════════════╝",c:COLOR.green}]);
   line([
-    {t:"今日 ",c:"#5d6b62"},{t:t,c:"#d7ffe0"},
-    {t:"   模型: 消费÷"+consumePct()+"%=占用预算; 占用×"+invPct()+"% 应投 ",c:"#5d6b62"},
-    {t:"货币"+mmPct()+"%",c:"#4de8ff"},{t:"+",c:"#5d6b62"},{t:"指数"+idxPct()+"%",c:"#f1fa8c"},
-    {t:"; 剩余结转, 透支下期扣回",c:"#5d6b62"}
+    {t:"今日 ",c:COLOR.gray},{t:t,c:COLOR.white},
+    {t:"   模型: 消费÷"+consumePct()+"%=占用预算; 占用×"+invPct()+"% 应投 ",c:COLOR.gray},
+    {t:"货币"+mmPct()+"%",c:COLOR.cyan},{t:"+",c:COLOR.gray},{t:"指数"+idxPct()+"%",c:COLOR.index},
+    {t:"; 剩余结转, 透支下期扣回",c:COLOR.gray}
   ]);
-  line([{t:"  投资比例可调: ",c:"#5d6b62"},{t:"set invest 15",c:"#ffd23d"},
-        {t:" (或 set consume 85 / set ratio 0.85)",c:"#5d6b62"}]);
+  line([{t:"  投资比例可调: ",c:COLOR.gray},{t:"set invest 15",c:COLOR.yellow},
+        {t:" (或 set consume 85 / set ratio 0.85)",c:COLOR.gray}]);
   showBudget();
-  line([{t:"输入 ",c:"#5d6b62"},{t:"help",c:"#ffd23d"},{t:" 查看全部命令；或点上方按钮快速操作。",c:"#5d6b62"}]);
+  line([{t:"输入 ",c:COLOR.gray},{t:"help",c:COLOR.yellow},{t:" 查看全部命令；或点上方按钮快速操作。",c:COLOR.gray}]);
   blank();
   input.focus();
 }
