@@ -10,10 +10,10 @@ const DIR = path.dirname(fileURLToPath(import.meta.url));
 
 /* 交付闸门基线(HANDOVER §5.3)。断言数变化 = 护栏被增删, 必须是有意为之, 再同步改这里。 */
 const SUITES = [
-  { file:"test.mjs",  expect:110, what:"账本/周期/结转/投资池/导入导出/持久化/撤销重做 + 分摊成本(amort)" },
+  { file:"test.mjs",  expect:138, what:"账本/周期/结转/投资池/导入导出/持久化/撤销重做 + 分摊成本(amort) + 分摊窗口口径" },
   { file:"test2.mjs", expect:55,  what:"端到端命令流/弹窗/备份数据冒烟/阈值与圆点" },
-  { file:"test3.mjs", expect:84,  what:"P1 护栏: 颜色令牌/kvRow/自适应列宽/死代码/响应式" },
-  { file:"test4.mjs", expect:81,  what:"M1 护栏: 登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README" },
+  { file:"test3.mjs", expect:85,  what:"P1 护栏: 颜色令牌/kvRow/自适应列宽/死代码/响应式" },
+  { file:"test4.mjs", expect:85,  what:"M1 护栏: 登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表" },
   { file:"test5.mjs", expect:81,  what:"M2 护栏: 语义槽位/@日期位置无关/ghost 预览 + amort 补全与双选项卡" },
 ];
 

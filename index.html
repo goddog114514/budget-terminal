@@ -385,7 +385,7 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.6";         // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.0.7";         // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
 /* --- 分摊成本(amort)的字段与口径 ---
    一笔"分摊成本"= 一次性付出的**总价**(如年费/房租/保险费), 按 **分摊天数** 平均分到每一天。
@@ -888,9 +888,9 @@ function weekBounds(dateStr){
   const en = new Date(P.y,P.m-1,P.d-startD+6);
   return { start:fmtY(st), end:fmtY(en) };
 }
-function inRange(dateStr, start, end){
-  return dateStr >= start && dateStr <= end;
-}
+/* 注: 原先这里有个 inRange(dateStr,start,end)。v0.0.7 把"按日期统计/筛选"统一收口到
+   recInWindow()/recAmountInRange() 之后它就没有调用点了 —— 删掉, 避免"死代码漂移"(HANDOVER F12)。
+   判断"某天是否落在区间内"请直接用 YYYY-MM-DD 字符串比较(ISO 格式可直接比大小)。 */
 function catColor(cat){ return PREDEFINED.get(cat) || COLOR.catFallback; }
 
 /* --------------------------- investment calc ---------------------------- */
@@ -905,6 +905,44 @@ function recTotal(r){
   return (Number(r && r.amount)||0) * recDays(r);
 }
 function recAmortized(r){ return recDays(r) > 1; }
+/* 分摊成本的**生效窗口**: 从记账日(date)起连续 recDays(r) 天, 闭区间。
+    普通消费是"一天"(date~date), 所以下面所有窗口函数对旧记录都退化成原来的行为。
+    以前只有 r.date 被用来筛选/求和 —— 于是一笔 365 天的分摊只在**记账那一天**算一次钱,
+    其余 364 天在每日预算/周期预算/消费列表/总结里全部消失(严重缺陷, 现已按天窗口计算)。 */
+function recWindow(r){
+  const start = (r && typeof r.date==="string") ? r.date : todayYMD();
+  return { start, end: addDaysYMD(start, recDays(r)-1) };
+}
+/* 该记录的分摊窗口与 [start,end] 的交集天数(不为普通消费/不相交时返回 0) */
+function recDaysInRange(r, start, end){
+  const w = recWindow(r);
+  const s = w.start > start ? w.start : start;      // YYYY-MM-DD 可直接比较大小
+  const e = w.end   < end   ? w.end   : end;
+  return (s > e) ? 0 : (daysBetween(s,e) + 1);
+}
+/* 窗口筛选的唯一入口: 只按 date 命中会把分摊成本漏掉, 一律用"窗口有交集" */
+function recInWindow(r, start, end){ return recDaysInRange(r, start, end) > 0; }
+/* 某条记录在 [start,end] 里的消费额(消费口径: 分摊按天计入, 普通消费就是 amount) */
+function recAmountInRange(r, start, end){
+  const n = recDaysInRange(r, start, end);
+  return n > 0 ? r2(n * (Number(r.amount)||0)) : 0;
+}
+/* 到"今天"为止已实际发生的消费额: 分摊成本只累计到窗口内的今天 ——
+    封顶到 today 是为了不让未来的分摊天数提前占掉今天的可用余额
+    (否则记一笔年付房租, 可用余额立刻变负; 未来那些天尚未来到, 不该算已消费)。 */
+function recAmountUpToToday(r){
+  return recAmountInRange(r, recWindow(r).start, todayYMD());
+}
+/* 一组记录在窗口内的消费合计 / 其中分摊部分(列表与总结共用, 避免两处口径漂移) */
+function sumRange(rows, start, end){
+  let total = 0, amort = 0;
+  for(const r of rows){
+    const a = recAmountInRange(r, start, end);
+    total += a;
+    if(recAmortized(r)) amort += a;
+  }
+  return { total:r2(total), amort:r2(amort) };
+}
 /* 核心换算: 一笔消费 E 对应占用总花费 E/N (N=消费占比, 默认0.85, 可调);
    应投 = 占用 × (1-N), 其中货币/指数按 13:2 拆分
    注意: 调用方传的必须是**该笔付出的总金额**(分摊成本传总价, 普通消费传 amount) —— 投资不分摊。 */
@@ -945,6 +983,32 @@ function recStatus(r){
   if(m && i) return {t:"已投", c:COLOR.green};
   if(!(r.moneyInv||0) && !(r.indexInv||0)) return {t:"未投", c:COLOR.gray};
   return {t:"部分", c:COLOR.yellow};
+}
+/* ===================== 窗口统计（消费口径的唯一入口） =====================
+   分摊成本让"一条记录"不再等于"一天": 一笔分摊横跨 recDays() 天, 每天都该计入消费。
+   下面这四个函数是**所有**按日期统计消费的地方(report 期快照/今日快照/列表/总结/导出)的唯一入口,
+   别在任何地方再写一遍 `filter(r=>r.date在区间内).reduce(s+r.amount)` —— 那正是本缺陷的来源
+   (分摊只在记账当天算一次, 其余天数在每日/周期/列表/总结里全部消失)。 */
+/* 统计窗口(总结/报告/周期快照共用): 行筛选与金额口径都按"分摊窗口与窗口有交集" */
+function collectWindow(start,end,category){
+  const catFilter = category ? String(category).trim() : null;
+  let rows = state.records.filter(r=>recInWindow(r,start,end));
+  if(catFilter) rows = rows.filter(r=>r.category===catFilter);
+  const sm = sumRange(rows, start, end);
+  const byCat = new Map();
+  for(const r of rows){ byCat.set(r.category,(byCat.get(r.category)||0)+recAmountInRange(r,start,end)); }
+  const inv = investTotalsOf(rows);
+  return { rows, count:rows.length,
+           total:sm.total, amortTotal:sm.amort,
+           mmT:inv.mm, idxT:inv.idx,
+           cats:[...byCat.entries()].sort((a,b)=>b[1]-a[1]),
+           start, end, days:Math.max(1, daysBetween(start,end)+1), category:catFilter };
+}
+/* 一组记录的应投合计(总结/导出/周期快照共用, 避免同一份 reduce 抄三遍) */
+function investTotalsOf(rows){
+  let mm = 0, idx = 0, mmInv = 0, idxInv = 0;
+  for(const r of rows){ mm += (r.mm||0); idx += (r.idx||0); mmInv += (r.moneyInv||0); idxInv += (r.indexInv||0); }
+  return { mm:r2(mm), idx:r2(idx), mmInv:r2(mmInv), idxInv:r2(idxInv) };
 }
 /* 把某类阈值额度(lot)按比例分摊到未投记录上(支持部分投入), 返回描述文字 */
 function investAmount(kind, amt){ // 按比例把 amt 投给该种未投池; kind 'money'|'index'
@@ -1036,21 +1100,25 @@ function grantedTotal(){
   for(const s of periodStartsUpTo(cur)) sum += effectiveBudget({start:s});
   return r2(sum);
 }
-function totalCharge(){ return r2(state.records.reduce((s,r)=>s + (r.amount / consumeShare()), 0)); }
+/* 累计已发生的占用: 分摊成本按**到今天为止已过的天数**累计
+   (不是把每天金额只在记账当天算一次, 也不是把未来那些天提前算掉)。 */
+function totalCharge(){ return r2(state.records.reduce((s,r)=>s + recAmountUpToToday(r)/consumeShare(), 0)); }
 function availableBalance(){ return r2(grantedTotal() - totalCharge()); }
 function periodDayCount(p){ return daysBetween(p.start, p.end) + 1; }
-/* 当前周期快照(含燃尽预测所需的日进度) */
+/* 当前周期快照(含燃尽预测所需的日进度)
+   行筛选与消费口径都复用 collectWindow: 本期**覆盖到的**记录(分摊窗口与本期有交集)才算一笔,
+   它的消费额按"落在本期内的天数"计 —— 以前只认 r.date, 于是分摊只在记账当天算一次。 */
 function periodSnapshot(){
   const p = currentPeriod();
   const B = effectiveBudget(p);
-  const rows = state.records.filter(r=>inRange(r.date,p.start,p.end));
-  const consumption = r2(rows.reduce((s,r)=>s+r.amount,0));      // 消费口径 (元)
-  const mm  = r2(rows.reduce((s,r)=>s+r.mm,0));                   // 应投货币(本期累计)
-  const idx = r2(rows.reduce((s,r)=>s+r.idx,0));                  // 应投指数(本期累计)
+  const win = collectWindow(p.start, p.end);
+  const consumption = win.total;                                   // 消费口径 (元)
+  const mm = win.mmT, idx = win.idxT;                              // 应投货币/指数(本期累计)
   const invest = r2(mm+idx);
   const usedUnits = r2(consumption / consumeShare());              // 本期已占用的预算口径
   const ratio = B>0 ? usedUnits/B : 0;                            // 进度(相对本期发放 B)
-  return { p, B, rows, consumption, mm, idx, invest, usedUnits, ratio };
+  return { p, B, rows:win.rows, consumption, amort:win.amortTotal,
+           mm, idx, invest, usedUnits, ratio };
 }
 
 /* =========================== rendering helpers ========================== */
@@ -1141,10 +1209,11 @@ function ratioDot(ratio){
   if(p >= warn) return {cls:"y", word:"黄", dot:COLOR.yellow, text:"接近上限"+p.toFixed(0)+"%"};
   return {cls:"g", word:"绿", dot:COLOR.green, text:"剩余"+Math.max(0,100-p).toFixed(0)+"%"};
 }
-/* 今日快照: 今日消费 vs 手动设置的"每日可用余额" */
+/* 今日快照: 今日消费 vs 手动设置的"每日可用余额"
+   分摊成本按**当天那一份**计入(以前只有记账当天算一次, 之后每天恒为 0)。 */
 function todaySnapshot(){
   const t = todayYMD();
-  const consumption = r2(state.records.filter(r=>r.date===t).reduce((s,r)=>s+r.amount,0));
+  const consumption = r2(state.records.reduce((s,r)=>s+recAmountInRange(r,t,t),0));
   const d = state.settings.dailyBudget;
   const hasDaily = typeof d==="number" && d>0;
   return { date:t, consumption, daily: hasDaily? d : null, ratio: hasDaily ? consumption/d : null };
@@ -1656,8 +1725,11 @@ function renderRecordRow(r){
   addSeg(d,{t:"  "+r.date+"  ", c:COLOR.gray});
   addSeg(d,{t:r.category.padEnd(6," "), c:catColor(r.category)});
   addSeg(d,{t:"¥"+money(r.amount).padStart(8," "), c:COLOR.pure});
-  // 分摊成本: 行里的金额是"每天"的金额, 后面补上"总价 X / N 天", 否则看不出来源
-  if(recAmortized(r)) addSeg(d,{t:"  [总"+money(recTotal(r))+" ÷ "+recDays(r)+"天]", c:COLOR.gray});
+  // 分摊成本: 行里的金额是"每天"的金额, 后面补上"总价 X / N 天(起~止)", 否则看不出来源
+  if(recAmortized(r)){
+    const w = recWindow(r);
+    addSeg(d,{t:"  [分摊"+recDays(r)+"天: 总"+money(recTotal(r))+" → 每天"+money(r.amount)+"  "+w.start+"~"+w.end+"]", c:COLOR.gray});
+  }
   addSeg(d,{t:"  应投货币 ",c:COLOR.cyan}); addSeg(d,{t:"¥"+money(r.mm), c:COLOR.white});
   addSeg(d,{t:"  应投指数 ",c:COLOR.index}); addSeg(d,{t:"¥"+money(r.idx), c:COLOR.white});
   const invSpan = mkSpan("", COLOR.gray);       // 已投小计
@@ -1749,10 +1821,14 @@ function filterByTokens(tokens){
 function doList(tokens){
   const f = filterByTokens(tokens);
   let rows = state.records.slice();
+  /* 日期口径统一走"分摊窗口有交集": 一笔分摊成本在它的每一天都该出现在列表里。
+     以前写成 r.date===f.date / inRange(r.date,..) 只认记账日 → 窗口里其余天"查不到这笔"(缺陷)。 */
+  let winB = null;                                   // 本次筛选的日期窗口(没有日期条件时为 null)
+  if(f.date)       winB = { start:f.date, end:f.date };
+  else if(f.range) winB = { start:f.range.start, end:f.range.end };
+  else if(f.month) winB = calendarMonthBounds(f.month+"-01");
   if(f.cat)  rows = rows.filter(r=>r.category===f.cat);
-  if(f.date) rows = rows.filter(r=>r.date===f.date);
-  else if(f.range) rows = rows.filter(r=>inRange(r.date,f.range.start,f.range.end));
-  else if(f.month) rows = rows.filter(r=>r.date.startsWith(f.month));
+  if(winB)   rows = rows.filter(r=>recInWindow(r,winB.start,winB.end));
   rows.sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:a.id-b.id));
   if(f.limit && f.limit>0) rows = rows.slice(-f.limit);
   const desc=[];
@@ -1770,10 +1846,20 @@ function doList(tokens){
     if(cats.length) line([{t:"现有类别: "+cats.join("   "),c:COLOR.gray}]);
     return;
   }
-  const sum = r2(rows.reduce((s,r)=>s+r.amount,0));
+  /* 合计按"窗口内实际计入的天数"算: 分摊记录只算落在筛选窗口里的那些天,
+     否则一行显示的是"每天"、合计却按整天数全算, 两处对不上。 */
+  const winDays = winB ? (daysBetween(winB.start,winB.end)+1) : null;
+  const sm = winB ? sumRange(rows, winB.start, winB.end)
+                  : { total:r2(rows.reduce((s,r)=>s+r.amount,0)), amort:0 };
   blank();
   line([{t:" 消费记录  ("+rows.length+" 条)",c:COLOR.cyan},{t:descTxt,c:COLOR.yellow}]);
-  line([{t:" 合计 ¥"+money(sum)+"   点每行右侧 [标记已投资] 一键勾选, 再点取消。",c:COLOR.gray}]);
+  line([{t:" 合计 ¥"+money(sm.total)+"   点每行右侧 [标记已投资] 一键勾选, 再点取消。",c:COLOR.gray}]);
+  if(sm.amort>0){
+    line([{t:" 其中分摊成本 ¥"+money(sm.amort)
+           +(winDays>1 ? ("  (行内 ¥ 是每天的口径, 合计按落在筛选窗口内的 "+winDays+" 天计)")
+                       : "  (行内 ¥ 就是当天这一份)"),
+           c:COLOR.gray}]);
+  }
   for(const r of rows){ renderRecordRow(r); }
   blank();
 }
@@ -1857,20 +1943,8 @@ function doInvestFull(kind){
 }
 
 /* ----------------------------- summaries ------------------------------- */
-function collectWindow(start,end,category){
-  const catFilter = category ? String(category).trim() : null;
-  let rows = state.records.filter(r=>inRange(r.date,start,end));
-  if(catFilter) rows = rows.filter(r=>r.category===catFilter);
-  const total = r2(rows.reduce((s,r)=>s+r.amount,0));
-  const mmT  = r2(rows.reduce((s,r)=>s+r.mm,0));
-  const idxT = r2(rows.reduce((s,r)=>s+r.idx,0));
-  const byCat = new Map();
-  for(const r of rows){ byCat.set(r.category,(byCat.get(r.category)||0)+r.amount); }
-  const cats = [...byCat.entries()].sort((a,b)=>b[1]-a[1]);
-  const days = Math.max(1, daysBetween(start,end)+1);
-  return {rows,count:rows.length,total,mmT,idxT,cats,start,end,days,category:catFilter};
-}
-/* 总结报告渲染。注意: 表里的"预算行"(本期发放/占用/结余/累计余额)始终是
+/* 窗口统计的唯一实现在"窗口统计"分区(collectWindow / investTotalsOf),
+   这里只放 summary 命令本身 —— 别再复制一份窗口求和。 *//* 总结报告渲染。注意: 表里的"预算行"(本期发放/占用/结余/累计余额)始终是
    **当前记账周期**口径 —— 预算按周期发放与结转, 不随统计窗口或类别变化,
    所以这里不接收"窗口对应的周期"参数(旧的 budgetRef 形参传了但从未被读取)。 */
 function printSummaryReport(win, windowName, opts){
@@ -1891,6 +1965,12 @@ function printSummaryReport(win, windowName, opts){
   for(const [cat,amt] of win.cats){
     const pct = win.total>0? (amt/win.total*100).toFixed(1)+"%":"0%";
     rows.push(["  类别·"+cat, "¥"+money(amt)+"  ("+pct+")", catColor(cat)]);
+  }
+  /* 分摊成本的占比: 它已经按天算进"窗口总消费"里了, 这里只是让用户看得见有多少来自分摊
+     (以前分摊只在记账当天计一天, 其余天数在总结里完全不可见) */
+  if(win.amortTotal>0){
+    const pA = win.total>0? (win.amortTotal/win.total*100).toFixed(1)+"%":"0%";
+    rows.push(["  其中分摊成本", "¥"+money(win.amortTotal)+"  ("+pA+")", COLOR.gray]);
   }
   rows.push(["应投货币("+mmPct()+"%)", "¥"+money(win.mmT), COLOR.cyan]);
   rows.push(["应投指数("+idxPct()+"%)", "¥"+money(win.idxT), COLOR.index]);
@@ -2033,26 +2113,27 @@ function buildReportText(md){
   const w=collectWindow(p.start,p.end);
   push("消费笔数", String(w.count));
   push("总消费", moneyF(w.total));
+  if(w.amortTotal>0) push("其中分摊成本(按落在本期的天数计)", moneyF(w.amortTotal));
   for(const [cat,amt] of w.cats){ push("类别·"+cat, moneyF(amt)+" ("+(w.total?amt/w.total*100:0).toFixed(1)+"%)"); }
   HR();
   H("自动投资换算");
   push("应投货币 ("+mmPct()+"%口径)", moneyF(w.mmT));
   push("应投指数 ("+idxPct()+"%口径)", moneyF(w.idxT));
   push("应投合计", moneyF(r2(w.mmT+w.idxT)));
-  const paidMM = r2(w.rows.reduce((s,r)=>s+(r.moneyInv||0),0));
-  const paidIdx= r2(w.rows.reduce((s,r)=>s+(r.indexInv||0),0));
-  push("已投货币", moneyF(paidMM)+" / 应投"+moneyF(w.mmT));
-  push("已投指数", moneyF(paidIdx)+" / 应投"+moneyF(w.idxT));
+  const paid = investTotalsOf(w.rows);
+  push("已投货币", moneyF(paid.mmInv)+" / 应投"+moneyF(w.mmT));
+  push("已投指数", moneyF(paid.idxInv)+" / 应投"+moneyF(w.idxT));
   HR();
   H("逐笔记录");
   for(const r of state.records.slice().sort((a,b)=>a.date<b.date?-1:1)){
-    const paid=recStatus(r).t;
-    // 分摊成本额外标注"总价 / 天数"; 行里的 ¥ 金额仍是每天的口径(与合计/占用一致)
+    const paidSt=recStatus(r).t;
+    // 分摊成本额外标注"总价 / 天数 / 生效区间"; 行里的 ¥ 金额仍是每天的口径(与合计/占用一致)
     const amort = recAmortized(r)
-      ? ("  分摊"+recDays(r)+"天(总价¥"+money(recTotal(r))+" → 每天¥"+money(r.amount)+")") : "";
+      ? ("  分摊"+recDays(r)+"天("+recWindow(r).start+"~"+recWindow(r).end
+         +" 总价¥"+money(recTotal(r))+" → 每天¥"+money(r.amount)+")") : "";
     L.push("- "+r.date+"  #"+r.id+"  "+r.category+"  ¥"+money(r.amount)+amort
           +"  (应投货币¥"+money(r.mm)+" 指数¥"+money(r.idx)
-          +"  已投货币¥"+money(r.moneyInv||0)+" 指数¥"+money(r.indexInv||0)+")  ["+paid+"]"
+          +"  已投货币¥"+money(r.moneyInv||0)+" 指数¥"+money(r.indexInv||0)+")  ["+paidSt+"]"
           +(r.note?"  "+r.note:""));
   }
   HR();

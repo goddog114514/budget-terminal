@@ -48,9 +48,11 @@ export function loadApp(opts = {}){
     investOf, moneyPending, indexPending, moneyInvestedTotal, indexInvestedTotal,
     investAmount, investFull, recStatus, recFullyMoney, recFullyIndex, recNoNeed,
     recDays, recTotal, recAmortized, parseDaysToken, amortSplitLine,
+    recWindow, recDaysInRange, recInWindow, recAmountInRange, recAmountUpToToday,
+    sumRange, collectWindow, investTotalsOf,
     setModalTab, updateAmortHint, submitModal, submitAmort, openAdd,
     get modalTab(){ return modalTab; },
-    filterByTokens, normDateText, parseSummaryArgs, collectWindow, forecastData,
+    filterByTokens, normDateText, parseSummaryArgs, forecastData,
     buildReportText, serializeState, restoreFromText, recomputeAllInvest,
     doInvestFull, undo, redo, applyState,
     consumeShare, investShare, rateSplit, consumePct, invPct, mmPct, idxPct,
@@ -63,11 +65,12 @@ export function loadApp(opts = {}){
     get undoDepth(){ return undoStack.length; },
     get redoDepth(){ return redoStack.length; },
     PREDEFINED, APP_VERSION,
-    /* 死代码检查: typeof 对未声明标识符是安全的, 删除后应全部为 "undefined" */
+    /* 死代码检查: typeof 对未声明标识符是安全的, 删除后应全部为 "undefined"
+       (inRange 是 v0.0.7 收口窗口统计后失去调用点、被有意删除的 —— 别再把它加回来) */
     deadSyms: ()=>({ boxLines: typeof boxLines, tableRow: typeof tableRow, hr: typeof hr,
                      periodSpend: typeof periodSpend, catNameOfRecord: typeof catNameOfRecord,
                      recordMoneyInv: typeof recordMoneyInv, recordHistory: typeof recordHistory,
-                     INVEST_SHARE: typeof INVEST_SHARE })
+                     INVEST_SHARE: typeof INVEST_SHARE, inRange: typeof inRange })
   };`;
 
   const factory = new Function(

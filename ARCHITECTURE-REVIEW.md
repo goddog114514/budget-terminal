@@ -1,10 +1,14 @@
-# BUDGET::TERM 架构一致性审查 · 完整问题清单
+# BUDGET::TERM 架构与验证基线 · 完整问题清单
 
-> **审查对象**：`index.html`（v0.0.5 时点 2609 行 → **v0.0.6 已 2846 行**，单文件应用）+ `README.md` + `.gitignore`
+> **本文件的双重角色**：① **架构/验证的唯一权威** —— 工程骨架与索引（§1）、怎么验证（§7）、
+> 量化指标（§8）、文档分工（§9）；② **审查问题清单** —— 21 条（§3–§5）与实施顺序（§6）、每版影响（§10）。
+> **配套文档**：[`README.md`](README.md)（用户手册 + 逐版更新记录）、`HANDOVER.md`（本地约束文件：
+> 不变量 / 改动配方 / AI 规范 / 隐私与流程纪律 —— 它**索引本文件**，不重复本文件的内容，分工见 §9.1）。
+> **审查对象**：`index.html`（v0.0.5 时点 2609 行 → **v0.0.7 已 2924 行**，单文件应用）+ `README.md` + `.gitignore`
 > **审查方式**：静态走查 → 350+ 条无头断言复现 → 真实浏览器（无头 Edge）渲染/交互验证
 > **本文件位置**：项目主文件夹（与 `README.md` 同级）
-> **行号说明**：行号为 v0.0.5 时点值，代码改动后会漂移；定位请优先用**符号名**（函数名/常量名）。
-> **v0.0.6 补充**：新增「分摊成本 `amort`」与「记一笔」双选项卡，见 §10（含它给本项目带来的新一致性约束）。
+> **行号说明**：行号为 v0.0.5 时点值，代码改动后会漂移；定位请优先用**符号名**（§1.5 有索引）。
+> **版本时点**：`v0.0.7`（修复 v0.0.6 分摊成本的窗口口径缺陷，见 §10.1）。
 
 ---
 
@@ -22,40 +26,125 @@
 这批抽象建好之后，剩下的条目多数是"把已有重复也挂到同一套抽象上"。
 
 已修条目的版本归属：`v0.0.5`（P1 重构 / M1 / M2）、`v0.0.4`（L5 部分）。
-v0.0.6 的新增代码（分摊成本）**没有引入新的重复**，反而新加了两个单一数据源（见 §10）。
+v0.0.6 的新增代码（分摊成本）**没有引入新的重复**，反而新加了两个单一数据源；
+**v0.0.7 修掉了它遗留的窗口口径缺陷**（同一笔钱在五处统计里各算一份/漏算），
+并把五处收口成 `collectWindow()` 一套（见 §10.1）。
 
 ---
 
-## 1. 工程骨架（作为"一致性"的基准）
+## 1. 工程骨架与索引（作为"一致性"的基准）
+
+> 这一节是**唯一**的实现索引：代码分区、数据流、存储、命令表、符号表、术语表都在这里。
+> `HANDOVER.md` 只索引本节，不再重复维护同一份内容（宪法见 §8）。
+
+### 1.1 代码分区
 
 ```
-index.html (2609 行, LF, 单文件, 无构建, 无依赖)
-├─ <style>  ~250 行  :root 19 个令牌 → 组件规则 → 弹窗规则 → 终端/表格规则
-├─ <body>   ~105 行  header#statusbar · nav.toolbar(18 按钮 + 1 下拉) · #investbar
-│                     main#term · footer(输入框 + ghost) · 3 个弹窗(XWrap > XModal)
-└─ <script> ~2250 行 按分区注释组织：
-    常量(含 COLOR / CAT_PALETTE / COMMANDS) → 比率助手 → 状态与持久化 → undo/redo →
-    FSA 自动写盘 → 日期工具 → 周期引擎 → 投资换算 → 预算派生 → 渲染助手(kvRow) →
-    输入/分发(COMMANDS→dispatch) → 各命令 → 总结/导出 → 配置/燃尽/资产 →
-    UI 装配(弹窗/工具栏/补全) → boot
+index.html (2924 行, LF, 单文件, 无构建, 无依赖)
+├─ <style>  ~290 行  :root 19 个令牌 → 组件规则 → 弹窗规则 → 终端/表格规则 → 选项卡规则
+├─ <body>   ~130 行  header#statusbar · nav.toolbar(18 按钮 + 1 下拉) · #investbar
+│                     main#term · footer(输入框 + ghost) · 3 个弹窗(XWrap > XModal,
+│                     记一笔弹窗内含 2 个选项卡面板 #mp_add / #mp_amort)
+└─ <script> ~2520 行 按分区注释组织：
+    常量(含 AMORT_* / COLOR / CAT_PALETTE / COMMANDS) → 比率助手 → 状态与持久化 → undo/redo →
+    FSA 自动写盘 → 日期工具 → 周期引擎 → 投资换算(含 recDays/recTotal/recWindow) →
+    ★窗口统计唯一入口(collectWindow/sumRange/recAmountInRange) → 预算派生 →
+    渲染助手(kvRow) → 输入/分发(COMMANDS→dispatch) → 各命令(含 doAmort) →
+    总结/导出 → 配置/燃尽/资产 → UI 装配(弹窗/选项卡/工具栏/补全) → boot
+```
 
-数据流：
-  UI(按钮/弹窗/下拉) ──拼命令字符串──▶ runCommand ─▶ mutate(快照) ─▶ dispatch
-                                                          │   (canonicalCmd 解析别名)
-                                                          ▼
-                                                     doXxx 命令
-                                                          │
-                                     state 变更 ─▶ save() ─▶ localStorage + FSA 目录写盘
-                                                          │
-                                            refreshHeader() / renderInvestBar() / 列表行
+### 1.2 数据流（每个命令都走这条线）
 
-存储：localStorage[budget_term_v1]  ⇄  budget_term_backup.json（FSA，带 app/version 头）
-      目录句柄 → IndexedDB(budget_term_fs/kv)
-仓库：index.html · README.md · LICENSE · NOTICE · .gitignore（分区注释，屏蔽个人账本数据）
+```
+UI(按钮/弹窗/下拉) ──拼命令字符串──▶ runCommand(raw)
+                                      │
+                                      ├─ 解析 & 回显 & 入历史
+                                      ├─ canonicalCmd(cmd) 解析别名
+                                      ├─ undo/redo → 直接 dispatch（不进撤销栈）
+                                      └─ 其余 → mutate(() => dispatch(cmd, tokens))
+                                                   │
+                                              doXxx(tokens)
+                                                   ├─ 校验参数
+                                                   ├─ 改 state
+                                                   ├─ save()   → localStorage + FSA 写盘
+                                                   └─ 渲染     → line/kvRow/refreshHeader/renderInvestBar
+```
+
+**"UI 拼串回灌 `runCommand`"是本项目最值得保留的决策**：下拉、弹窗（含「记一笔」两个选项卡）、
+工具栏命令全部拼命令字符串回灌，因此双通道行为、撤销栈、日志格式天然一致（见 §2 亮点 1）。
+
+### 1.3 存储与仓库形态
+
+```
+localStorage[budget_term_v1]  ⇄  budget_term_backup.json（FSA，带 {app,version,savedAt} 头）
+目录句柄 → IndexedDB(budget_term_fs / kv)
+仓库：index.html · README.md · ARCHITECTURE-REVIEW.md · LICENSE · NOTICE · .gitignore
+      · release-notes/ · tests/          （HANDOVER.md 有意不入库，见 §8）
 ```
 
 **设计基准（判断"统一"的标尺）**：单文件、零依赖、命令行 + 按钮双通道、单一可变 `state` + 纯派生计算、
 所有用户数据走 `textContent`（无注入）、中文注释 + 英文标识符。
+
+### 1.4 命令表（36 个名字 = 17 主名 + 19 别名）
+
+由代码里的 `COMMANDS` 登记表派生 —— 改命令请改登记表，别在别处抄（M1）。
+
+```
+help(?) (h)      查看帮助                     set            周期/投资/阈值等设置(见下)
+budget           当期预算进度                  forecast(burn)(predict)  燃尽预测
+add(a)           记一笔                        amort(amortize) 分摊成本(总价/天数/类别)
+list(ls)         消费列表(类别/@日期/@period)   del(rm)(delete)  删除
+update(edit)     修改                          pay(invest)    标记已投
+summary(sum)     总结(day/week/month/cat/类别)  export         导出 md|txt
+assets(asset)(networth)  资产看板              undo(u)        撤销
+redo             重做                          config(settings)(thresholds)(alerts)  查看配置
+cls(clear)       清屏
+set 子命令: budget | daily | period | periodstart | monthstart | weekstart | alert | invest | consume(ratio) | rate
+```
+
+### 1.5 关键符号索引（v0.0.7 行号，仅作起点，定位以符号名为准）
+
+| 符号 | 行 | 职责 |
+| --- | --- | --- |
+| `LS_KEY` / `APP_VERSION` | 388 / 389 | 存储 key（**不得改**）与应用版本号 |
+| `AMORT_MIN_DAYS` / `AMORT_MAX_DAYS` / `AMORT_DAYS_UNIT` | 403 | 分摊天数区间 2~3650 与"月→天"折算 30 |
+| `:root` | 24 | **颜色/面板令牌单一数据源（19 个）** |
+| `COLOR` / `CAT_PALETTE` / `PREDEFINED` | 421 / 444 / 446 | 颜色表、类别调色板、已知类别 |
+| `defaultSettings` / `normalizeSettings` / `normalizeRecords` | 473 / 495 / 535 | 默认值、加载与导入共用的归一化（分摊字段在 `normalizeRecords`） |
+| `loadState` / `save` / `mutate` / `applyState` / `undo` / `redo` | 479 / 571 / 588 / 599 / 603 / 612 | 加载、落盘、撤销快照、恢复、撤销/重做 |
+| `restoreFromText` / `doBackupDownload` | 641 / 663 | 备份导入 / 导出下载 |
+| `investOf` / `recomputeAllInvest` / `recDays` / `recTotal` / `recAmortized` | 912 / 918 / 902 / 903 / 908 | 投资换算（按**总价**）、比例变更重算、分摊记录读取入口 |
+| `recWindow` / `recDaysInRange` / `recInWindow` / `recAmountInRange` / `recAmountUpToToday` / `sumRange` / `collectWindow` / `investTotalsOf` | 912 / 917 / 924 / 926 / 933 / 937 / 993 / 1008 | **窗口统计唯一入口**（v0.0.7）：分摊按"落在统计窗口内的天数"计；`collectWindow` 是总结/报告/`periodSnapshot` 共用的窗口统计，`investTotalsOf` 是应投/已投合计 |
+| `periodBounds` / `currentPeriod` / `ensureEpoch` | 840 / 871 / 1002 | 周期引擎与账本起点对齐 |
+| `investAmount` / `investFull` | 951 / 987 | 池分摊、全额投资 |
+| `moneyPending` / `indexPending` / `totalCharge` / `grantedTotal` / `availableBalance` / `periodSnapshot` | 934 / 935 / 1104 / 1033 / 1041 / 1110 | 池累计、占用合计（**只累计到今天**）、发放/结转/当期口径（复用 `collectWindow`） |
+| `kvColWidth` / `kvRow` | 1092 / 1102 | **统一表格渲染器（含窗口自适应列宽）** |
+| `COMMANDS` / `CMD_ALIAS` / `canonicalCmd` | 1177 / 1209 / 1217 | **命令登记表与别名解析** |
+| `printHelp` / `runCommand` / `dispatch` | 1220 / 1286 / 1305 | help 渲染 / 命令入口 / 分派 |
+| `doXxx`（17 个命令处理器） | 1331（`doSet`）– 2176（`doAssets`） | 各命令实现 |
+| `makeRecord` / `amortSplitLine` / `parseDaysToken` / `doAmort` | 1565 / 1577 / 1588 / 1602 | 记录工厂、分摊明细行、天数解析、`amort` 命令 |
+| `renderRecordRow` / `refreshHeader` / `renderInvestBar` | 1654 / 2220 / 2264 | 列表行 / 顶栏 / 理财条 |
+| `buildReportText` / `showSettings` | 2008 / 2081 | 导出报告 / `config` 输出 |
+| `doForecast` / `forecastData` / `doAssets` | 2139 / 2106 / 2176 | 燃尽预测 / 预测数据 / 资产看板 |
+| `setModalTab` / `updateAmortHint` / `openAdd` / `submitModal` / `submitAmort` | 2307 / 2320 / 2348 / 2418 / 2434 | **「记一笔」双选项卡**、实时预览、提交 |
+| 补全区：`CMD_WORDS` / `argCandidates` / `completionCandidates` / `textWidthPx` | 2624 / 2636 / 2705 / 2733 | **补全词 / 语义槽位 / 补全入口 / 字宽度量** |
+| `boot` | 2813 | 启动（loadState → 渲染 → 绑定 → banner） |
+
+### 1.6 术语表
+
+| 术语 | 含义 |
+| --- | --- |
+| 占用 / 总花费 | `消费 ÷ N`（预算口径的"真实消耗"） |
+| 应投 | `占用 × (1−N)`，拆成"应投货币 / 应投指数"两池 |
+| 池 / 未投池 | 各记录 `应投 − 已投` 的累计（跨期累计） |
+| 全额投资 | 池 ≥ 阈值（货币 100 / 指数 20）时一次性投掉整池，按未投额比例分摊 |
+| 结转 / 透支 | 当期占用 < 发放 → 剩余结转到下期；> 发放 → 从下期发放扣回 |
+| 周期 | `month`（自然月或自定义起始日）或 `rolling`（固定 N 天） |
+| epoch | 账本起点（第一期发放所在周期起点），必须落在真实周期边界 |
+| 当期覆盖 | `periodBudget[start]` 只改某一期的预算 |
+| 批次 | 每次「全额投资」分摊时处理的池子；支持一笔只投一部分 |
+| **分摊成本** | 一次性付掉的总价按天数摊到每天：`amount`=每天金额，`amortDays`=天数，`amortTotal`=总价；**投资按总价记一次**（v0.0.6） |
+| 口径 | 同一个数字的两种读法：**消费口径=每天**、**投资口径=总价**（v0.0.6 起的分摊成本要严格区分，§10 的 F13） |
 
 ---
 
@@ -230,60 +319,309 @@ index.html (2609 行, LF, 单文件, 无构建, 无依赖)
 
 ---
 
-## 7. 如何验证（回归护栏）
+## 7. 如何验证（回归护栏 · 唯一权威）
 
-测试装置已随 v0.0.5 移入仓库 `tests/`（原先散落在 `%TEMP%\bt-harness\`，路径已全部相对化）：
+> **本节是全项目"怎么验证"的唯一存放处**：测试装置清单、跑法、验证闸门、浏览器验证、变异测试、
+> 以及历年踩过的坑，都只在这里维护。`HANDOVER.md` §4 / §5.3 只写"必须验证"这条规则并指向本节。
 
-```powershell
-node tests/run-all.mjs     # 单一入口：跑完 5 个套件并按 §5.3 基线校验断言数，合计 411 条
-node tests/mutate-amort.mjs # 变异测试：6 组分摊成本变异必须全部被抓住（v0.0.6 新增）
-node tests/test.mjs        # 110 条 · 账本/周期/投资/导入导出/持久化 + 分摊成本(T28)
-node tests/test2.mjs       #  55 条 · 端到端命令流/弹窗/备份数据冒烟
-node tests/test3.mjs       #  84 条 · P1 重构护栏（颜色令牌一致、kvRow、自适应列宽、死代码已删、响应式规则在）
-node tests/test4.mjs       #  81 条 · M1 护栏（登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README 双向校验）
-node tests/test5.mjs       #  81 条 · M2 护栏（语义槽位、@日期位置无关、ghost 预览）+ amort 补全与双选项卡
-# 换被测文件(变异测试)：$env:BT_HTML=<path>
-# 拿真实备份做冒烟：  $env:BT_FIXTURE=<budget_term_backup.json>   (只读，不入库；见下方告警)
+### 7.1 测试装置（已入仓；原"头号交接风险"已关闭）
+
+装置原先散落在 `%TEMP%\bt-harness\`（临时目录随时会被清理）且有 7 处硬编码本机绝对路径。
+v0.0.5 已把它整体移入仓库并相对化：
+
+```
+tests/
+  run-all.mjs        全量入口：顺序跑 5 个套件 + 按 §7.2 基线校验断言数（护栏被删/改期望值也会红）
+  env.mjs            路径解析单一入口（仓库根 / index.html / README / 夹具）
+  dom.mjs            极简 DOM stub（元素/classList/style/事件/localStorage）
+  app.mjs            加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now})
+  test.mjs   138 条  账本/周期/结转/投资池/导入导出/持久化/撤销重做 + **分摊成本 amort**(T28) + **分摊窗口口径**(T29)
+  test2.mjs   55 条  端到端命令流/弹窗/备份数据冒烟/阈值与红绿黄圆点
+  test3.mjs   85 条  P1 护栏（颜色令牌一致、kvRow、自适应列宽、死代码已删、响应式 CSS 在）
+  test4.mjs   85 条  M1 护栏（COMMANDS ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 双向校验）
+  test5.mjs   81 条  M2 护栏（语义槽位、@日期 位置无关、ghost 预览）+ amort 补全与双选项卡
+  mutate-amort.mjs   **变异测试**: 8 组"把缺陷改回去" → 期望对应断言变红
+                     （v0.0.6 的 6 组 + v0.0.7 的 m_amort_window_sum / m_amort_window_rows）
+  gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window.mjs   浏览器验证用页面生成器（默认输出到系统临时目录；
+                                                    gen-window 自带 Date 桩把时钟钉在 2027-08-30，见 §7.3）
+  fixtures/user_backup.json                  **全合成**账本夹具（不含任何真实账目）
 ```
 
-装置特点：自建 DOM stub 直接执行 `index.html` 的内联脚本；**冻结时钟**（`loadApp({now})` 可指定，默认 2027-08-30）
-避免"换一天跑就假失败"；另有 `gen-probe.mjs`（运行期读取真实 `COLOR`/列宽并写进 DOM，配 `--dump-dom` 取值）、
-`gen-tab.mjs`（用真实键盘事件验证 Tab 补全）、`gen-amort.mjs`（真实点击选项卡 + `input` 事件验证双选项卡与预览）。
-默认夹具 `tests/fixtures/user_backup.json` 是**全合成账本**（settings/日期/金额/备注均为编造，不含任何真实账目）
-——详见 `tests/README.md`。
+环境变量（都有默认值）：`BT_HTML` 换被测文件（变异测试用）、`BT_README` 换 README、
+`BT_FIXTURE` 指向**本地真实备份**做"实弹冒烟"（只读，不写入仓库、不回显内容）。
 
-> ⚠️ `BT_FIXTURE` 指真实备份时**不要期待全绿**：一批断言把夹具 settings 与冻结时钟一起用（`T3.2`、`T24.1/2`），
-> 真实周期配置与 2027 合成时间线天然不一致。判定标准是"没有新增崩溃/异常"。
+> ⚠️ `BT_FIXTURE` 只适合"**不炸**"级别的冒烟：套件里有一批断言把夹具的 **settings**（周期/锚点/预算）
+> 连同**冻结时钟**一起用（如 `T3.2`、`T24.1/2`），真实备份的周期配置与 2027 合成时间线不一致，必然红几条。
+> 判定标准是"**没有新增崩溃/异常**"，不是"全绿"；要全绿一律用默认的合成夹具。
 
-v0.0.6 起另有**变异测试脚本** `tests/mutate-amort.mjs`：6 组分摊成本变异必须全部被对应断言抓住（§4.3）。
+**冻结时钟**：`loadApp({now})` 默认 `2027-08-30`。应用大量逻辑以 `todayYMD()` 为基准，
+新增断言依赖具体日期时**必须**走冻结时钟，不要写死当天日期（否则"换一天跑就全红"，F4）。
+
+### 7.2 跑法与验证闸门（两档）
+
+```powershell
+# 全量（发版 / 跨模块改动）：顺序跑 5 个套件 + 基线校验，任一项失败/断基数不符即非 0 退出
+node tests/run-all.mjs
+#   ✓ test.mjs 138 ✓ test2.mjs 55 ✓ test3.mjs 85 ✓ test4.mjs 85 ✓ test5.mjs 81 → 合计 444
+
+# 日常小更新：只跑本次改动涉及的套件 —— 这已经满足低档闸门
+node tests/test5.mjs
+node tests/mutate-amort.mjs   # 只在你新增/改动护栏后重跑
+
+# 换被测文件（变异测试）／换夹具（真实数据冒烟，只读；见 §7.1 的告警）
+$env:BT_HTML="C:\path\to\mutant.html";    node tests/test3.mjs
+$env:BT_FIXTURE="C:\...\budget_term_backup.json"; node tests/run-all.mjs
+```
+
+**低档 · 日常小更新（只碰单个模块/命令/文案）**
+
+```
+[ ] 跑本次改动相关的套件，相关断言全绿
+[ ] 手工/探针过一遍本次改动的路径（改了 UI 才需要浏览器，见 §7.3）
+[ ] 新增护栏 → 变异测试：把旧缺陷改回去，对应断言必须变红（§7.4）
+[ ] 隐私自检 → 提交内容里无真实账目；夹具仍是全合成
+[ ] README 更新记录 + 版本号已同步
+```
+
+**高档 · 发版，或改动落在共享抽象上（跨模块）**
+
+```
+[ ] node tests/run-all.mjs  → 合计 444 PASS / 0 FAIL（138/55/85/85/81，且与基线一致）
+[ ] 改动涉及 UI/视觉 → 浏览器确认改的那块对；**发版或专门动样式**时顺带量 1400 / 900 / 520 三档，
+    scrollWidth === clientWidth（适配性是发版检查项，不是每次小更新的检查项）
+[ ] 改动涉及颜色/主题 → 探针确认 COLOR.* 与 CSS 令牌（js_* vs css_*）逐项相等
+[ ] 新增护栏 → 变异测试全被抓住（§7.4）
+[ ] 隐私自检 → 提交内容里无真实账目，夹具仍是全合成
+[ ] README 更新记录 + 版本号已同步
+```
+
+**怎么判断该走哪一档**（拿不准就走高档，成本只是几十秒）
+
+| 本次改了什么 | 档位 | 理由 |
+| --- | --- | --- |
+| 单个命令/单个弹窗/文案/注释/文档 | 低档 | 影响面就是它自己 |
+| 某个 `doXxx()` 内部逻辑 | 低档 + 跑对应套件 | 同上 |
+| `COLOR` / `kvRow()` / `COMMANDS` / `normalize*` / `investOf()` / `recDays()` 等**共享抽象** | **高档** | 所有调用方都算"被改动的模块" |
+| `state` 字段、存储 key、备份格式、周期/预算/结转/投资口径 | **高档** | 破坏兼容或算错账 = 致命 |
+| 准备打标签发版 | **高档** | 发版对外承诺整体可用 |
+
+> ⚠️ 单跑一个套件时**没有"断言数 vs 基线"这道检查**（那是 `run-all.mjs` 独有的），
+> 所以"护栏被悄悄删掉"只会在全量跑时暴露 —— 这就是把全量留给发版的代价。
+
+**基线**：`run-all.mjs` 顶部的 `SUITES` 表（每个套件的期望断言数）。增删断言后必须同步它，
+否则会被当成"护栏被删"而非 0 退出（F4/B10）。
+
+### 7.3 真实浏览器验证（**仅当改动涉及 UI/视觉时做**）
+
+生成器默认把产物写到系统临时目录（不污染仓库），也可以传第一个参数指定路径。
+
+```powershell
+$edge = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+$t = $env:TEMP
+
+node tests/gen-clean.mjs "$t\bt-clean.html"    # 只跑命令(含 amort) → 截图
+node tests/gen-probe.mjs "$t\bt-probe.html"    # 注入探针 → --dump-dom 取值
+node tests/gen-tab.mjs   "$t\bt-tab.html"      # 真实按键驱动 Tab 补全
+node tests/gen-help.mjs  "$t\bt-help.html"     # 只看 help 排版
+node tests/gen-amort.mjs "$t\bt-amort.html"    # 真实点击选项卡 + 输入事件 → 分摊预览/面板切换
+node tests/gen-window.mjs "$t\bt-window.html"  # 分摊"窗口口径"端到端: 冻结时钟 + 真实按键 → 每日/周期/列表/总结四处取值
+
+# 截图（默认 520 窄窗就够；要顺带看适配性再补 1400/900）
+& $edge --headless=new --disable-gpu --no-first-run "--user-data-dir=$t\bt-ep" `
+  "--window-size=520,900" --virtual-time-budget=3000 "--screenshot=$t\bt-520.png" `
+  "file:///$($t -replace '\\','/')/bt-clean.html"
+
+# 取值探针（运行期读真实 COLOR/列宽）
+& $edge --headless=new --disable-gpu --no-first-run "--user-data-dir=$t\bt-ep2" `
+  "--window-size=1400,900" --dump-dom "file:///$($t -replace '\\','/')/bt-probe.html" |
+  Select-String '>PROBE::(.*?)::END<'
+```
+
+**验证要求**：确认**本次改动的那一块**在浏览器里真的生效即可 ——
+例如"双击 `+ 记一笔` 能开、选项卡能切、预览数字与终端一致"。
+**不要求**每次都把 1400 / 900 / 520 三档量一遍：适配性属于"发版或专门动样式"时的检查项，
+平时由 `test3.mjs` §7 的 CSS 规则断言兜着（`HANDOVER.md` §2.7 定义了不得削弱的响应式契约）。
+涉及颜色/主题时，探针里 `js_*` 与 `css_*` 应逐项相等；
+涉及弹窗改动时，用 `gen-amort.mjs` 那类"真实点击 + 真实 input 事件"的探针核对
+（面板显隐、标题、预览文案），别靠肉眼看截图；
+涉及**按日期统计**的改动（分摊/周期/总结）时用 `gen-window.mjs`：它自带 `Date` 桩把时钟钉住
+（浏览器里 `todayYMD()` 取真实当天，不钉住就会出现"过一天结论就变"，F4），
+再真实按键跑 `amort`/`list`/`summary`，一次比出"每日 / 周期 / 列表 / 总结"四处的数字是否自洽。
+
+**五个坑（都踩过）**
+
+1. `--window-size` / `--user-data-dir` / `--screenshot` 这类"值里带逗号或带变量"的参数**必须整体加引号**：
+   写 `"--window-size=$w,900"`。不加引号时 PowerShell 会把 `$w,900` 当数组拆开，Edge 收不到宽度 ——
+   症状是三档宽度量出来的结果一模一样（都是默认窗口）。
+2. `--virtual-time-budget` 与 `--dump-dom` 同时用可能拿不到输出；探针页**不要**用 `setTimeout` 延迟，
+   直接在 `load` 事件里同步跑完再写 DOM。
+3. `--dump-dom` 会把 `<script>` 源码也打出来，正则要匹配渲染后的节点文本（如 `>PROBE::…::END<`），
+   别匹配到脚本源码；用 `LastIndexOf("PROBE::")` 取**最后一个**（渲染出来的那个）更稳。
+4. **`--dump-dom` 的输出在管道里会丢**：`& $edge ... | Select-String ...` 有时返回 0 字节（同一命令在
+   `Start-Process -RedirectStandardOutput` 下正常）。要点：用
+   `Start-Process -FilePath $edge -ArgumentList @(...) -RedirectStandardOutput out.txt -NoNewWindow -Wait`，
+   再读 `out.txt`。别在"输出为空"上反复重跑，先换成重定向再看。
+5. `--headless=new` 的 `--screenshot` 不受上述影响（一直可用）；失败时先用一张最小页面 + `--dump-dom`
+   自证 Edge 能跑，再排查被测页面。
+
+### 7.4 变异测试（证明护栏真的有效）
+
+写完护栏后，**故意把旧缺陷改回去**，确认对应断言会红：
+
+```powershell
+$src = "index.html"
+node -e "const fs=require('fs');fs.writeFileSync('C:\temp\mut.html',fs.readFileSync('index.html','utf8').split('旧写法').join('改坏的写法'))"
+$env:BT_HTML="C:\temp\mut.html"; node tests/test5.mjs      # 必须 FAIL，且失败项正是那条护栏
+```
+
+注意用 **Node 做字面替换**（`split/join`），别用 PowerShell 的 `-replace`（它是正则，`$`/`\` 会咬人）。
+v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 8 组、自动校验"命中恰好一次"），
+新增功能时**照它加一段 `MUTANTS` 就行**，别再手搓命令。
+
+已实测 15 组，覆盖全部 5 个套件：
+
+| 变异体 | 套件 | 还原的缺陷 | 应变红 |
+| --- | --- | --- | --- |
+| `m_color` | test3 | 只改 CSS 令牌、不动 JS 兜底值（颜色双轨 H1） | C2 |
+| `m_responsive` | test3 | 删掉 `header` 的 `flex-wrap:wrap` | R header 换行 |
+| `m_commands` | test4 | 登记表里抹掉 `config`（清单漂移 M1） | 6 条 |
+| `m_atdate` | test5 | 让 `@日期` 重新占槽位（M2） | 5 条 |
+| `m_ratio` | test | 比例区间改回开区间（端点被拒 F5） | 8 条 |
+| `m_stale` | test | 失效行不再提示失效（假成功 B7） | T12.2 |
+| `m_header` | test2 | 拿掉 `set budget` 后的 `refreshHeader()`（H4/F10） | T21.1 |
+| `m_amort_dispatch` | test4 | 抹掉 `dispatch` 的 `amort` 分支（F2） | 1 条 |
+| `m_amort_invest` | test | 投资改按**每天**算（投资被分摊，少算 N 倍） | 4 条 |
+| `m_amort_days` | test | `12月` 只当 12 天（不按 30 天/月折算） | 4 条 |
+| `m_amort_bounds` | test | 放宽天数上限（越界天数不再被拒） | 3 条 |
+| `m_amort_tab` | test5 | 切选项卡时不换面板（点了没反应） | 4 条 |
+| `m_amort_total` | test | 归一化时丢掉摊销总价（旧备份导入失真） | 5 条 |
+| `m_amort_window_sum` | test | **只按记账当天求和**（其余天数的钱不计入消费 —— v0.0.7 修的那个缺陷） | 9 条 |
+| `m_amort_window_rows` | test | **只按 `r.date` 筛选窗口**（窗口内其余天查不到这笔分摊） | 3 条 |
+
+> 后两组是 v0.0.7 新增：它们**打的是同一个缺陷的两个不同点**（金额求和 / 行筛选），
+> 所以必须各自变红 —— 只改金额时列表里连行都看不到，只改筛选时行在但金额不对（F14 的做法）。
+
+**四条经验**：① 变异体必须"恰好命中一次"，命中 0 次说明源已漂移，此时变异无效、不能当通过；
+② 多行变异模式要按**实际行尾**归一（本机工作区是 CRLF），否则同样报"命中 0 次" —— 那是脚本自己坏了；
+③ 变异点必须落在**该护栏真正断言的东西**上 —— 曾把告警文案改掉却以为能验证"失效行"护栏，
+结果测试没红：那是因为该断言看的是另一个 DOM 节点的文案。**没红不等于护栏不行，先确认变异打对了地方。**
+④ 变异"没红"也可能是**被另一条护栏顺手拦住了**（`m_amort_bounds` 第一次就是被"每天不足 ¥0.01"拦下），
+补一条**只针对该点**的断言（上限放行/越界拒绝）才算真正守住。
+
+### 7.5 AI 任务提示词模板（可直接复制）
+
+```text
+你在 BUDGET::TERM 仓库工作。开工前必须做：
+1) 读 README.md 的「版本与更新记录」与 ARCHITECTURE-REVIEW.md
+   （§1 工程骨架与索引 / §7 如何验证 / §10 最近一版对既有结论的影响）；
+2) 读 HANDOVER.md §1.5（隐私纪律）、§2（不变量）、§3（改动配方）、§5（强制规范）；
+3) 按 ARCHITECTURE-REVIEW §7.2 判断档位：小更新只需跑**本次改动相关的套件**（单跑，不必全量）；
+   只有发版或改动落在共享抽象/存储/领域口径上，才跑 node tests/run-all.mjs 全量 + mutate-amort。
+
+任务：<在这里写清要改什么、期望行为、不允许变的语义>
+
+硬性要求：
+- 单文件交付：只改 index.html（必要才动 README.md / ARCHITECTURE-REVIEW.md / tests/）；
+- 复用既有抽象：COLOR.* / kvRow() / COMMANDS+canonicalCmd / normalize* / numeric / recDays·recTotal，
+  禁止第二份实现；
+- 改数据必须 save() + refreshHeader()（或走 mutate）；用户数据只用 textContent；
+- 不动 LS_KEY、备份 app 字段、字段名、amount 语义、r2/r6 精度、13:2 拆池、响应式 CSS 规则；
+- **不得把任何真实账本数据写进被跟踪文件**（含夹具、文档示例、提交信息、输出回显）；
+  测试装置路径一律走 tests/env.mjs，不要写绝对路径；
+- 补齐本模块的护栏断言（含边界与变异测试），并更新 README 更新记录与版本号；
+- **不要**为一次小更新重跑整个项目，也**不要**再验证分辨率适配性。
+
+交付时必须给我：
+1) 改了哪些文件、每个改动的作用；
+2) 相关套件的实际输出（PASS 数）+ 说明为何走这一档（ARCHITECTURE-REVIEW §7.2）；
+3) 若改动涉及界面：这次改的那一块的浏览器证据（截图或探针；不必凑三档宽度）；
+4) 若新增护栏：变异测试结果（把旧缺陷改回去 → 哪几条断言变红）；
+5) 隐私自检结论（确认无真实账目入库）；
+6) 仍未做/不确定的部分，明确标注，不要含糊。
+```
 
 ---
 
 ## 8. 附：量化指标
 
-| 指标 | v0.0.5 | v0.0.6 | 说明 |
-| --- | --- | --- | --- |
-| `index.html` 行数 | 2609 | 2846 | +237（分摊成本 + 双选项卡 + 注释） |
-| CSS 令牌 / `var(--x)` 使用 | 19 / 103 | 19 / 111 | 未新增令牌（复用既有色） |
-| JS `COLOR.*` 引用 / 残留颜色字面量 | 299 / 15 | 333 / 15 | 新增代码全部走 `COLOR.*`，字面量数不变（H1 未回退） |
-| 命令登记行 / 命令名+别名 | 29 / 34（16+18） | 30 / 36（17 主名 + 19 别名） | 新增 `amort`=`amortize` |
-| `save()` / `refreshHeader()` / `mutate()` | 24 / 22 / 5 | 25 / 23 / 5 | 新命令走既有 A6 约定（H4 未动） |
-| `catch` 块 / `innerHTML` / `Escape` 处理 | 24 / 4 / 0 | 24 / 4 / 0 | 未新增 `catch`（`amort` 无静默吞错） |
-| `padEnd(2x)` 表格残留 | 0 | 2 | 均为 `renderRecordRow()` 的**行内列对齐**（类别/金额），非表格助手（H2 未回退） |
-| 断言总数 | 353 | **411** | +58（test 110 / test2 55 / test3 84 / test4 81 / test5 81） |
-| 变异测试组数 | 7 | **13** | +6（全部被抓住） |
+| 指标 | v0.0.5 | v0.0.6 | v0.0.7 | 说明 |
+| --- | --- | --- | --- | --- |
+| `index.html` 行数 | 2609 | 2846 | 2924 | +78（窗口统计唯一入口 + 注释；未新增命令/字段） |
+| CSS 令牌 / `var(--x)` 使用 | 19 / 103 | 19 / 111 | 19 / 111 | 未新增令牌（复用既有色） |
+| JS `COLOR.*` 引用 / 残留颜色字面量 | 299 / 15 | 333 / 15 | 335 / 15 | 新增代码全部走 `COLOR.*`（H1 未回退） |
+| 命令登记行 / 命令名+别名 | 29 / 34（16+18） | 30 / 36（17 主名 + 19 别名） | 30 / 36 | 本版不新增命令 |
+| `save()` / `refreshHeader()` / `mutate()` | 24 / 22 / 5 | 25 / 23 / 5 | 25 / 23 / 5 | 本版是纯派生口径修复，不动写盘路径（H4 未动） |
+| `catch` 块 / `innerHTML` / `Escape` 处理 | 24 / 4 / 0 | 24 / 4 / 0 | 24 / 4 / 0 | 未新增 `catch` |
+| `padEnd(2x)` 表格残留 | 0 | 2 | 2 | 均为 `renderRecordRow()` 的**行内列对齐**（H2 未回退） |
+| 断言总数 | 353 | **415** | **444** | v0.0.7 +29（test 110→138：T29 新增 24 条 + T28 改 1 加 3；test3 84→85：`inRange` 进死代码清单） |
+| 变异测试组数 | 7 | 13 | **15** | v0.0.7 +2（`m_amort_window_sum` / `m_amort_window_rows`），全部被抓住 |
+
+### 8.1 测试装置自身的量化（增删护栏时同步这里与 `run-all.mjs` 的基线表）
+
+| 套件 | v0.0.5 | v0.0.6 | v0.0.7 | 责任范围 |
+| --- | --- | --- | --- | --- |
+| `test.mjs` | 78 | 110 | **138** | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + `amort`(T28) + 分摊窗口口径(T29) |
+| `test2.mjs` | 55 | 55 | 55 | 端到端命令流/弹窗/备份冒烟/阈值与圆点 |
+| `test3.mjs` | 84 | 84 | **85** | P1 护栏：颜色令牌/`kvRow`/自适应列宽/死代码/响应式 CSS 规则 |
+| `test4.mjs` | 79 | 85 | 85 | M1 护栏：登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 |
+| `test5.mjs` | 57 | 81 | 81 | M2 护栏：语义槽位/`@日期`/ghost + `amort` 补全与双选项卡 |
+| **合计** | 353 | 415 | **444** | 增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
 
 ---
 
-## 9. 本清单的维护
+## 9. 文档分工与维护
+
+### 9.1 分工（**避免同内容两处维护**）
+
+| 内容 | 唯一存放处 | 另一个文件怎么处理 |
+| --- | --- | --- |
+| 代码分区 / 数据流 / 存储 / 命令表 / 符号索引 / 术语表 | **本文件 §1** | `HANDOVER.md` 只索引，不重复 |
+| 怎么验证：装置清单 / 跑法 / 两档闸门 / 浏览器手法 / 变异测试 / 提示词模板 | **本文件 §7** | `HANDOVER.md` §4/§5.3 只写规则并指向本节 |
+| 21 条问题清单与状态、实施顺序、量化指标 | **本文件** §3–§6、§8 | — |
+| 每版"对既有结论的影响" | **本文件 §10** | `README.md` 写面向用户的更新记录 |
+| 不可破坏的不变量、改动配方、AI 强制规范、失败模式、提交/发版纪律 | **`HANDOVER.md`** §2/§3/§5/§6 | 本文件不重复 |
+| 隐私纪律细则、本机权限/代理、Git 状态与历史脱敏、政策修订历史 | **`HANDOVER.md`** §1.2/§1.4/§1.5/§8 | 本文件只提"公开仓库"这一事实 |
+| 面向用户的用法与功能说明 | **`README.md`** | 两份内部文档都不重复用户文档 |
+
+> **新内容放哪里**：是"**怎么验证 / 代码长什么样**"→ 本文件；是"**不许怎么做 / 改了要遵守什么**"→ `HANDOVER.md`。
+> 两边都别写第二份：写指针。
+
+### 9.2 本清单的维护
 
 - 每次修掉一条：把对应表格里的状态改为 `✅ 已修（版本）`，并在"修复"栏写清做法与相关符号。
 - 新增发现：追加同类 ID（H/M/L + 序号），并补"证据（符号名）→ 影响 → 建议 → 风险"四段。
-- 行号会随代码漂移，**以符号名为准**；重构后可顺手更新第 8 节的量化指标。
+- 行号会随代码漂移，**以符号名为准**；重构后可顺手更新第 8 节的量化指标与 §1.1/§1.5。
+- 每版收尾在 §10 追加一节"本版对既有结论的影响"（新代码是否引入重复、护栏是否被触发、哪些债变好/变坏）。
+- 本节只维护**已验证的事实**；"打算怎么做"写进 `HANDOVER.md` §6 的技术债与顺序。
 
 ---
 
-## 10. v0.0.6 变更对既有结论的影响
+## 10. v0.0.7 变更对既有结论的影响
+
+> §10.1 是 v0.0.7（窗口口径修复），§10.2 保留 v0.0.6 的结论（其判断仍然有效）。
+
+### 10.1 v0.0.7：分摊成本的窗口口径修复
+
+本次是**纯派生口径修复**（不改数据结构、不加命令、不改字段），但它落在**共享统计抽象**上 ——
+`periodSnapshot` / `todaySnapshot` / `totalCharge` / `collectWindow` / `doList` 全部换成
+`recWindow()`/`recDaysInRange()`/`recInWindow()`/`recAmountInRange()`/`sumRange()` 这一套。
+
+| 条目 | 影响 | 说明 |
+| --- | --- | --- |
+| **F13（一个数字两套口径）** | 🔴 **v0.0.6 埋下的真缺陷，本版收口** | v0.0.6 只把"消费=每天"做进了 `amount`，**没有**做"窗口内的天数"：五处统计各自写 `filter(r.date…).reduce(r.amount)`，于是那笔钱除记账当天外全部消失。本版把"窗口内天数"变成**唯一入口**并从五处复用 —— 现在"每天口径"与"窗口总天数"合起来才等于应有的消费额 |
+| **A2 / F1（横向重复）** | 🟢 **净减少** | 修复前：5 处各写一遍"按日期求和"（三套 `reduce(s+r.amount)` + 两套行筛选）。修复后：`collectWindow` 是唯一窗口统计，`periodSnapshot` 也改为复用它；`investTotalsOf` 收掉 3 处应投/已投 `reduce`。**这是本版把缺陷变成抽象收益的地方** |
+| **A8 / F7（两条路径不一致）** | 🟢 未受影响 | 归一化没动；`r2`/`r6`/`INV_EPS`/`INV_UNIT`/13:2 拆池一字未改，历史账目数值不变 |
+| **H4（缺统一提交点）** | ⬜ 未变 | 本版不改写盘路径（`save()`/`refreshHeader()` 调用点数不变）。统计口径变化会立刻反映在顶栏/圆点上，因为 `refreshHeader()` 本就重算派生值 |
+| **M3（数字解析入口）** | ⬜ 未变 | 未新增解析入口 |
+| **L4（字段只写不读）** | 🟢 仍守住 | 未新增字段；`recWindow()` 让既有的 `date`+`amortDays` 成为可读的"生效区间" |
+| **F12（死代码漂移）** | 🟢 已检查 + 顺手删了一个 | 新符号全部有调用点（`recAmountUpToToday` ← `totalCharge`；`investTotalsOf` ← `collectWindow`/`buildReportText`）；收口窗口统计后 `inRange()` 失去调用点，**已删除并加进 `app.mjs` 的 `deadSyms()`**（`test3` D1 从此会抓住它被加回来） |
+| **F14（变异没红 ≠ 护栏不行）** | 🟢 照做 | 新增两组变异分别打"金额求和"与"行筛选"两个**不同**的点：只改其中一个时，对应断言必须各自变红（实测 `m_amort_window_sum` 9 条 / `m_amort_window_rows` 3 条） |
+
+**给下一版的建议（不变）**：**P0 · H4**（统一 commit 出口）。
+本版又一次印证：派生逻辑一旦没有单一入口，缺陷会**同时出现在五处**（列表、今日、周期、总结、导出）——
+写盘出口同理。
+
+### 10.2 v0.0.6 变更对既有结论的影响（保留）
 
 本次是**加功能**（分摊成本 `amort` + 「记一笔」双选项卡），没有横向重构，因此 21 条的状态不变。
 但新代码与既有 21 条有交叉，逐条说明：

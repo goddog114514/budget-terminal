@@ -34,6 +34,15 @@ const MUTANTS = [
   ["m_amort_total", "test.mjs", "归一化时丢掉摊销总价(旧备份导入后总价/应投失真)",
    ["const total = (isFinite(totalRaw) && totalRaw>0) ? r2(totalRaw) : (days>1 ? r2(amount*days) : amount);",
     "const total = (days>1 ? r2(amount) : amount);"]],
+  /* 下面两组还原的是一整类"按天窗口"缺陷 —— 分摊成本除记账当天外, 在每日预算/周期预算/
+     消费列表/总结里全部消失(即本次修复前的真实缺陷)。两组要分别打中"金额"和"行筛选":
+     只改金额的话列表里连行都看不到, 只改筛选的话列表里行在但金额不对。 */
+  ["m_amort_window_sum", "test.mjs", "分摊只按记账当天求和(其余天数的钱不计入消费)",
+   ["  const n = recDaysInRange(r, start, end);\n  return n > 0 ? r2(n * (Number(r.amount)||0)) : 0;",
+    "  const w = recWindow(r);\n  const hit = (w.start >= start && w.start <= end);\n  return hit ? r2(Number(r.amount)||0) : 0;"]],
+  ["m_amort_window_rows", "test.mjs", "只按 r.date 筛选窗口(窗口内其余天查不到这笔分摊)",
+   ["function recInWindow(r, start, end){ return recDaysInRange(r, start, end) > 0; }",
+    "function recInWindow(r, start, end){ return r.date >= start && r.date <= end; }"]],
 ];
 
 const tmp = os.tmpdir();

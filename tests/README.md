@@ -8,28 +8,39 @@
 
 ## 怎么跑
 
+**按 `HANDOVER.md` §5.3 的两档政策**：日常小更新只跑**本次改动相关的套件**；
+发版、或改动落在共享抽象/存储/领域口径上时才跑全量。
+
 ```powershell
-# 单一入口: 顺序跑全部 5 个套件, 汇总断言数并对照交付闸门基线
+# 全量（发版 / 跨模块改动）: 顺序跑全部 5 个套件, 汇总断言数并对照交付闸门基线
 node tests/run-all.mjs
 
-# 变异测试: 6 组分摊成本变异必须全部被抓住(v0.0.6 起有脚本, 不必手搓)
-node tests/mutate-amort.mjs
+# 日常小更新: 只跑相关的那一个（同样满足低档闸门）
+node tests/test5.mjs
 
-# 也可以单独跑某一个(排查时用)
-node tests/test3.mjs
+# 变异测试: 只在你新增/改动护栏后重跑（8 组分摊成本变异必须全部被抓住）
+node tests/mutate-amort.mjs
 ```
 
 `run-all.mjs` 会在任一套件失败、**或断言数与 `HANDOVER.md` §5.3 的基线不符**时以非 0 退出 ——
 后者用来抓"护栏被悄悄删掉/改期望值"（失败模式 F4/B10）。增删断言后请同步更新 `run-all.mjs` 顶部的基线表。
 
+> **`gen-window.mjs` 为什么要自己冻结时钟**：浏览器里 `todayYMD()` 取的是**真实当天**，
+> 而断言场景（如"8/30 记的年付房租在 8/31 也要计入"）必须落在固定日期上。
+> 它在应用脚本**之前**插了一段 `Date` 桩（`window.Date = Fake`）把时钟钉在 `2027-08-30`，
+> 与 `tests/app.mjs` 的 `loadApp({now})` 同一思路 —— 否则"换一天跑，结果就变"（F4）。
+
+> 注意：**单跑一个套件时没有"断言数 vs 基线"这道检查**，所以"护栏被悄悄删掉"只会在全量跑时暴露 ——
+> 这就是把全量留给发版的代价，也是 §5.3 判定表里"动共享抽象算跨模块"的原因。
+
 | 套件 | 断言 | 覆盖 |
 | --- | --- | --- |
-| `test.mjs` | 110 | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + **分摊成本 `amort`（T28）** |
+| `test.mjs` | 138 | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + **分摊成本 `amort`（T28）** + **分摊窗口口径（T29）** |
 | `test2.mjs` | 55 | 端到端命令流/弹窗/备份数据冒烟/阈值与红黄绿圆点 |
-| `test3.mjs` | 84 | P1 护栏：颜色令牌一致、`kvRow`、自适应列宽、死代码已删、响应式 CSS |
-| `test4.mjs` | 81 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README 双向校验 |
+| `test3.mjs` | 85 | P1 护栏：颜色令牌一致、`kvRow`、自适应列宽、死代码已删、响应式 CSS |
+| `test4.mjs` | 85 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 |
 | `test5.mjs` | 81 | M2 护栏：语义槽位、`@日期` 位置无关、ghost 预览 + **`amort` 补全与双选项卡** |
-| **合计** | **411** | |
+| **合计** | **444** | |
 
 ## 环境变量（都有默认值，通常不用设）
 
@@ -86,6 +97,7 @@ node tests/gen-probe.mjs $env:TEMP\bt-probe.html     # 注入探针 → --dump-d
 node tests/gen-tab.mjs   $env:TEMP\bt-tab.html       # 真实按键驱动 Tab 补全
 node tests/gen-help.mjs  $env:TEMP\bt-help.html      # 只看 help 排版
 node tests/gen-amort.mjs $env:TEMP\bt-amort.html     # 真实点击「分摊成本」选项卡 + input 事件 → 面板/预览探针
+node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端到端探针(冻结时钟 + 真实按键驱动)
 
 # 取值探针: 读运行期 COLOR / 列宽 / 是否横向溢出
 & $edge --headless=new --disable-gpu --no-first-run "--user-data-dir=$env:TEMP\bt-ep" `
@@ -118,9 +130,9 @@ node tests/gen-amort.mjs $env:TEMP\bt-amort.html     # 真实点击「分摊成�
 
 ## 变异测试（证明护栏真的有效）
 
-把已知缺陷改回去，确认对应断言会红。装置已用此法验证 13 组（覆盖全部 5 个套件）。
+把已知缺陷改回去，确认对应断言会红。装置已用此法验证 15 组（覆盖全部 5 个套件）。
 
-**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 6 组、
+**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 8 组、
 自动校验"变异点恰好命中一次"、并汇总哪些没被抓住。
 
 | 变异体 | 套件 | 还原的缺陷 | 结果 |
@@ -138,6 +150,8 @@ node tests/gen-amort.mjs $env:TEMP\bt-amort.html     # 真实点击「分摊成�
 | `m_amort_bounds` | test | 放宽天数上限（越界天数不再被拒） | 3 条红 |
 | `m_amort_tab` | test5 | 切选项卡时不换面板（点了没反应） | 4 条红 |
 | `m_amort_total` | test | 归一化时丢掉摊销总价（旧备份导入失真） | 5 条红 |
+| `m_amort_window_sum` | test | **只按记账当天求和**（其余天数的钱不计入消费，v0.0.7 修的缺陷） | 9 条红 |
+| `m_amort_window_rows` | test | **只按 `r.date` 筛选窗口**（窗口内其余天查不到这笔分摊） | 3 条红 |
 
 做法：改一份副本 → `$env:BT_HTML` 指过去 → 跑对应套件，**必须变红**。新写的护栏也应做一次。
 
@@ -150,11 +164,11 @@ node tests/gen-amort.mjs $env:TEMP\bt-amort.html     # 真实点击「分摊成�
 ```
 tests/
 ├─ run-all.mjs            单一入口(5 套件 + 基线校验)
-├─ mutate-amort.mjs       变异测试(v0.0.6: 6 组分摊成本变异)
+├─ mutate-amort.mjs       变异测试(v0.0.6 起: 8 组分摊成本变异, 含窗口口径 2 组)
 ├─ env.mjs                路径解析单一入口(仓库根 / HTML / README / 夹具)
 ├─ dom.mjs                极简 DOM stub(元素/classList/style/事件/localStorage)
 ├─ app.mjs                加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now})
 ├─ test.mjs test2..test5  5 个套件
-├─ gen-clean/gen-help/gen-probe/gen-tab/gen-amort.mjs   浏览器验证用页面生成器
+├─ gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window.mjs   浏览器验证用页面生成器
 └─ fixtures/user_backup.json                            合成账本夹具(无真实数据)
 ```

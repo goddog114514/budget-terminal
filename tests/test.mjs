@@ -307,7 +307,12 @@ function near(name, a, b, eps=1e-6){ ok(name, Math.abs(a-b)<=eps, "got "+a+" wan
        r.mm + r.idx, S.investOf(3000).mm + S.investOf(3000).idx, 1e-9);
   eq("T28.7 投资池按总数累计", [S.moneyPending(), S.indexPending()], [r.mm, r.idx]);
   const st = S.periodSnapshot();
-  eq("T28.8 本期消费只计一天(不是总价)", st.consumption, r.amount);
+  /* 修正后的口径: 分摊成本按"落在本期内的天数"计入, 不是把每天金额只记在记账当天一次。
+     冻结时钟 2027-08-30 + 月周期 → 本期 2027-08-01~08-31, 窗口 08-30 起 365 天,
+     本期交集 = 08-30/08-31 共 2 天 → 消费 = 2 × 每天金额(而不是 1 天, 也不是总价 3000)。 */
+  eq("T28.8 本期消费按落在本期内的天数计(2 天)", st.consumption, S.r2(2*r.amount));
+  ok("T28.8b 本期消费不是总价(投资才按总价)", st.consumption < r.amortTotal/100, String(st.consumption));
+  eq("T28.8c 本期应投仍按总价一次记入", [st.mm, st.idx], [S.r2(r.mm), S.r2(r.idx)]);
   eq("T28.9 状态与普通记录同一套", S.recStatus(r).t, "未投");
   /* 每天/总价读取入口对旧记录必须等价(amount 本身就是总额) */
   S.runCommand("add 500 餐饮 普通");
@@ -369,6 +374,91 @@ function near(name, a, b, eps=1e-6){ ok(name, Math.abs(a-b)<=eps, "got "+a+" wan
   const er = E.state.records[0];
   eq("T28.30 备份往返后分摊字段不变", [er.amortDays, er.amortTotal, er.amount], [365, 3000, D.r2(3000/365)]);
   eq("T28.31 备份往返后应投不变", [er.mm, er.idx], [D.state.records[0].mm, D.state.records[0].idx]);
+}
+
+/* ====== T29: 分摊成本必须进入每日/周期/列表/总结(窗口口径) ======
+   现象: 一笔分摊只被 r.date 那一天算一次, 其余天数在"今日预算 / 周期预算 / 消费列表 / 各种总结"
+   里全部查不到、也不计入消费。原因: 所有统计都写成 filter(r.date 在区间内).reduce(r.amount)。
+   修复: 统一走 recWindow()/recInWindow()/recAmountInRange()/sumRange()/collectWindow()
+   (分摊按落在统计窗口内的**天数**计入; 投资仍按总价一次记入)。
+   冻结时钟 2027-08-30, 月周期(默认) → 本期 2027-08-01~08-31。 */
+{
+  const S = loadApp(); S.boot();
+  S.runCommand("amort 3000 365 房租 年付 @2027-08-30");
+  const r = S.state.records[0];
+  const daily = r.amount;                       // 每天 ¥8.22
+  const W = S.recWindow(r);
+  eq("T29.1 生效窗口 = 记账日起连续 365 天", [W.start, W.end], ["2027-08-30", "2028-08-28"]);
+  eq("T29.2 窗口内每一天都算这笔的分摊", [S.recDaysInRange(r,"2027-08-31","2027-08-31"),
+                                          S.recDaysInRange(r,"2028-08-28","2028-08-28")], [1,1]);
+  eq("T29.3 窗口外(记账前一天/结束后)不计", [S.recDaysInRange(r,"2027-08-29","2027-08-29"),
+                                              S.recDaysInRange(r,"2028-08-29","2028-08-30")], [0,0]);
+  eq("T29.4 跨越窗口两端的区间只取交集天数", S.recDaysInRange(r,"2027-08-01","2027-09-30"), 32);
+
+  /* 每日预算: 记账当天与之后每一天都要有这笔的分摊(以前只有 08-30 有, 08-31 起恒为 0) */
+  eq("T29.5 今日(08-30)每日预算含当天分摊", S.todaySnapshot().consumption, daily);
+  const T = loadApp({ now:"2027-08-31", seedStorage:{ budget_term_v1: JSON.stringify(
+        { app:"budget_term", version:2, settings:{ budget:1200, periodMode:"month", monthStart:1, epoch:"2027-08-01" },
+          seq:1, records:[r] }) } });
+  T.boot();
+  eq("T29.6 次日(08-31)每日预算同样计入分摊", T.todaySnapshot().consumption, daily);
+  const T2 = loadApp({ now:"2027-09-10", seedStorage:{ budget_term_v1: JSON.stringify(
+        { app:"budget_term", version:2, settings:{ budget:1200, periodMode:"month", monthStart:1, epoch:"2027-09-01" },
+          seq:1, records:[r] }) } });
+  T2.boot();
+  eq("T29.7 跨月后(09-10)每日预算仍然计入", T2.todaySnapshot().consumption, daily);
+  const F = loadApp({ now:"2027-08-10", seedStorage:{ budget_term_v1: JSON.stringify(
+        { app:"budget_term", version:2, settings:{ budget:1200, periodMode:"month", monthStart:1, epoch:"2027-08-01" },
+          seq:1, records:[r] }) } });
+  F.boot();
+  eq("T29.8 未来才开始的分摊不提前占用今天", F.todaySnapshot().consumption, 0);
+
+  /* 周期预算: 按"落在本期内的天数"计(以前只算记账那一天) */
+  eq("T29.9 本期(08-01~08-31)消费 = 2 天", S.periodSnapshot().consumption, S.r2(2*daily));
+  eq("T29.10 本期应投仍按总价一次记入", [S.periodSnapshot().mm, S.periodSnapshot().idx], [S.r2(r.mm), S.r2(r.idx)]);
+  /* 累计可用余额: 只累计"到今天为止"已发生的天数, 不被未来 363 天提前吃掉 */
+  near("T29.11 累计占用只算到今天为止的一天", S.availableBalance(),
+       S.r2(S.grantedTotal() - daily/S.consumeShare()), 0.02);
+  /* 15 天滚动周期(08-16~08-30)与窗口交集 = 1 天 */
+  const R = loadApp(); R.boot();
+  R.runCommand("set period 15");
+  R.runCommand("set periodstart 2027-08-16");
+  R.runCommand("amort 3000 365 房租 @2027-08-30");
+  eq("T29.12 滚动周期按交集天数(1 天)计", R.periodSnapshot().consumption, R.r2(1*R.state.records[0].amount));
+
+  /* 消费列表: 窗口内任意一天都要能列出这笔(以前 list @2027-08-31 显示"暂无匹配记录") */
+  S.clearTerm(); S.runCommand("list @2027-08-31");
+  let out = S.lines().join("\n");
+  ok("T29.13 list @窗口内某天 能列出分摊记录", out.includes("#"+r.id) && out.includes("分摊365天"), out);
+  S.clearTerm(); S.runCommand("list @2027-08-31");
+  ok("T29.14 单日列表合计 = 当天那一份", S.lines().join("\n").includes("合计 ¥"+S.money(daily)), S.lines().join(" | "));
+  S.clearTerm(); S.runCommand("list @2027-08-29");
+  ok("T29.15 窗口外那一天列不到(不能多算)", S.lines().join("\n").includes("暂无匹配记录"), S.lines().join(" | "));
+  S.clearTerm(); S.runCommand("list @2027-09");
+  ok("T29.16 月份筛选按窗口交集命中", S.lines().join("\n").includes("#"+r.id), S.lines().join(" | "));
+  S.clearTerm(); S.runCommand("list @period");
+  ok("T29.17 list @period 命中本期覆盖到的分摊", S.lines().join("\n").includes("#"+r.id), S.lines().join(" | "));
+  ok("T29.17b 本期列表合计 = 落在本期内的 2 天", S.lines().join("\n").includes("合计 ¥"+S.money(S.r2(2*daily))), S.lines().join(" | "));
+
+  /* 总结: 窗口总消费 / 其中分摊 / 日均 三处都要对得上 */
+  const mw = S.collectWindow("2027-08-01","2027-08-31");
+  eq("T29.18 总结窗口总消费 = 本期占用口径", mw.total, S.periodSnapshot().consumption);
+  eq("T29.19 总结窗口的分摊小计", mw.amortTotal, S.r2(2*daily));
+  S.clearTerm(); S.runCommand("summary");
+  out = S.lines().join("\n");
+  ok("T29.20 总结里有「其中分摊成本」", /其中分摊成本/.test(out) && out.includes(S.money(S.r2(2*daily))), out);
+  S.clearTerm(); S.runCommand("summary day");
+  ok("T29.21 summary day 当日消费 = 当天那一份",
+     S.lines().join("\n").includes("窗口总消费") && S.lines().join("\n").includes("¥"+S.money(daily)), S.lines().join(" | "));
+  S.clearTerm(); S.runCommand("summary month");
+  ok("T29.22 summary month 日均按天摊开(不是一天的总价除以天数)",
+     S.lines().join("\n").includes("= 窗口总消费 ¥"+S.money(S.r2(2*daily))+" ÷ 30 天"), S.lines().join(" | "));
+
+  /* 导出: 应投合计与窗口消费必须自洽 */
+  const rep = S.buildReportText(true);
+  ok("T29.23 导出报告标注分摊生效区间", rep.includes("2027-08-30~2028-08-28"), rep.split("\n").filter(l=>/分摊/.test(l))[0]);
+  ok("T29.24 导出报告含分摊小计", rep.includes("其中分摊成本"), rep.split("\n").filter(l=>/分摊成本/.test(l))[0]);
+  ok("T29.25 导出报告无 NaN", !/NaN/.test(rep));
 }
 
 console.log("PASS " + pass + " / FAIL " + fails.length);
