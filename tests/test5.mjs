@@ -103,6 +103,81 @@ const IDS = ["1","2"];
   ok("M2.48 argCandidates 不再用 token 序号判槽位", !/slot===[123]/.test(src), src.slice(0,120));
 }
 
+/* ---------- 10. 分摊成本 amort 的补全 + 「记一笔」双选项卡 ---------- */
+{
+  /* 补全: 总价位不提示, 天数位给天数, 类别位给类别; @日期 位置无关 */
+  eq("M2.49 amort 总价位不提示", cand("amort "), []);
+  ok("M2.50 amort 天数位给天数候选", cand("amort 3000 ").includes("365") && cand("amort 3000 ").includes("12月"), JSON.stringify(cand("amort 3000 ")));
+  ok("M2.51 amort 类别位给类别", CAT.every(c=>has(cand("amort 3000 365 "), c)), JSON.stringify(cand("amort 3000 365 ")));
+  eq("M2.52 amort 类别位前缀命中", cand("amort 3000 365 餐"), ["餐饮"]);
+  eq("M2.53 amort 备注位不提示", cand("amort 3000 365 餐饮 "), []);
+  ok("M2.54 amort @日期位置无关, 类别位仍正确", CAT.every(c=>has(cand("amort @2027-08-01 3000 365 "), c)));
+  eq("M2.55 别名 amortize 与 amort 的类别位一致", cand("amortize 3000 365 餐"), cand("amort 3000 365 餐"));
+  eq("M2.56 amort 正在输 @ 时不给关键字", cand("amort 3000 365 @"), []);
+
+  /* 双选项卡: 面板切换 + 标题 + 实时预览。
+     注意: DOM stub 不解析 HTML(querySelectorAll 返回空), 所以选项卡按钮的 click 处理器
+     要在这里手工接上(复刻 bindModal 的做法), 而面板/预览逻辑走真实函数。 */
+  const doc = S.__doc;
+  const mtab = (t)=>{ const b = doc.createElement("button"); b.dataset.mtab = t; return b; };
+  const btnAdd = mtab("add"), btnAmort = mtab("amort");
+  btnAdd.addEventListener("click",()=>S.setModalTab(btnAdd.dataset.mtab));
+  btnAmort.addEventListener("click",()=>S.setModalTab(btnAmort.dataset.mtab));
+  const panelAdd = doc.getElementById("mp_add"), panelAmort = doc.getElementById("mp_amort");
+  const hint = doc.getElementById("fa_hint");
+  S.openAdd();
+  ok("M2.57 openAdd 默认「单笔消费」", S.modalTab==="add" && !panelAdd.classList.contains("hide")
+     && panelAmort.classList.contains("hide"), S.modalTab);
+  btnAmort.click();
+  ok("M2.58 点选项卡切到「分摊成本」", S.modalTab==="amort" && !panelAmort.classList.contains("hide")
+     && panelAdd.classList.contains("hide"), S.modalTab);
+  eq("M2.59 标题跟着选项卡变", doc.getElementById("mTitle").textContent, "记一笔分摊成本");
+  btnAdd.click();
+  ok("M2.60 再点回「单笔消费」面板互换", S.modalTab==="add" && !panelAdd.classList.contains("hide")
+     && panelAmort.classList.contains("hide"), S.modalTab);
+  eq("M2.61 标题跟着切回", doc.getElementById("mTitle").textContent, "记一笔消费");
+  /* 实时预览(输入即刷新): 与终端同一口径 */
+  S.setModalTab("amort");
+  doc.getElementById("fa_total").value = "3000";
+  doc.getElementById("fa_days").value = "365";
+  doc.getElementById("fa_date").value = "2027-08";
+  S.updateAmortHint();
+  const shownTotal = S.r2(S.r2(3000/365)*365);
+  ok("M2.62 预览显示每天金额 + 应投 + 起始月(与终端同口径)",
+     hint.textContent.includes("每天 ¥"+S.money(S.r2(3000/365)))
+     && hint.textContent.includes("¥"+S.money(S.investOf(shownTotal).mm))
+     && hint.textContent.includes("2027-08-01"),
+     hint.textContent);
+  doc.getElementById("fa_days").value = "1";        // 越界 → 黄色说明并阻止提交
+  S.updateAmortHint();
+  ok("M2.63 天数越界时预览变黄色错误", hint.classList.contains("bad"), hint.textContent);
+  doc.getElementById("fa_days").value = "12月";
+  S.updateAmortHint();
+  ok("M2.64 '12月' 被预览接受(按 30 天/月 = 360 天)", !hint.classList.contains("bad")
+     && hint.textContent.includes("360 天"), hint.textContent);
+  doc.getElementById("fa_days").value = "abc";
+  S.updateAmortHint();
+  ok("M2.65 天数非数字被拒", hint.classList.contains("bad"), hint.textContent);
+  /* 提交走真实 submitModal → 拼 amort 命令回灌 runCommand */
+  doc.getElementById("fa_total").value = "600";
+  doc.getElementById("fa_days").value = "12月";
+  doc.getElementById("fa_cat").value = "房租";
+  doc.getElementById("fa_note").value = "年费";
+  const beforeCnt = S.state.records.length;
+  S.submitModal();
+  eq("M2.66 弹窗提交真的记入一条", S.state.records.length, beforeCnt+1);
+  const ar = S.state.records[S.state.records.length-1];
+  eq("M2.67 弹窗提交的天数/总价正确", [ar.amortDays, ar.amortTotal], [360, 600]);
+  eq("M2.68 弹窗提交的日期用本月 1 号", ar.date, "2027-08-01");
+  eq("M2.69 弹窗提交的类别/备注正确", [ar.category, ar.note], ["房租", "年费"]);
+  ok("M2.70 提交后弹窗关闭", !doc.getElementById("modalWrap").classList.contains("open"));
+  /* 再次打开回到默认选项卡并清空分摊字段 */
+  S.openAdd();
+  ok("M2.71 重新打开回到「单笔消费」", S.modalTab==="add" && !panelAdd.classList.contains("hide"), S.modalTab);
+  ok("M2.72 openAdd 清空分摊字段", doc.getElementById("fa_total").value==="" && doc.getElementById("fa_days").value==="",
+     doc.getElementById("fa_total").value+"|"+doc.getElementById("fa_days").value);
+}
+
 console.log("PASS " + pass + " / FAIL " + fails.length);
 for(const f of fails) console.log("  ✗ " + f);
 process.exit(fails.length? 1 : 0);

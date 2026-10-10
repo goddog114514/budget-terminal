@@ -225,6 +225,18 @@
   #modal input,#budgetModal input,#dateModal input{color-scheme:dark;}
   #budgetModal .hint{color:var(--gray);font-size:12px;margin-top:12px;line-height:1.6;}
 
+  /* ---- 「记一笔」的双选项卡: 单笔消费 / 分摊成本 ---- */
+  #modal .mtabs{display:flex;gap:8px;margin:0 0 4px;flex-wrap:wrap;}
+  #modal .mtabs .mtab{
+    font-family:inherit;font-size:13px;padding:5px 14px;cursor:pointer;border-radius:3px;
+    border:1px solid var(--border);background:transparent;color:var(--gray);
+  }
+  #modal .mtabs .mtab:hover{border-color:var(--green);color:var(--green);}
+  #modal .mtabs .mtab.on{color:var(--green);border-color:var(--green);background:rgba(61,255,122,.1);}
+  #modal .mhint{color:var(--gray);font-size:12px;margin-top:10px;line-height:1.6;word-break:break-word;}
+  #modal .mhint.bad{color:var(--yellow);}
+  #modal .mpanel.hide{display:none;}
+
   /* ---- 「手动输日期」弹窗: 日期/月份统一为 ISO 文本 + 原生选择器辅助按钮 ---- */
   #dateModal label .fmt{color:var(--faint);font-size:11px;margin-left:6px;letter-spacing:.5px;}
   #dateModal .drow{position:relative;display:flex;gap:6px;align-items:stretch;}
@@ -288,11 +300,30 @@
 <div id="modalWrap">
   <div id="modal">
     <h3 id="mTitle">记一笔消费</h3>
-    <label>金额 (元)</label><input id="f_amt" type="number" step="0.01" min="0.01" placeholder="如 50">
-    <label>类别</label>
-    <input id="f_cat" list="catlist" placeholder="如 餐饮 / 交通 / 购物 ..."><datalist id="catlist"></datalist>
-    <label>日期</label><input id="f_date" type="date">
-    <label>备注</label><input id="f_note" placeholder="可选，如 午餐">
+    <div class="mtabs" role="tablist">
+      <button type="button" class="mtab on" data-mtab="add">单笔消费</button>
+      <button type="button" class="mtab" data-mtab="amort">分摊成本</button>
+    </div>
+    <!-- 单笔消费: 原来的 add 表单(id 不变, Tab 顺序与既有用法保持) -->
+    <div class="mpanel" id="mp_add">
+      <label>金额 (元)</label><input id="f_amt" type="number" step="0.01" min="0.01" placeholder="如 50">
+      <label>类别</label>
+      <input id="f_cat" list="catlist" placeholder="如 餐饮 / 交通 / 购物 ..."><datalist id="catlist"></datalist>
+      <label>日期</label><input id="f_date" type="date">
+      <label>备注</label><input id="f_note" placeholder="可选，如 午餐">
+    </div>
+    <!-- 分摊成本: 总价 ÷ 分摊天数 → 每天; 投资只按总价记一次 -->
+    <div class="mpanel hide" id="mp_amort">
+      <label>总价 (元) — 一次性付出的金额，将按天数摊到每天</label>
+      <input id="fa_total" type="number" step="0.01" min="0.01" placeholder="如 3000">
+      <label>分摊天数 — 也可以写 12月 / 12m（按 30 天/月折算）</label>
+      <input id="fa_days" type="text" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="如 365  或  12月">
+      <label>类别</label>
+      <input id="fa_cat" list="catlist" placeholder="如 房租 / 会员 / 保险 ...">
+      <label>起始日期</label><input id="fa_date" type="month">
+      <label>备注</label><input id="fa_note" placeholder="可选，如 年付房租">
+      <div class="mhint" id="fa_hint"></div>
+    </div>
     <div class="mbtns">
       <button id="btnCancel">取消</button>
       <button id="btnSubmit">确认</button>
@@ -354,8 +385,22 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.5";         // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.0.6";         // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
+/* --- 分摊成本(amort)的字段与口径 ---
+   一笔"分摊成本"= 一次性付出的**总价**(如年费/房租/保险费), 按 **分摊天数** 平均分到每一天。
+   记录里各字段的口径(务必与其它命令一致):
+     amount     = **每天**分摊到的金额(总价 ÷ 天数) —— 所有"消费口径"的派生(周期占用/
+                  summary/燃尽/日均)与旧记录**完全同义**, 不需要任何特判;
+     amortDays  = 分摊天数(>1 才算分摊; 普通消费记 1, 归一化时补齐);
+     amortTotal = 当初付出的总价(用于列表/报告/导出的"总价 X / N 天"展示)。
+   投资是**一次性按总价记**的("相关的投资只记录总数, 不分摊"): 每笔的应投额由
+   amortTotal 算出并记在该笔记录上, 因此分期期间每天分摊 1/N, 但应投池只累计一次;
+   顺带保证了"总额口径"与"逐日口径"两种算法的结果完全相等
+   (Σ (总价/N ÷ N占比) = 总价 ÷ N占比)。
+   旧记录(没有这两个字段)走 recDays()/recTotal() 时自动当作 amount / 1 天, 行为不变。 */
+const AMORT_MIN_DAYS = 2, AMORT_MAX_DAYS = 3650;   // 分摊天数区间(上限约 10 年, 够覆盖长期摊销)
+const AMORT_DAYS_UNIT = 30;                        // "N月"换算用的每月天数(口径可预期, 不随日历漂移)
 /* 可调投资比例：总花费(占用) = 消费 ÷ N, 其中 N = 消费占比(默认 0.85)、
    投资占比 = 1 - N (默认 0.15)。投资池内部仍按原始 13:2 比例拆分货币/指数。
    下面四个常量是"默认/基准值"，运行时的真实比例见 consumeShare()/rateSplit()。 */
@@ -483,7 +528,9 @@ function repairDate(v){
 }
 /* --- 记录归一化: 应投额按当前比例重算, 已投金额(含旧版 mmPaid/idxPaid 布尔字段)转成金额制 ---
    关键: 导入备份(restoreFromText)必须和加载 localStorage 走同一套规则, 否则同一份旧文件
-   经"导入"和经"浏览器存储"会得到不同结果(旧版已投状态会丢)。无法修复的记录(金额/日期非法)丢弃。 */
+   经"导入"和经"浏览器存储"会得到不同结果(旧版已投状态会丢)。无法修复的记录(金额/日期非法)丢弃。
+   分摊成本(amort): 备份里 amount 存的仍是**每天**金额(与普通记录同义), 这里只补 amortDays/amortTotal;
+   天数非法(缺失/≤1/超上限)时按普通记录处理 → 老备份与手改坏的备份都不会变形。 */
 function normalizeRecords(raw){
   const out = [], usedIds = new Set();
   let dropped = 0;
@@ -498,7 +545,13 @@ function normalizeRecords(raw){
     const oldMm = Number(src.mm)||0, oldIdx = Number(src.idx)||0;   // 重算前的应投(旧口径)
     const mInv0 = (typeof src.moneyInv==="number" && isFinite(src.moneyInv)) ? src.moneyInv : (src.mmPaid ? oldMm : 0);
     const iInv0 = (typeof src.indexInv==="number" && isFinite(src.indexInv)) ? src.indexInv : (src.idxPaid ? oldIdx : 0);
-    const inv = investOf(amount);
+    // 分摊天数: 只接受 [AMORT_MIN_DAYS, AMORT_MAX_DAYS] 的整数, 其余一律当普通消费(1 天)
+    const daysRaw = Math.round(Number(src.amortDays));
+    const days = (isFinite(daysRaw) && daysRaw>=AMORT_MIN_DAYS && daysRaw<=AMORT_MAX_DAYS) ? daysRaw : 1;
+    // 总价: 优先取备份里的 amortTotal, 缺失时按"每天 × 天数"补回(老数据/手改的备份都能自洽)
+    const totalRaw = Number(src.amortTotal);
+    const total = (isFinite(totalRaw) && totalRaw>0) ? r2(totalRaw) : (days>1 ? r2(amount*days) : amount);
+    const inv = investOf(total);        // 投资只按总价记一次(不分摊; days=1 时 total 就是 amount)
     const cat = String(src.category==null ? "" : src.category).trim() || "其他";
     const note = src.note==null ? "" : String(src.note);
     const created = repairDate(src.created) || date;
@@ -507,6 +560,7 @@ function normalizeRecords(raw){
     const wasFullI = oldIdx>0 && iInv0 >= oldIdx - 0.005;
     const cl = (x, cap)=> r6(Math.max(0, Math.min(cap, isFinite(x) ? x : 0)));
     out.push({ id, amount, category:cat, note, date, created,
+               amortDays:days, amortTotal:total,
                mm:inv.mm, idx:inv.idx,
                moneyInv: wasFullM ? inv.mm : cl(mInv0, inv.mm),
                indexInv: wasFullI ? inv.idx : cl(iInv0, inv.idx) });
@@ -840,8 +894,20 @@ function inRange(dateStr, start, end){
 function catColor(cat){ return PREDEFINED.get(cat) || COLOR.catFallback; }
 
 /* --------------------------- investment calc ---------------------------- */
+/* 分摊成本记录的读取入口(旧记录没有这两个字段 → 相当于"不分摊"):
+     recDays(r)  = 分摊天数(普通消费为 1)
+     recTotal(r) = 该笔**付出的总价**(普通消费即 amount)
+   应投一律按**总价**算 —— "投资只记录总数, 不分摊"(见文件头 AMORT_* 注释)。 */
+function recDays(r){ const d = Number(r && r.amortDays); return (isFinite(d) && d>1) ? d : 1; }
+function recTotal(r){
+  const t = Number(r && r.amortTotal);
+  if(isFinite(t) && t>0) return t;
+  return (Number(r && r.amount)||0) * recDays(r);
+}
+function recAmortized(r){ return recDays(r) > 1; }
 /* 核心换算: 一笔消费 E 对应占用总花费 E/N (N=消费占比, 默认0.85, 可调);
-   应投 = 占用 × (1-N), 其中货币/指数按 13:2 拆分 */
+   应投 = 占用 × (1-N), 其中货币/指数按 13:2 拆分
+   注意: 调用方传的必须是**该笔付出的总金额**(分摊成本传总价, 普通消费传 amount) —— 投资不分摊。 */
 function investOf(amount){
   const base = amount / consumeShare();             // 占用总花费的等价口径
   const sp = rateSplit();
@@ -850,7 +916,7 @@ function investOf(amount){
 /* 比例变化后: 按新比例重算所有记录的应投额(已投金额不会超过新的应投额) */
 function recomputeAllInvest(){
   for(const r of state.records){
-    const inv = investOf(r.amount);
+    const inv = investOf(recTotal(r));     // 分摊成本按总价重算应投(与录入时同一口径)
     r.mm = inv.mm; r.idx = inv.idx;
     r.moneyInv = Math.min(r.moneyInv||0, r.mm);
     r.indexInv = Math.min(r.indexInv||0, r.idx);
@@ -1124,6 +1190,7 @@ const COMMANDS = [
   { n:["budget"], sub:true,                        u:"budget default <金额>",            d:"调整默认预算(以后各期), budget reset 取消当期覆盖" },
   { n:["forecast","burn","predict"],               u:"forecast",                        d:"燃尽预测: 按日均消费预测期末结余/超支与每日可花" },
   { n:["add","a"],                                 u:"add <金额> <类别> [备注..] [@日期]", d:"add 50 餐饮 午餐  或  add @2025-03-05 300 购物 外套" },
+  { n:["amort","amortize"],                        u:"amort <总价> <天数> <类别> [备注..] [@开始日期]", d:"分摊成本: 总价按天数摊到每天, 投资只按总价记一次, 如 amort 3000 365 房租 年付 (天数可写 12月)" },
   { n:["list","ls"],                               u:"list [类别X] [@日期/月份]",         d:"消费列表: list 餐饮 / list @2027-08-18 / list @2027-08 / list @today|@period|@month" },
   { n:["del","rm","delete"],                       u:"del <id>",                        d:"删除指定记录(id 见 list)" },
   { n:["update","edit"],                           u:"update <id> <金额> <类别> [..]",    d:"修改某条记录并自动重算投资额" },
@@ -1242,6 +1309,7 @@ function dispatch(cmd, tokens){
     case "budget":   doBudget(tokens); break;
     case "forecast": doForecast(); break;
     case "add":      doAdd(tokens); break;
+    case "amort":    doAmort(tokens); break;
     case "list":     doList(tokens); break;
     case "del":      doDelete(tokens); break;
     case "update":   doUpdate(tokens); break;
@@ -1480,6 +1548,7 @@ function doAdd(tokens){
         {t:"  (消费÷"+consumePct()+"%)  应投货币 ",c:COLOR.gray},{t:"¥"+money(rec.mm),c:COLOR.cyan},
         {t:"  + 应投指数 ",c:COLOR.gray},{t:"¥"+money(rec.idx),c:COLOR.index},
         {t:"  = ",c:COLOR.gray},{t:"¥"+money(rec.mm+rec.idx),c:COLOR.green}]);
+  if(recAmortized(rec)) line(amortSplitLine(rec));
   // overspend notice for this period
   const aw = alertWord(st.ratio);
   if(aw.t!=="预算内 ✓"){
@@ -1492,11 +1561,83 @@ function doAdd(tokens){
   }
   refreshHeader();
 }
-function makeRecord(amount, category, note, date){
+function makeRecord(amount, category, note, date, amortDays){
   state.seq += 1;
-  const inv = investOf(amount);
-  return { id:state.seq, amount:r2(amount), category, note, date,
+  const days = (isFinite(amortDays) && amortDays>1) ? Math.round(amortDays) : 1;
+  // 分摊成本: 记 "每天" 的金额, 投资按**总价**(每天 × 天数)一次性算 —— 不分摊
+  const total = r2(amount);                       // amount 传进来的是"总价"(普通消费即金额本身)
+  const daily = days>1 ? r2(total/days) : total;
+  const inv = investOf(total);
+  return { id:state.seq, amount:daily, category, note, date,
+           amortDays:days, amortTotal:total,
            mm:inv.mm, idx:inv.idx, moneyInv:0, indexInv:0, created: todayYMD() };
+}
+/* 分摊成本的"每天"明细行(列表/录入回执共用, 避免两处写法漂移) */
+function amortSplitLine(r){
+  return [{t:"  分摊 ",c:COLOR.gray},
+          {t:"总价 ¥"+money(recTotal(r)),c:COLOR.white},
+          {t:" ÷ "+recDays(r)+" 天 = ",c:COLOR.gray},
+          {t:"每天 ¥"+money(r.amount),c:COLOR.pure,cls:"hl"},
+          {t:"   (投资按总价记一次: 应投货币 ¥"+money(r.mm)+" + 指数 ¥"+money(r.idx)+", 不再分摊)",c:COLOR.gray}];
+}
+/* ------------------------------ amort ---------------------------------- */
+/* 分摊成本: amort <总价> <天数> <类别> [备注..] [@开始日期]
+   把一次性付掉的总价按天数平均分到每天(计入每日消费口径), 而投资**只按总价记一次**。
+   天数写成 `<N>月` / `<N>m` 时按每月 AMORT_DAYS_UNIT 天折算(口径可预期, 不随日历漂移)。 */
+function parseDaysToken(t){
+  if(t==null) return null;
+  const s = String(t).trim().toLowerCase();
+  let m = /^(\d+)\s*(?:d|day|days|天|日)?$/.exec(s);
+  if(m) return { days:+m[1], label:null };
+  m = /^(\d+(?:\.\d+)?)\s*(?:m|mo|mon|month|months|个?月)$/.exec(s);
+  if(m){
+    const months = +m[1];
+    const days = Math.round(months * AMORT_DAYS_UNIT);
+    return { days, label: money(months).replace(/\.00$/,"")+" 个月 × "+AMORT_DAYS_UNIT+" 天" };
+  }
+  return null;
+}
+function amortUsage(){ return "用法: amort <总价> <天数> <类别> [备注..] [@开始日期]   例 amort 3000 365 房租 年付  或 amort 600 12月 会员费"; }
+function doAmort(tokens){
+  if(tokens.length < 3){ line([{t:amortUsage(),c:COLOR.yellow}]); return; }
+  const {tokens:rest, date:rawDate} = findDateToken(tokens);
+  const total = numeric(rest[0]);
+  if(total==null || total<=0){ line([{t:"总价无效。例 amort 3000 365 房租 年付",c:COLOR.yellow}]); return; }
+  const d = parseDaysToken(rest[1]);
+  if(!d){ line([{t:"分摊天数无效(需 ≥ "+AMORT_MIN_DAYS+" 天, 可写 12月)。",c:COLOR.yellow}]); return; }
+  if(!Number.isInteger(d.days) || d.days<AMORT_MIN_DAYS || d.days>AMORT_MAX_DAYS){
+    line([{t:"分摊天数需在 "+AMORT_MIN_DAYS+" ~ "+AMORT_MAX_DAYS+" 天之间。",c:COLOR.yellow}]); return;
+  }
+  const daily = r2(total/d.days);
+  if(!(daily>0)){ line([{t:"总价 "+money(total)+" 分摊到 "+d.days+" 天每天不足 ¥0.01，请加大总价或缩短天数。",c:COLOR.yellow}]); return; }
+  const cat = validateCategory(rest[2]);
+  if(!cat) return;
+  const note = rest.slice(3).join(" ");
+  const date = cleanDateStr(rawDate);
+  if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
+  const rec = makeRecord(total, cat, note, date, d.days);
+  state.records.push(rec); save();
+  const end = addDaysYMD(date, rec.amortDays-1);
+  line([{t:"✓ 已记入分摊成本 #",c:COLOR.green},{t:rec.id,c:COLOR.pure,cls:"hl"},
+        {t:"  "+cat+" ",c:catColor(cat)},
+        {t:"总价 ¥"+money(recTotal(rec)),c:COLOR.pure}, {t:"  ("+date+" 起)",c:COLOR.gray}]);
+  line([{t:"  分摊 ",c:COLOR.gray},
+        {t:rec.amortDays+" 天",c:COLOR.cyan},
+        {t:" → ",c:COLOR.gray},
+        {t:"每天 ¥"+money(rec.amount),c:COLOR.pure,cls:"hl"},
+        {t:"   期间 "+date+" ~ "+end, c:COLOR.gray},
+        {t:(d.label? ("   ["+d.label+"]") : ""), c:COLOR.gray}]);
+  line([{t:"  投资不分摊(只记总数): 应投货币 ",c:COLOR.gray},{t:"¥"+money(rec.mm),c:COLOR.cyan},
+        {t:"  + 应投指数 ",c:COLOR.gray},{t:"¥"+money(rec.idx),c:COLOR.index},
+        {t:"  = ",c:COLOR.gray},{t:"¥"+money(rec.mm+rec.idx),c:COLOR.green},
+        {t:"   每天占用 ¥"+money(rec.amount/consumeShare()),c:COLOR.gray}]);
+  const st = periodSnapshot();
+  const aw = alertWord(st.ratio);
+  if(aw.t!=="预算内 ✓"){
+    line([{t:"⚠ 本期占用 ",c:COLOR.yellow},{t:"¥"+money(st.usedUnits),c:COLOR.yellow,cls:"glow"},
+          {t:" / 发放 ¥"+money(st.B),c:COLOR.white},{t:"   "+aw.t,c:aw.c,cls:"glow"}]);
+  }
+  refreshHeader();
 }
 
 /* ------------------------------- list ---------------------------------- */
@@ -1515,6 +1656,8 @@ function renderRecordRow(r){
   addSeg(d,{t:"  "+r.date+"  ", c:COLOR.gray});
   addSeg(d,{t:r.category.padEnd(6," "), c:catColor(r.category)});
   addSeg(d,{t:"¥"+money(r.amount).padStart(8," "), c:COLOR.pure});
+  // 分摊成本: 行里的金额是"每天"的金额, 后面补上"总价 X / N 天", 否则看不出来源
+  if(recAmortized(r)) addSeg(d,{t:"  [总"+money(recTotal(r))+" ÷ "+recDays(r)+"天]", c:COLOR.gray});
   addSeg(d,{t:"  应投货币 ",c:COLOR.cyan}); addSeg(d,{t:"¥"+money(r.mm), c:COLOR.white});
   addSeg(d,{t:"  应投指数 ",c:COLOR.index}); addSeg(d,{t:"¥"+money(r.idx), c:COLOR.white});
   const invSpan = mkSpan("", COLOR.gray);       // 已投小计
@@ -1640,7 +1783,9 @@ function doDelete(tokens){
   const i = state.records.findIndex(r=>r.id===id);
   if(i<0){ line([{t:"未找到 #"+id+"。用 list 查看编号",c:COLOR.yellow}]); return; }
   const [rm] = state.records.splice(i,1); save();
-  line([{t:"✗ 已删除 #",c:COLOR.red},{t:rm.id,c:COLOR.red},{t:"  "+rm.category+" ¥"+money(rm.amount),c:COLOR.white}]);
+  line([{t:"✗ 已删除 #",c:COLOR.red},{t:rm.id,c:COLOR.red},
+        {t:"  "+rm.category+" ¥"+money(rm.amount),c:COLOR.white},
+        {t:recAmortized(rm) ? ("  (分摊"+(rm.amortDays)+"天 · 总价 ¥"+money(recTotal(rm))+")") : "", c:COLOR.gray}]);
   refreshHeader();
 }
 function doUpdate(tokens){
@@ -1653,13 +1798,19 @@ function doUpdate(tokens){
   if(amt==null||amt<=0){ line([{t:"金额无效",c:COLOR.yellow}]); return; }
   const cat = validateCategory(rest[1]); if(!cat) return;
   const note = rest.slice(2).join(" ");
+  const days = recDays(rec);                    // 分摊成本: 天数不变, 金额按"每天"解释 → 总价同步重算
   rec.amount = r2(amt); rec.category = cat; rec.note = note;
+  rec.amortDays = days;
+  rec.amortTotal = days>1 ? r2(rec.amount*days) : rec.amount;
   if(rawDate){ const d = cleanDateStr(rawDate); if(d) rec.date=d; }
-  const inv = investOf(rec.amount); rec.mm=inv.mm; rec.idx=inv.idx;
+  const inv = investOf(recTotal(rec)); rec.mm=inv.mm; rec.idx=inv.idx;
   rec.moneyInv = Math.min(rec.moneyInv||0, rec.mm);
   rec.indexInv = Math.min(rec.indexInv||0, rec.idx);
   save();
-  line([{t:"✓ 已更新 #",c:COLOR.green},{t:id,c:COLOR.pure},{t:"  "+cat+" ¥"+money(rec.amount)+" 应投重新计算: 货币¥"+money(rec.mm)+" 指数¥"+money(rec.idx),c:COLOR.white}]);
+  line([{t:"✓ 已更新 #",c:COLOR.green},{t:id,c:COLOR.pure},
+        {t:"  "+cat+" ¥"+money(rec.amount)+(days>1 ? ("/天 (总价 ¥"+money(recTotal(rec))+" ÷ "+days+" 天)") : ""),
+         c:COLOR.white},
+        {t:"  应投按总价重算: 货币¥"+money(rec.mm)+" 指数¥"+money(rec.idx),c:COLOR.white}]);
   refreshHeader();
 }
 function doPay(tokens){
@@ -1896,7 +2047,10 @@ function buildReportText(md){
   H("逐笔记录");
   for(const r of state.records.slice().sort((a,b)=>a.date<b.date?-1:1)){
     const paid=recStatus(r).t;
-    L.push("- "+r.date+"  #"+r.id+"  "+r.category+"  ¥"+money(r.amount)
+    // 分摊成本额外标注"总价 / 天数"; 行里的 ¥ 金额仍是每天的口径(与合计/占用一致)
+    const amort = recAmortized(r)
+      ? ("  分摊"+recDays(r)+"天(总价¥"+money(recTotal(r))+" → 每天¥"+money(r.amount)+")") : "";
+    L.push("- "+r.date+"  #"+r.id+"  "+r.category+"  ¥"+money(r.amount)+amort
           +"  (应投货币¥"+money(r.mm)+" 指数¥"+money(r.idx)
           +"  已投货币¥"+money(r.moneyInv||0)+" 指数¥"+money(r.indexInv||0)+")  ["+paid+"]"
           +(r.note?"  "+r.note:""));
@@ -2146,12 +2300,57 @@ function invCluster(kind){
 }
 function scrollBottom(){ term.scrollTop = term.scrollHeight; }
 
-/* modal for add/edit */
+/* modal for add/edit —— 上半部两个选项卡: 单笔消费(add) / 分摊成本(amort) */
 let modalMode = "add"; let modalId=null;
+let modalTab = "add";                 // 当前选项卡: "add" | "amort"
+function setModalTab(tab){
+  modalTab = (tab==="amort") ? "amort" : "add";
+  const panel = document.getElementById(modalTab==="amort" ? "mp_amort" : "mp_add");
+  const other = document.getElementById(modalTab==="amort" ? "mp_add"   : "mp_amort");
+  if(panel) panel.classList.remove("hide");
+  if(other) other.classList.add("hide");
+  document.querySelectorAll("#modal .mtabs .mtab").forEach(b=>{
+    b.classList.toggle("on", b.dataset && b.dataset.mtab === modalTab);
+  });
+  document.getElementById("mTitle").textContent = (modalTab==="amort") ? "记一笔分摊成本" : "记一笔消费";
+  updateAmortHint();
+}
+/* 分摊预览: 总价 ÷ 天数 = 每天; 非法输入用黄色说明原因并阻止提交(输入框加 input 监听, 实时更新) */
+function updateAmortHint(){
+  const el = document.getElementById("fa_hint");
+  if(!el) return;
+  if(modalTab!=="amort"){ el.textContent=""; el.classList.remove("bad"); return; }
+  const total = input2num(document.getElementById("fa_total").value);
+  const d = parseDaysToken(document.getElementById("fa_days").value);
+  const month = document.getElementById("fa_date").value;
+  if(total==null || total<=0){
+    el.className="mhint"; el.textContent="填「总价」+「分摊天数」后显示每天摊到多少（投资只按总价记一次，不再分摊）。"; return;
+  }
+  if(!d){
+    el.className="mhint bad"; el.textContent="分摊天数需为 ≥ "+AMORT_MIN_DAYS+" 的整数天，也可以写 12月 / 12m（按 30 天/月）。"; return;
+  }
+  if(!Number.isInteger(d.days) || d.days<AMORT_MIN_DAYS || d.days>AMORT_MAX_DAYS){
+    el.className="mhint bad"; el.textContent="分摊天数需在 "+AMORT_MIN_DAYS+" ~ "+AMORT_MAX_DAYS+" 天之间（当前 "+d.days+" 天）。"; return;
+  }
+  const daily = r2(total/d.days);
+  if(!(daily>0)){
+    el.className="mhint bad"; el.textContent="每天不足 ¥0.01，请加大总价或缩短天数。"; return;
+  }
+  // 与终端显示口径一致: 用 r2 后的每天金额反推总价并算应投, 保证"预览 = 提交后的数字"
+  const shownTotal = r2(daily*d.days);
+  const inv = investOf(shownTotal);
+  let s = "= 每天 ¥"+money(daily)+" × "+d.days+" 天（合计 ¥"+money(shownTotal)+"）";
+  if(month) s += "，从 "+month+"-01 起";
+  s += "\n应投按总价一次记入: 货币 ¥"+money(inv.mm)+" + 指数 ¥"+money(inv.idx);
+  el.className="mhint"; el.textContent=s;
+}
 function openAdd(){ modalMode="add"; modalId=null;
-  document.getElementById("mTitle").textContent="记一笔消费";
   document.getElementById("f_amt").value=""; document.getElementById("f_note").value="";
   document.getElementById("f_date").value=todayYMD(); document.getElementById("f_cat").value="";
+  document.getElementById("fa_total").value=""; document.getElementById("fa_days").value="";
+  document.getElementById("fa_note").value=""; document.getElementById("fa_cat").value="";
+  document.getElementById("fa_date").value=todayYMD().slice(0,7);
+  setModalTab("add");                  // 每次打开都回到最常用的"单笔消费"
   document.getElementById("modalWrap").classList.add("open");
   document.getElementById("f_amt").focus();
 }
@@ -2216,6 +2415,7 @@ function applyBudget(kind){
 }
 function closeModal(){ document.getElementById("modalWrap").classList.remove("open"); }
 function submitModal(){
+  if(modalTab==="amort"){ submitAmort(); return; }
   const amt=input2num(document.getElementById("f_amt").value);
   const cat=document.getElementById("f_cat").value.trim();
   const date=document.getElementById("f_date").value||todayYMD();
@@ -2226,6 +2426,26 @@ function submitModal(){
   const cmd = modalMode==="add"
     ? "add "+amt+" "+cat+(note?" "+quote(note):"")+" @"+date
     : "update "+modalId+" "+amt+" "+cat+(note?" "+quote(note):"")+" @"+date;
+  input.value = cmd; input.focus();
+  runCommand(cmd);
+}
+/* 分摊成本选项卡的提交: 与命令行同一条 amort 命令(拼串回灌 runCommand, 保证双通道行为一致) */
+function submitAmort(){
+  const total=input2num(document.getElementById("fa_total").value);
+  const d=parseDaysToken(document.getElementById("fa_days").value);
+  const cat=document.getElementById("fa_cat").value.trim();
+  const month=document.getElementById("fa_date").value||todayYMD().slice(0,7);
+  const note=document.getElementById("fa_note").value.trim();
+  if(total==null||total<=0){ alertModal("总价需为大于0的数字"); return; }
+  if(!d){ alertModal("分摊天数需为 ≥ "+AMORT_MIN_DAYS+" 的整数天"); return; }
+  if(!Number.isInteger(d.days) || d.days<AMORT_MIN_DAYS || d.days>AMORT_MAX_DAYS){
+    alertModal("分摊天数需在 "+AMORT_MIN_DAYS+" ~ "+AMORT_MAX_DAYS+" 天之间"); return;
+  }
+  if(!(r2(total/d.days)>0)){ alertModal("每天不足 ¥0.01，请加大总价或缩短天数"); return; }
+  if(!cat){ alertModal("请输入类别，如 房租 / 会员"); return; }
+  const date = /^\d{4}-\d{2}$/.test(month) ? (month+"-01") : todayYMD();
+  closeModal();
+  const cmd = "amort "+total+" "+d.days+" "+cat+(note?" "+quote(note):"")+" @"+date;
   input.value = cmd; input.focus();
   runCommand(cmd);
 }
@@ -2361,6 +2581,15 @@ function bindModal(){
   document.getElementById("modalWrap").addEventListener("click",(e)=>{ if(e.target.id==="modalWrap") closeModal(); });
   [document.getElementById("f_amt"),document.getElementById("f_date"),document.getElementById("f_cat"),document.getElementById("f_note")]
     .forEach(el=>el.addEventListener("keydown",(e)=>{ if(e.key==="Enter") submitModal(); }));
+  // 「记一笔」的两个选项卡 + 分摊预览(输入即预览, 与"配置预算"弹窗的实时预览同一风格)
+  document.querySelectorAll("#modal .mtabs .mtab").forEach(b=>{
+    b.addEventListener("click",()=>setModalTab(b.dataset && b.dataset.mtab));
+  });
+  ["fa_total","fa_days","fa_date"].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.addEventListener("input",updateAmortHint);
+  });
+  [document.getElementById("fa_total"),document.getElementById("fa_days"),document.getElementById("fa_cat"),document.getElementById("fa_note")]
+    .forEach(el=>el.addEventListener("keydown",(e)=>{ if(e.key==="Enter") submitModal(); }));
   // 预算弹窗
   document.getElementById("b_cancel").addEventListener("click",closeBudgetModal);
   document.getElementById("b_current").addEventListener("click",()=>applyBudget("current"));
@@ -2442,6 +2671,12 @@ function argCandidates(c0, slot, tokens, cur){
   /* add <金额> <类别> [备注..] [@日期]: 金额位不提示(数字自己敲), 类别位给类别, 备注位不给 */
   if(cmd==="add"){
     if(arg===1) return [...PREDEFINED.keys()];
+    return [];
+  }
+  /* amort <总价> <天数> <类别> [备注..] [@开始日期]: 金额位/天数位不提示, 类别位给类别(与 add 同一套) */
+  if(cmd==="amort"){
+    if(arg===2) return [...PREDEFINED.keys()];
+    if(arg===1) return ["30","90","180","365","12月"];
     return [];
   }
   /* update <id> <金额> <类别> [备注..] [@日期]: 修复前类别被放在金额位(slot 2), 类别位(slot 3)返回空 */

@@ -10,6 +10,9 @@ window.addEventListener("load",()=>{
   const inp=document.getElementById("cmdline");
   const run=(c)=>{ inp.value=c; inp.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true})); };
   run("add 300 餐饮 午餐");
+  run("amort 3600 365 房租 年付");        // 分摊成本: 每天 ¥9.86, 投资按总价一次记入
+  run("amort 600 12月 会员 年费");         // 天数写成"12月" = 360 天
+  run("list");                            // 行里应出现 [总3600.00 ÷ 365天]
   run("summary");
   run("forecast");
   run("assets 10");

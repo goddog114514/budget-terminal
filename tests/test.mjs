@@ -292,6 +292,85 @@ function near(name, a, b, eps=1e-6){ ok(name, Math.abs(a-b)<=eps, "got "+a+" wan
   eq("T20.2 amount survives", T.state.records[0].amount, 100);
 }
 
+/* ============ T28: 分摊成本 (amort) —— 每天计消费, 投资只按总价记一次 ============ */
+{
+  const S = loadApp(); S.boot();          // 冻结时钟默认 2027-08-30
+  S.runCommand("amort 3000 365 房租 年付");
+  eq("T28.1 只记一条记录", S.state.records.length, 1);
+  const r = S.state.records[0];
+  eq("T28.2 记入的是每天金额(总价÷天数)", r.amount, S.r2(3000/365));
+  eq("T28.3 天数与总价字段", [r.amortDays, r.amortTotal], [365, 3000]);
+  ok("T28.4 类别/备注/日期照常", r.category==="房租" && r.note==="年付" && r.date==="2027-08-30", JSON.stringify(r));
+  eq("T28.5 应投按总价一次记入(不分摊)", [r.mm, r.idx], [S.investOf(3000).mm, S.investOf(3000).idx]);
+  /* 核心恒等式: Σ(每天 ÷ 消费占比) == 总价 ÷ 消费占比, 即"投资只记总数"不会少算 */
+  near("T28.6 等额普通消费记录应投与摊消失相等",
+       r.mm + r.idx, S.investOf(3000).mm + S.investOf(3000).idx, 1e-9);
+  eq("T28.7 投资池按总数累计", [S.moneyPending(), S.indexPending()], [r.mm, r.idx]);
+  const st = S.periodSnapshot();
+  eq("T28.8 本期消费只计一天(不是总价)", st.consumption, r.amount);
+  eq("T28.9 状态与普通记录同一套", S.recStatus(r).t, "未投");
+  /* 每天/总价读取入口对旧记录必须等价(amount 本身就是总额) */
+  S.runCommand("add 500 餐饮 普通");
+  const plain = S.state.records[1];
+  eq("T28.10 普通记录的 recTotal 就是 amount", S.recTotal(plain), 500);
+  eq("T28.11 普通记录的 recDays 是 1", S.recDays(plain), 1);
+  ok("T28.12 只有分摊记录被标记为已分摊", S.recAmortized(r) && !S.recAmortized(plain));
+
+  /* 天数写法: 天数 / 月 / 边界 / 非法 */
+  const A = loadApp(); A.boot();
+  A.runCommand("amort 600 12月 会员");
+  eq("T28.13 '12月' = 12×30 天", A.state.records[0].amortDays, 360);
+  eq("T28.14 '12月' 的每天金额", A.state.records[0].amount, A.r2(600/360));
+  A.runCommand("amort 300 3m 会员");
+  eq("T28.15 '3m' 也按 30 天/月", A.state.records[1].amortDays, 90);
+  A.clearTerm(); A.runCommand("amort 100 1 餐饮");    // 天数 < 2
+  ok("T28.16 天数过小被拒", !/✓/.test(A.lines().join("\n")) && A.state.records.length===2, A.lines().join("|"));
+  A.clearTerm(); A.runCommand("amort 4000000 99999 餐饮");  // 天数超上限(而且大到"每天也够")
+  ok("T28.17 天数超上限被拒(不是靠每天金额拦下来的)", !/✓/.test(A.lines().join("\n")) && A.state.records.length===2, A.lines().join("|"));
+  A.clearTerm(); A.runCommand("amort 3650 3650 餐饮");       // 上限本身必须放行
+  ok("T28.17b 上限 3650 天放行", /✓/.test(A.lines().join("\n")) && A.state.records.length===3, A.lines().join("|"));
+  A.clearTerm(); A.runCommand("amort 0.05 100 餐饮");   // 每天 < 0.01 → 会被记成 0
+  ok("T28.18 每天不足 ¥0.01 被拒", !/✓/.test(A.lines().join("\n")) && A.state.records.length===3, A.lines().join("|"));
+  A.clearTerm(); A.runCommand("amort 300 365");         // 缺类别
+  ok("T28.19 缺参数给用法提示", /用法: amort/.test(A.lines().join("\n")), A.lines().join("|"));
+
+  /* set invest 后按总价重算应投额, 且已投金额被正确封顶 */
+  const B = loadApp(); B.boot();
+  B.runCommand("amort 3000 365 房租");
+  B.runCommand("pay 1 all");
+  B.runCommand("set invest 10");                       // 消费占比 0.90 → 应投变小
+  const br = B.state.records[0];
+  eq("T28.20 改比例后按总价重算应投", br.mm, B.investOf(br.amortTotal).mm);
+  ok("T28.21 已投金额被新应投封顶", br.moneyInv <= br.mm + 1e-9, JSON.stringify([br.moneyInv, br.mm]));
+
+  /* update: 金额位对分摊记录解释为"每天", 总价同步重算 */
+  const C = loadApp(); C.boot();
+  C.runCommand("amort 3000 365 房租");
+  C.runCommand("update 1 12 房租 改价");
+  const cr = C.state.records[0];
+  eq("T28.22 update 改的是每天金额", cr.amount, 12);
+  eq("T28.23 总价随每天金额同步重算", cr.amortTotal, C.r2(12*365));
+  eq("T28.24 应投按新总价重算", cr.mm, C.investOf(C.r2(12*365)).mm);
+  eq("T28.25 update 不丢分摊天数", cr.amortDays, 365);
+
+  /* 归一化: 旧记录/坏字段都不得变形(老备份必须永远能导入) */
+  const legacy = S.normalizeRecords([{ id:1, amount:100, category:"餐饮", date:"2027-08-01" }]).records[0];
+  eq("T28.26 旧记录按 1 天处理", [legacy.amortDays, legacy.amortTotal, legacy.amount], [1, 100, 100]);
+  const bad = S.normalizeRecords([{ id:1, amount:10, category:"餐饮", date:"2027-08-01", amortDays:0, amortTotal:0 }]).records[0];
+  eq("T28.27 非法天数回落普通消费", [bad.amortDays, bad.amortTotal], [1, 10]);
+  const noTotal = S.normalizeRecords([{ id:1, amount:10, category:"餐饮", date:"2027-08-01", amortDays:30 }]).records[0];
+  eq("T28.28 缺总价时按每天×天数补回", [noTotal.amortDays, noTotal.amortTotal], [30, 300]);
+  eq("T28.29 缺总价的应投按补回的总价算", noTotal.mm, S.investOf(300).mm);
+  /* 备份往返: 分摊字段必须原样保留 */
+  const D = loadApp(); D.boot();
+  D.runCommand("amort 3000 365 房租 年付");
+  const txt = D.serializeState();
+  const E = loadApp(); E.boot(); E.restoreFromText(txt);
+  const er = E.state.records[0];
+  eq("T28.30 备份往返后分摊字段不变", [er.amortDays, er.amortTotal, er.amount], [365, 3000, D.r2(3000/365)]);
+  eq("T28.31 备份往返后应投不变", [er.mm, er.idx], [D.state.records[0].mm, D.state.records[0].idx]);
+}
+
 console.log("PASS " + pass + " / FAIL " + fails.length);
 for(const f of fails) console.log("  ✗ " + f);
 process.exit(fails.length? 1 : 0);

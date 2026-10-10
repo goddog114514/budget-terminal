@@ -12,6 +12,9 @@
 # 单一入口: 顺序跑全部 5 个套件, 汇总断言数并对照交付闸门基线
 node tests/run-all.mjs
 
+# 变异测试: 6 组分摊成本变异必须全部被抓住(v0.0.6 起有脚本, 不必手搓)
+node tests/mutate-amort.mjs
+
 # 也可以单独跑某一个(排查时用)
 node tests/test3.mjs
 ```
@@ -21,12 +24,12 @@ node tests/test3.mjs
 
 | 套件 | 断言 | 覆盖 |
 | --- | --- | --- |
-| `test.mjs` | 78 | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 |
+| `test.mjs` | 110 | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + **分摊成本 `amort`（T28）** |
 | `test2.mjs` | 55 | 端到端命令流/弹窗/备份数据冒烟/阈值与红黄绿圆点 |
 | `test3.mjs` | 84 | P1 护栏：颜色令牌一致、`kvRow`、自适应列宽、死代码已删、响应式 CSS |
-| `test4.mjs` | 79 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README 双向校验 |
-| `test5.mjs` | 57 | M2 护栏：语义槽位、`@日期` 位置无关、ghost 预览 |
-| **合计** | **353** | |
+| `test4.mjs` | 81 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README 双向校验 |
+| `test5.mjs` | 81 | M2 护栏：语义槽位、`@日期` 位置无关、ghost 预览 + **`amort` 补全与双选项卡** |
+| **合计** | **411** | |
 
 ## 环境变量（都有默认值，通常不用设）
 
@@ -40,6 +43,10 @@ node tests/test3.mjs
 # 拿真实账本跑一遍(不写入仓库, 只读)
 $env:BT_FIXTURE="C:\...\budget_term_backup.json"; node tests/run-all.mjs
 ```
+
+> ⚠️ **真实备份不会全绿，这是预期的**：一批断言把夹具的 `settings`（周期/锚点/预算）连同冻结时钟一起用
+> （`T3.2`、`T24.1/2` 等），真实账本的周期配置与 2027 合成时间线天然不一致，必然红几条。
+> `BT_FIXTURE` 只用来回答"**有没有新增崩溃/异常**"；要全绿请用默认的合成夹具。
 
 ## 夹具：`fixtures/user_backup.json` 是**全合成数据**
 
@@ -74,10 +81,11 @@ $env:BT_FIXTURE="C:\...\budget_term_backup.json"; node tests/run-all.mjs
 $edge = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 
 # 生成演示页(默认写到系统临时目录, 不污染仓库; 也可以传第一个参数指定路径)
-node tests/gen-clean.mjs $env:TEMP\bt-clean.html     # 只跑命令 → 截图
+node tests/gen-clean.mjs $env:TEMP\bt-clean.html     # 只跑命令(含 amort) → 截图
 node tests/gen-probe.mjs $env:TEMP\bt-probe.html     # 注入探针 → --dump-dom 取值
 node tests/gen-tab.mjs   $env:TEMP\bt-tab.html       # 真实按键驱动 Tab 补全
 node tests/gen-help.mjs  $env:TEMP\bt-help.html      # 只看 help 排版
+node tests/gen-amort.mjs $env:TEMP\bt-amort.html     # 真实点击「分摊成本」选项卡 + input 事件 → 面板/预览探针
 
 # 取值探针: 读运行期 COLOR / 列宽 / 是否横向溢出
 & $edge --headless=new --disable-gpu --no-first-run "--user-data-dir=$env:TEMP\bt-ep" `
@@ -90,18 +98,30 @@ node tests/gen-help.mjs  $env:TEMP\bt-help.html      # 只看 help 排版
   "file:///$($env:TEMP -replace '\\','/')/bt-clean.html"
 ```
 
-**两个坑（都踩过）**
+**三个坑（都踩过）**
 
 1. `--window-size` 与 `--user-data-dir` / `--screenshot` 这类"值里有逗号或变量"的参数**必须整体加引号**：
    写成 `"--window-size=$w,900"`。不加引号时 PowerShell 会把 `$w,900` 当数组拆开，
    Edge 收不到宽度，量出来的是默认窗口（表现为三档宽度结果一模一样）。
 2. `--virtual-time-budget` 与 `--dump-dom` 同时用可能拿不到输出；探针页不要在 `setTimeout` 里跑，
    在 `load` 事件里同步跑完再写 DOM。`--dump-dom` 会把 `<script>` 源码也打出来，
-   正则要匹配渲染后的节点文本（`>PROBE::…::END<`），别匹配到脚本源码。
+   正则要匹配渲染后的节点文本（`>PROBE::…::END<`），别匹配到脚本源码；
+   取**最后一个** `PROBE::`（用 `LastIndexOf`）最稳。
+3. **`--dump-dom` 的输出经管道会丢**：`& $edge ... | Select-String ...` 有时候返回 0 字节。
+   改用重定向（实测稳定）：
+   ```powershell
+   $p = Start-Process -FilePath $edge -ArgumentList @("--headless=new","--disable-gpu","--no-first-run",
+          "--user-data-dir=$dir","--window-size=1400,900","--dump-dom","$base/bt-probe.html") `
+        -RedirectStandardOutput "$dir\dom.txt" -NoNewWindow -Wait -PassThru
+   Get-Content "$dir\dom.txt" -Raw
+   ```
 
 ## 变异测试（证明护栏真的有效）
 
-把已知缺陷改回去，确认对应断言会红。装置已用此法验证 7 组（覆盖全部 5 个套件）：
+把已知缺陷改回去，确认对应断言会红。装置已用此法验证 13 组（覆盖全部 5 个套件）。
+
+**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 6 组、
+自动校验"变异点恰好命中一次"、并汇总哪些没被抓住。
 
 | 变异体 | 套件 | 还原的缺陷 | 结果 |
 | --- | --- | --- | --- |
@@ -112,18 +132,29 @@ node tests/gen-help.mjs  $env:TEMP\bt-help.html      # 只看 help 排版
 | `m_ratio` | test | 比例区间改回开区间（端点被拒，F5） | 8 条红 |
 | `m_stale` | test | 失效行不再提示失效（假成功，B7） | T12.2 红 |
 | `m_header` | test2 | 拿掉 `set budget` 后的 `refreshHeader()`（H4/F10） | T21.1 红 |
+| `m_amort_dispatch` | test4 | 抹掉 `dispatch` 的 `amort` 分支（F2） | 1 条红 |
+| `m_amort_invest` | test | 投资改按**每天**算（投资被分摊，少算 N 倍） | 4 条红 |
+| `m_amort_days` | test | `12月` 只当 12 天（不按 30 天/月折算） | 4 条红 |
+| `m_amort_bounds` | test | 放宽天数上限（越界天数不再被拒） | 3 条红 |
+| `m_amort_tab` | test5 | 切选项卡时不换面板（点了没反应） | 4 条红 |
+| `m_amort_total` | test | 归一化时丢掉摊销总价（旧备份导入失真） | 5 条红 |
 
 做法：改一份副本 → `$env:BT_HTML` 指过去 → 跑对应套件，**必须变红**。新写的护栏也应做一次。
+
+> **两条经验**：① 多行变异模式要按**实际行尾**归一（本机工作区是 CRLF），否则报"命中 0 次"——
+> 那是脚本自己坏了，不能当通过；② 变异"没红"也可能是**被另一条护栏顺手拦住了**
+> （`m_amort_bounds` 第一次就是被"每天不足 ¥0.01"拦下的），补一条**只针对该点**的断言才算真守住。
 
 ## 目录结构
 
 ```
 tests/
 ├─ run-all.mjs            单一入口(5 套件 + 基线校验)
+├─ mutate-amort.mjs       变异测试(v0.0.6: 6 组分摊成本变异)
 ├─ env.mjs                路径解析单一入口(仓库根 / HTML / README / 夹具)
 ├─ dom.mjs                极简 DOM stub(元素/classList/style/事件/localStorage)
 ├─ app.mjs                加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now})
 ├─ test.mjs test2..test5  5 个套件
-├─ gen-clean/gen-help/gen-probe/gen-tab.mjs   浏览器验证用页面生成器
-└─ fixtures/user_backup.json                  合成账本夹具(无真实数据)
+├─ gen-clean/gen-help/gen-probe/gen-tab/gen-amort.mjs   浏览器验证用页面生成器
+└─ fixtures/user_backup.json                            合成账本夹具(无真实数据)
 ```
