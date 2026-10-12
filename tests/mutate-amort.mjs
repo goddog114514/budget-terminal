@@ -43,6 +43,11 @@ const MUTANTS = [
   ["m_amort_window_rows", "test.mjs", "只按 r.date 筛选窗口(窗口内其余天查不到这笔分摊)",
    ["function recInWindow(r, start, end){ return recDaysInRange(r, start, end) > 0; }",
     "function recInWindow(r, start, end){ return r.date >= start && r.date <= end; }"]],
+  /* 这一组还原"起始日期只精确到月"的老行为: 提交时把日期吸到该月 1 号。
+     护栏是 M2.68/70b/70d —— 日期非法必须被拦下、精确到日的日期必须原样落库。 */
+  ["m_amort_day_precision", "test5.mjs", "弹窗起始日期吸到每月 1 号(丢失用户选的日)",
+   ['  const picked = amortPickDate(document.getElementById("fa_date").value);\n  if(!picked){ alertModal("起始日期需为 YYYY-MM-DD 的合法日期（或留空 = 今天）"); return; }',
+    '  const picked = { date: (document.getElementById("fa_date").value||todayYMD()).slice(0,7)+"-01", blank:false };']],
 ];
 
 const tmp = os.tmpdir();

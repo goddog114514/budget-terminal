@@ -50,7 +50,7 @@ export function loadApp(opts = {}){
     recDays, recTotal, recAmortized, parseDaysToken, amortSplitLine,
     recWindow, recDaysInRange, recInWindow, recAmountInRange, recAmountUpToToday,
     sumRange, collectWindow, investTotalsOf,
-    setModalTab, updateAmortHint, submitModal, submitAmort, openAdd,
+    setModalTab, updateAmortHint, submitModal, submitAmort, openAdd, amortPickDate,
     get modalTab(){ return modalTab; },
     filterByTokens, normDateText, parseSummaryArgs, forecastData,
     buildReportText, serializeState, restoreFromText, recomputeAllInvest,

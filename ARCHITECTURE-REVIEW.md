@@ -4,11 +4,11 @@
 > 量化指标（§8）、文档分工（§9）；② **审查问题清单** —— 21 条（§3–§5）与实施顺序（§6）、每版影响（§10）。
 > **配套文档**：[`README.md`](README.md)（用户手册 + 逐版更新记录）、`HANDOVER.md`（本地约束文件：
 > 不变量 / 改动配方 / AI 规范 / 隐私与流程纪律 —— 它**索引本文件**，不重复本文件的内容，分工见 §9.1）。
-> **审查对象**：`index.html`（v0.0.5 时点 2609 行 → **v0.0.7 已 2924 行**，单文件应用）+ `README.md` + `.gitignore`
+> **审查对象**：`index.html`（v0.0.5 时点 2609 行 → **v0.0.8 已 2944 行**，单文件应用）+ `README.md` + `.gitignore`
 > **审查方式**：静态走查 → 350+ 条无头断言复现 → 真实浏览器（无头 Edge）渲染/交互验证
 > **本文件位置**：项目主文件夹（与 `README.md` 同级）
 > **行号说明**：行号为 v0.0.5 时点值，代码改动后会漂移；定位请优先用**符号名**（§1.5 有索引）。
-> **版本时点**：`v0.0.7`（修复 v0.0.6 分摊成本的窗口口径缺陷，见 §10.1）。
+> **版本时点**：`v0.0.8`（分摊起始日期精确到日；v0.0.7 修掉分摊窗口口径缺陷，见 §10.1）。
 
 ---
 
@@ -40,7 +40,7 @@ v0.0.6 的新增代码（分摊成本）**没有引入新的重复**，反而新
 ### 1.1 代码分区
 
 ```
-index.html (2924 行, LF, 单文件, 无构建, 无依赖)
+index.html (2944 行, LF, 单文件, 无构建, 无依赖)
 ├─ <style>  ~290 行  :root 19 个令牌 → 组件规则 → 弹窗规则 → 终端/表格规则 → 选项卡规则
 ├─ <body>   ~130 行  header#statusbar · nav.toolbar(18 按钮 + 1 下拉) · #investbar
 │                     main#term · footer(输入框 + ghost) · 3 个弹窗(XWrap > XModal,
@@ -102,7 +102,7 @@ cls(clear)       清屏
 set 子命令: budget | daily | period | periodstart | monthstart | weekstart | alert | invest | consume(ratio) | rate
 ```
 
-### 1.5 关键符号索引（v0.0.7 行号，仅作起点，定位以符号名为准）
+### 1.5 关键符号索引（v0.0.8 行号，仅作起点，定位以符号名为准）
 
 | 符号 | 行 | 职责 |
 | --- | --- | --- |
@@ -126,7 +126,7 @@ set 子命令: budget | daily | period | periodstart | monthstart | weekstart | 
 | `renderRecordRow` / `refreshHeader` / `renderInvestBar` | 1654 / 2220 / 2264 | 列表行 / 顶栏 / 理财条 |
 | `buildReportText` / `showSettings` | 2008 / 2081 | 导出报告 / `config` 输出 |
 | `doForecast` / `forecastData` / `doAssets` | 2139 / 2106 / 2176 | 燃尽预测 / 预测数据 / 资产看板 |
-| `setModalTab` / `updateAmortHint` / `openAdd` / `submitModal` / `submitAmort` | 2307 / 2320 / 2348 / 2418 / 2434 | **「记一笔」双选项卡**、实时预览、提交 |
+| `setModalTab` / `updateAmortHint` / `amortPickDate` / `openAdd` / `submitModal` / `submitAmort` | 2383 / 2400 / 2437 / 2465 / 2536 / 2530 | **「记一笔」双选项卡**、实时预览、**起始日期唯一解析入口**、提交 |
 | 补全区：`CMD_WORDS` / `argCandidates` / `completionCandidates` / `textWidthPx` | 2624 / 2636 / 2705 / 2733 | **补全词 / 语义槽位 / 补全入口 / 字宽度量** |
 | `boot` | 2813 | 启动（loadState → 渲染 → 绑定 → banner） |
 
@@ -339,9 +339,9 @@ tests/
   test2.mjs   55 条  端到端命令流/弹窗/备份数据冒烟/阈值与红绿黄圆点
   test3.mjs   85 条  P1 护栏（颜色令牌一致、kvRow、自适应列宽、死代码已删、响应式 CSS 在）
   test4.mjs   85 条  M1 护栏（COMMANDS ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 双向校验）
-  test5.mjs   81 条  M2 护栏（语义槽位、@日期 位置无关、ghost 预览）+ amort 补全与双选项卡
-  mutate-amort.mjs   **变异测试**: 8 组"把缺陷改回去" → 期望对应断言变红
-                     （v0.0.6 的 6 组 + v0.0.7 的 m_amort_window_sum / m_amort_window_rows）
+  test5.mjs   92 条  M2 护栏（语义槽位、@日期 位置无关、ghost 预览）+ amort 补全与双选项卡
+  mutate-amort.mjs   **变异测试**: 9 组"把缺陷改回去" → 期望对应断言变红
+                     （v0.0.6 的 6 组 + v0.0.7 的 2 组 + v0.0.8 的 m_amort_day_precision）
   gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window.mjs   浏览器验证用页面生成器（默认输出到系统临时目录；
                                                     gen-window 自带 Date 桩把时钟钉在 2027-08-30，见 §7.3）
   fixtures/user_backup.json                  **全合成**账本夹具（不含任何真实账目）
@@ -362,7 +362,7 @@ tests/
 ```powershell
 # 全量（发版 / 跨模块改动）：顺序跑 5 个套件 + 基线校验，任一项失败/断基数不符即非 0 退出
 node tests/run-all.mjs
-#   ✓ test.mjs 138 ✓ test2.mjs 55 ✓ test3.mjs 85 ✓ test4.mjs 85 ✓ test5.mjs 81 → 合计 444
+#   ✓ test.mjs 138 ✓ test2.mjs 55 ✓ test3.mjs 85 ✓ test4.mjs 85 ✓ test5.mjs 92 → 合计 455
 
 # 日常小更新：只跑本次改动涉及的套件 —— 这已经满足低档闸门
 node tests/test5.mjs
@@ -386,7 +386,7 @@ $env:BT_FIXTURE="C:\...\budget_term_backup.json"; node tests/run-all.mjs
 **高档 · 发版，或改动落在共享抽象上（跨模块）**
 
 ```
-[ ] node tests/run-all.mjs  → 合计 444 PASS / 0 FAIL（138/55/85/85/81，且与基线一致）
+[ ] node tests/run-all.mjs  → 合计 455 PASS / 0 FAIL（138/55/85/85/92，且与基线一致）
 [ ] 改动涉及 UI/视觉 → 浏览器确认改的那块对；**发版或专门动样式**时顺带量 1400 / 900 / 520 三档，
     scrollWidth === clientWidth（适配性是发版检查项，不是每次小更新的检查项）
 [ ] 改动涉及颜色/主题 → 探针确认 COLOR.* 与 CSS 令牌（js_* vs css_*）逐项相等
@@ -475,10 +475,10 @@ $env:BT_HTML="C:\temp\mut.html"; node tests/test5.mjs      # 必须 FAIL，且�
 ```
 
 注意用 **Node 做字面替换**（`split/join`），别用 PowerShell 的 `-replace`（它是正则，`$`/`\` 会咬人）。
-v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 8 组、自动校验"命中恰好一次"），
+v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 组、自动校验"命中恰好一次"），
 新增功能时**照它加一段 `MUTANTS` 就行**，别再手搓命令。
 
-已实测 15 组，覆盖全部 5 个套件：
+已实测 16 组，覆盖全部 5 个套件：
 
 | 变异体 | 套件 | 还原的缺陷 | 应变红 |
 | --- | --- | --- | --- |
@@ -497,6 +497,7 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 8 
 | `m_amort_total` | test | 归一化时丢掉摊销总价（旧备份导入失真） | 5 条 |
 | `m_amort_window_sum` | test | **只按记账当天求和**（其余天数的钱不计入消费 —— v0.0.7 修的那个缺陷） | 9 条 |
 | `m_amort_window_rows` | test | **只按 `r.date` 筛选窗口**（窗口内其余天查不到这笔分摊） | 3 条 |
+| `m_amort_day_precision` | test5 | **起始日期吸到每月 1 号**（"精确到日"被打回"精确到月"，v0.0.8 修的缺陷） | 4 条 |
 
 > 后两组是 v0.0.7 新增：它们**打的是同一个缺陷的两个不同点**（金额求和 / 行筛选），
 > 所以必须各自变红 —— 只改金额时列表里连行都看不到，只改筛选时行在但金额不对（F14 的做法）。
@@ -553,19 +554,19 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 8 
 | `save()` / `refreshHeader()` / `mutate()` | 24 / 22 / 5 | 25 / 23 / 5 | 25 / 23 / 5 | 本版是纯派生口径修复，不动写盘路径（H4 未动） |
 | `catch` 块 / `innerHTML` / `Escape` 处理 | 24 / 4 / 0 | 24 / 4 / 0 | 24 / 4 / 0 | 未新增 `catch` |
 | `padEnd(2x)` 表格残留 | 0 | 2 | 2 | 均为 `renderRecordRow()` 的**行内列对齐**（H2 未回退） |
-| 断言总数 | 353 | **415** | **444** | v0.0.7 +29（test 110→138：T29 新增 24 条 + T28 改 1 加 3；test3 84→85：`inRange` 进死代码清单） |
-| 变异测试组数 | 7 | 13 | **15** | v0.0.7 +2（`m_amort_window_sum` / `m_amort_window_rows`），全部被抓住 |
+| 断言总数 | 353 | **415** | **455** | v0.0.7 +29（test 110→138：T29 新增 24 条 + T28 改 1 加 3；test3 84→85：`inRange` 进死代码清单）；v0.0.8 +11（test5 81→92：起始日精确到日的护栏） |
+| 变异测试组数 | 7 | 13 | **16** | v0.0.7 +2（`m_amort_window_sum` / `m_amort_window_rows`）、v0.0.8 +1（`m_amort_day_precision`），全部被抓住 |
 
 ### 8.1 测试装置自身的量化（增删护栏时同步这里与 `run-all.mjs` 的基线表）
 
-| 套件 | v0.0.5 | v0.0.6 | v0.0.7 | 责任范围 |
+| 套件 | v0.0.5 | v0.0.6 | v0.0.8 | 责任范围 |
 | --- | --- | --- | --- | --- |
 | `test.mjs` | 78 | 110 | **138** | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + `amort`(T28) + 分摊窗口口径(T29) |
 | `test2.mjs` | 55 | 55 | 55 | 端到端命令流/弹窗/备份冒烟/阈值与圆点 |
 | `test3.mjs` | 84 | 84 | **85** | P1 护栏：颜色令牌/`kvRow`/自适应列宽/死代码/响应式 CSS 规则 |
 | `test4.mjs` | 79 | 85 | 85 | M1 护栏：登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 |
-| `test5.mjs` | 57 | 81 | 81 | M2 护栏：语义槽位/`@日期`/ghost + `amort` 补全与双选项卡 |
-| **合计** | 353 | 415 | **444** | 增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
+| `test5.mjs` | 57 | 81 | **92** | M2 护栏：语义槽位/`@日期`/ghost + `amort` 补全与双选项卡 + **起始日精确到日** |
+| **合计** | 353 | 415 | **455** | 增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
 
 ---
 
@@ -596,32 +597,43 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 8 
 
 ---
 
-## 10. v0.0.7 变更对既有结论的影响
+## 10. v0.0.8 变更对既有结论的影响
 
-> §10.1 是 v0.0.7（窗口口径修复），§10.2 保留 v0.0.6 的结论（其判断仍然有效）。
+> §10.1 v0.0.7（窗口口径修复）、§10.2 v0.0.6（分摊成本引入）、§10.3 本版（起始日期精确到日）。
 
-### 10.1 v0.0.7：分摊成本的窗口口径修复
+### 10.1 v0.0.8：分摊起始日期精确到日
 
-本次是**纯派生口径修复**（不改数据结构、不加命令、不改字段），但它落在**共享统计抽象**上 ——
-`periodSnapshot` / `todaySnapshot` / `totalCharge` / `collectWindow` / `doList` 全部换成
-`recWindow()`/`recDaysInRange()`/`recInWindow()`/`recAmountInRange()`/`sumRange()` 这一套。
+本次是**UI 采集精度**的修补（不改数据结构、不加命令、不改派生口径），
+但它同样是"同一个东西两处各写一遍"的老毛病：
 
 | 条目 | 影响 | 说明 |
 | --- | --- | --- |
-| **F13（一个数字两套口径）** | 🔴 **v0.0.6 埋下的真缺陷，本版收口** | v0.0.6 只把"消费=每天"做进了 `amount`，**没有**做"窗口内的天数"：五处统计各自写 `filter(r.date…).reduce(r.amount)`，于是那笔钱除记账当天外全部消失。本版把"窗口内天数"变成**唯一入口**并从五处复用 —— 现在"每天口径"与"窗口总天数"合起来才等于应有的消费额 |
-| **A2 / F1（横向重复）** | 🟢 **净减少** | 修复前：5 处各写一遍"按日期求和"（三套 `reduce(s+r.amount)` + 两套行筛选）。修复后：`collectWindow` 是唯一窗口统计，`periodSnapshot` 也改为复用它；`investTotalsOf` 收掉 3 处应投/已投 `reduce`。**这是本版把缺陷变成抽象收益的地方** |
-| **A8 / F7（两条路径不一致）** | 🟢 未受影响 | 归一化没动；`r2`/`r6`/`INV_EPS`/`INV_UNIT`/13:2 拆池一字未改，历史账目数值不变 |
-| **H4（缺统一提交点）** | ⬜ 未变 | 本版不改写盘路径（`save()`/`refreshHeader()` 调用点数不变）。统计口径变化会立刻反映在顶栏/圆点上，因为 `refreshHeader()` 本就重算派生值 |
-| **M3（数字解析入口）** | ⬜ 未变 | 未新增解析入口 |
-| **L4（字段只写不读）** | 🟢 仍守住 | 未新增字段；`recWindow()` 让既有的 `date`+`amortDays` 成为可读的"生效区间" |
-| **F12（死代码漂移）** | 🟢 已检查 + 顺手删了一个 | 新符号全部有调用点（`recAmountUpToToday` ← `totalCharge`；`investTotalsOf` ← `collectWindow`/`buildReportText`）；收口窗口统计后 `inRange()` 失去调用点，**已删除并加进 `app.mjs` 的 `deadSyms()`**（`test3` D1 从此会抓住它被加回来） |
-| **F14（变异没红 ≠ 护栏不行）** | 🟢 照做 | 新增两组变异分别打"金额求和"与"行筛选"两个**不同**的点：只改其中一个时，对应断言必须各自变红（实测 `m_amort_window_sum` 9 条 / `m_amort_window_rows` 3 条） |
+| **A2 / F1（横向重复）** | 🟢 **净减少** | 修复前"月 → 日期"的拼接写在**两处**（`updateAmortHint` 预览里一次、`submitAmort` 提交里一次），都是 `month+"-01"`。修复后抽成**唯一解析入口** `amortPickDate()`，预览与提交共用 —— 这类"两处各拼一次"正是"预览说 A、提交成 B"的温床 |
+| **B6 / B7（静默忽略输入 / 假成功）** | 🔴 **v0.0.6 埋的雷，本版拆掉** | 日期填了非法的 `2027-08` 时，老代码**静默**回落到"本月 1 号"（`submitAmort` 里 `: todayYMD()` 兜底），用户完全看不出被改过。现在解析失败 → 黄色提示 + 中止提交 + 弹窗不关（`M2.70b/c` 守着） |
+| **M4（弹窗 ID/控件规范）** | 🟡 未变 | 仍用 `fa_*` 前缀；本版只是把 `type="month"` 换成 `type="date"`，没有引入第 4 套命名 |
+| **H5（双通道对称）** | 🟢 更对称了 | 命令行 `amort … @YYYY-MM-DD` **本来就精确到日**；本版把 UI 通道补到同一精度，"命令行能做的按钮也能做"这一条恢复成立 |
+| **A8 / F7（两条路径不一致）** | 🟢 未受影响 | 未动存储：`date` 一直是 `YYYY-MM-DD`，老记录/老备份/`localStorage` 全部不变，无需迁移 |
+| **F4（测试随日历漂移）** | 🟢 守住 | 新增断言全部用冻结时钟（`loadApp` 默认 `2027-08-30`）；探针页 `gen-amort.mjs` 用固定日期 `2027-08-17`，不取真实当天 |
 
 **给下一版的建议（不变）**：**P0 · H4**（统一 commit 出口）。
-本版又一次印证：派生逻辑一旦没有单一入口，缺陷会**同时出现在五处**（列表、今日、周期、总结、导出）——
-写盘出口同理。
+本版再次印证同一条规律：**同一个语义只要写两遍，迟早会漂移**（这次漂的是"起始日期"）。
 
-### 10.2 v0.0.6 变更对既有结论的影响（保留）
+### 10.2 v0.0.7 变更对既有结论的影响
+
+> 见下方 §10.3（v0.0.6 的结论）与本节：v0.0.7 是**纯派生口径修复**，
+> 但它落在**共享统计抽象**上 —— `periodSnapshot` / `todaySnapshot` / `totalCharge` /
+> `collectWindow` / `doList` 全部换成
+> `recWindow()`/`recDaysInRange()`/`recInWindow()`/`recAmountInRange()`/`sumRange()` 这一套。
+
+| 条目 | 影响 | 说明 |
+| --- | --- | --- |
+| **F13（一个数字两套口径）** | 🔴 **v0.0.6 埋下的真缺陷，v0.0.7 收口** | v0.0.6 只把"消费=每天"做进了 `amount`，**没有**做"窗口内的天数"：五处统计各自写 `filter(r.date…).reduce(r.amount)`，于是那笔钱除记账当天外全部消失。修复把"窗口内天数"变成**唯一入口**并从五处复用 |
+| **A2 / F1（横向重复）** | 🟢 **净减少** | 修复前：5 处各写一遍"按日期求和"（三套 `reduce(s+r.amount)` + 两套行筛选）。修复后：`collectWindow` 是唯一窗口统计，`periodSnapshot` 也改为复用它；`investTotalsOf` 收掉 3 处应投/已投 `reduce` |
+| **F12（死代码漂移）** | 🟢 已检查 + 顺手删了一个 | 收口窗口统计后 `inRange()` 失去调用点，已删除并加进 `app.mjs` 的 `deadSyms()`（`test3` D1 从此会抓住它被加回来） |
+| **F14（变异没红 ≠ 护栏不行）** | 🟢 照做 | 新增两组变异分别打"金额求和"与"行筛选"两个**不同**的点，必须各自变红（实测 9 条 / 3 条） |
+| **A8 / F7、H4、M3、L4** | ⬜ 未变 | 归一化、写盘出口、解析入口、字段读写关系均未动 |
+
+### 10.3 v0.0.6 变更对既有结论的影响（保留）
 
 本次是**加功能**（分摊成本 `amort` + 「记一笔」双选项卡），没有横向重构，因此 21 条的状态不变。
 但新代码与既有 21 条有交叉，逐条说明：

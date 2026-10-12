@@ -320,7 +320,7 @@
       <input id="fa_days" type="text" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="如 365  或  12月">
       <label>类别</label>
       <input id="fa_cat" list="catlist" placeholder="如 房租 / 会员 / 保险 ...">
-      <label>起始日期</label><input id="fa_date" type="month">
+      <label>起始日期 — 精确到日（YYYY-MM-DD，留空 = 今天）</label><input id="fa_date" type="date">
       <label>备注</label><input id="fa_note" placeholder="可选，如 年付房租">
       <div class="mhint" id="fa_hint"></div>
     </div>
@@ -385,7 +385,7 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.7";         // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.0.8";         // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
 /* --- 分摊成本(amort)的字段与口径 ---
    一笔"分摊成本"= 一次性付出的**总价**(如年费/房租/保险费), 按 **分摊天数** 平均分到每一天。
@@ -2403,7 +2403,6 @@ function updateAmortHint(){
   if(modalTab!=="amort"){ el.textContent=""; el.classList.remove("bad"); return; }
   const total = input2num(document.getElementById("fa_total").value);
   const d = parseDaysToken(document.getElementById("fa_days").value);
-  const month = document.getElementById("fa_date").value;
   if(total==null || total<=0){
     el.className="mhint"; el.textContent="填「总价」+「分摊天数」后显示每天摊到多少（投资只按总价记一次，不再分摊）。"; return;
   }
@@ -2417,20 +2416,37 @@ function updateAmortHint(){
   if(!(daily>0)){
     el.className="mhint bad"; el.textContent="每天不足 ¥0.01，请加大总价或缩短天数。"; return;
   }
+  /* 起始日期**精确到日**: 留空 = 今天; 非空必须是合法日期, 非法就用黄色说明并阻止提交
+     (以前这个字段是 type="month", 提交时硬拼 "-01" —— 起始日被强制吸到每月 1 号) */
+  const chosen = amortPickDate(document.getElementById("fa_date").value);
+  if(!chosen){
+    el.className="mhint bad"; el.textContent="起始日期需为 YYYY-MM-DD 的合法日期（也可以留空 = 今天）。"; return;
+  }
   // 与终端显示口径一致: 用 r2 后的每天金额反推总价并算应投, 保证"预览 = 提交后的数字"
   const shownTotal = r2(daily*d.days);
   const inv = investOf(shownTotal);
   let s = "= 每天 ¥"+money(daily)+" × "+d.days+" 天（合计 ¥"+money(shownTotal)+"）";
-  if(month) s += "，从 "+month+"-01 起";
+  s += "，从 "+chosen.date+" 起";
+  s += "\n生效区间: "+chosen.date+" ~ "+addDaysYMD(chosen.date, d.days-1)+"（含首尾，共 "+d.days+" 天）";
   s += "\n应投按总价一次记入: 货币 ¥"+money(inv.mm)+" + 指数 ¥"+money(inv.idx);
   el.className="mhint"; el.textContent=s;
+}
+/* 分摊起始日期的唯一解析入口(预览与提交共用, 避免"预览说 A、提交成 B"):
+    空值 / 原生 date 控件给的 YYYY-MM-DD / 手输的 2027/8/5 等宽容写法 → 统一成 {date,blank};
+    无法解析返回 null(调用方必须提示, 不得静默回落到今天 —— 见 HANDOVER B6)。 */
+function amortPickDate(raw){
+  const s = String(raw==null ? "" : raw).trim();
+  if(!s) return { date: todayYMD(), blank:true };
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return { date: s, blank:false };
+  const fixed = repairDate(s);            // 兼容 2027/8/5、2027.8.5、20270805、2027年8月5日…
+  return fixed ? { date: fixed, blank:false } : null;
 }
 function openAdd(){ modalMode="add"; modalId=null;
   document.getElementById("f_amt").value=""; document.getElementById("f_note").value="";
   document.getElementById("f_date").value=todayYMD(); document.getElementById("f_cat").value="";
   document.getElementById("fa_total").value=""; document.getElementById("fa_days").value="";
   document.getElementById("fa_note").value=""; document.getElementById("fa_cat").value="";
-  document.getElementById("fa_date").value=todayYMD().slice(0,7);
+  document.getElementById("fa_date").value=todayYMD();   // 精确到日(以前给的是 YYYY-MM)
   setModalTab("add");                  // 每次打开都回到最常用的"单笔消费"
   document.getElementById("modalWrap").classList.add("open");
   document.getElementById("f_amt").focus();
@@ -2515,7 +2531,6 @@ function submitAmort(){
   const total=input2num(document.getElementById("fa_total").value);
   const d=parseDaysToken(document.getElementById("fa_days").value);
   const cat=document.getElementById("fa_cat").value.trim();
-  const month=document.getElementById("fa_date").value||todayYMD().slice(0,7);
   const note=document.getElementById("fa_note").value.trim();
   if(total==null||total<=0){ alertModal("总价需为大于0的数字"); return; }
   if(!d){ alertModal("分摊天数需为 ≥ "+AMORT_MIN_DAYS+" 的整数天"); return; }
@@ -2524,9 +2539,13 @@ function submitAmort(){
   }
   if(!(r2(total/d.days)>0)){ alertModal("每天不足 ¥0.01，请加大总价或缩短天数"); return; }
   if(!cat){ alertModal("请输入类别，如 房租 / 会员"); return; }
-  const date = /^\d{4}-\d{2}$/.test(month) ? (month+"-01") : todayYMD();
+  /* 起始日期精确到日: 留空则**不带 @参数**(与命令行的默认语义完全一致 = 今天);
+     填了但解析不了就提示并中止 —— 以前是静默拼成"本月 1 号", 用户选的日会被丢掉(B6/B7)。 */
+  const picked = amortPickDate(document.getElementById("fa_date").value);
+  if(!picked){ alertModal("起始日期需为 YYYY-MM-DD 的合法日期（或留空 = 今天）"); return; }
   closeModal();
-  const cmd = "amort "+total+" "+d.days+" "+cat+(note?" "+quote(note):"")+" @"+date;
+  const cmd = "amort "+total+" "+d.days+" "+cat+(note?" "+quote(note):"")
+            + (picked.blank ? "" : (" @"+picked.date));
   input.value = cmd; input.focus();
   runCommand(cmd);
 }

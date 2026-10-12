@@ -18,7 +18,7 @@ node tests/run-all.mjs
 # 日常小更新: 只跑相关的那一个（同样满足低档闸门）
 node tests/test5.mjs
 
-# 变异测试: 只在你新增/改动护栏后重跑（8 组分摊成本变异必须全部被抓住）
+# 变异测试: 只在你新增/改动护栏后重跑（9 组分摊成本变异必须全部被抓住）
 node tests/mutate-amort.mjs
 ```
 
@@ -39,8 +39,8 @@ node tests/mutate-amort.mjs
 | `test2.mjs` | 55 | 端到端命令流/弹窗/备份数据冒烟/阈值与红黄绿圆点 |
 | `test3.mjs` | 85 | P1 护栏：颜色令牌一致、`kvRow`、自适应列宽、死代码已删、响应式 CSS |
 | `test4.mjs` | 85 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 |
-| `test5.mjs` | 81 | M2 护栏：语义槽位、`@日期` 位置无关、ghost 预览 + **`amort` 补全与双选项卡** |
-| **合计** | **444** | |
+| `test5.mjs` | 92 | M2 护栏：语义槽位、`@日期` 位置无关、ghost 预览 + **`amort` 补全与双选项卡（含起始日精确到日）** |
+| **合计** | **455** | |
 
 ## 环境变量（都有默认值，通常不用设）
 
@@ -132,7 +132,7 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 
 把已知缺陷改回去，确认对应断言会红。装置已用此法验证 15 组（覆盖全部 5 个套件）。
 
-**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 8 组、
+**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 9 组、
 自动校验"变异点恰好命中一次"、并汇总哪些没被抓住。
 
 | 变异体 | 套件 | 还原的缺陷 | 结果 |
@@ -152,6 +152,7 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 | `m_amort_total` | test | 归一化时丢掉摊销总价（旧备份导入失真） | 5 条红 |
 | `m_amort_window_sum` | test | **只按记账当天求和**（其余天数的钱不计入消费，v0.0.7 修的缺陷） | 9 条红 |
 | `m_amort_window_rows` | test | **只按 `r.date` 筛选窗口**（窗口内其余天查不到这笔分摊） | 3 条红 |
+| `m_amort_day_precision` | test5 | **起始日期吸到每月 1 号**（丢掉用户选的日，v0.0.8 修的缺陷） | 4 条红 |
 
 做法：改一份副本 → `$env:BT_HTML` 指过去 → 跑对应套件，**必须变红**。新写的护栏也应做一次。
 
@@ -164,7 +165,7 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 ```
 tests/
 ├─ run-all.mjs            单一入口(5 套件 + 基线校验)
-├─ mutate-amort.mjs       变异测试(v0.0.6 起: 8 组分摊成本变异, 含窗口口径 2 组)
+├─ mutate-amort.mjs       变异测试(v0.0.6 起: 9 组分摊成本变异, 含窗口口径 2 组 + 日精度 1 组)
 ├─ env.mjs                路径解析单一入口(仓库根 / HTML / README / 夹具)
 ├─ dom.mjs                极简 DOM stub(元素/classList/style/事件/localStorage)
 ├─ app.mjs                加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now})
