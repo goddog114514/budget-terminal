@@ -277,6 +277,7 @@
   <button data-cmd="summary day">日总结</button>
   <button data-cmd="summary week">周总结</button>
   <button data-cmd="assets">资产看板</button>
+  <button data-cmd="config">配置</button>
   <button id="btnUndo" data-cmd="undo" disabled>↩ 撤销</button>
   <button id="btnRedo" data-cmd="redo" disabled>↪ 重做</button>
   <button data-cmd="export md">导出 .md</button>
@@ -300,7 +301,7 @@
 <div id="modalWrap">
   <div id="modal">
     <h3 id="mTitle">记一笔消费</h3>
-    <div class="mtabs" role="tablist">
+    <div class="mtabs" id="mTabs" role="tablist">
       <button type="button" class="mtab on" data-mtab="add">单笔消费</button>
       <button type="button" class="mtab" data-mtab="amort">分摊成本</button>
     </div>
@@ -385,7 +386,7 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.8";         // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.0.9";          // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
 /* --- 分摊成本(amort)的字段与口径 ---
    一笔"分摊成本"= 一次性付出的**总价**(如年费/房租/保险费), 按 **分摊天数** 平均分到每一天。
@@ -486,7 +487,7 @@ function loadState(){
     (typeof parsed.seq==="number" && isFinite(parsed.seq)) ? Math.round(parsed.seq) : 0,
     state.records.reduce((m,r)=>Math.max(m,r.id), 0));   // 序号必须大于所有已有 id, 否则新增会撞号
   ensureEpoch();      // 账本起点对齐到真实周期边界(旧数据/改过周期设置的数据都会在这里修正)
-  save();
+  save();             // 启动时把归一化后的 state 落盘(非命令路径; 命令统一走 commit())
   return norm.dropped;
 }
 /* --- 设置归一化: 手改过的/跨版本导入的 settings 也能安全使用 ---
@@ -583,7 +584,29 @@ function save(){
 const HISTORY_MAX = 200;
 let undoStack = [], redoStack = [];
 function snapshotState(){ return JSON.stringify(state); }
-/* 包住一次可能修改数据的操作: 若数据确实变了, 把"改前"快照压入撤销栈 */
+/* ============ 统一提交点 commit() (H4) ============
+   背景(H4/F10): "改数据 → save() → refreshHeader()" 原先散落在 20+ 个命令/UI 处理函数里
+   (save 25 处、refreshHeader 23 处), 漏写一处就会出现"改了数据但界面没刷新"。
+   收口后:
+     · 命令函数只改 state, 不再自己落盘/刷新;
+     · runCommand 出口统一调用 commitIfDirty(): 数据确实变了才 save() + refreshAll();
+     · 非命令入口(list 行按钮 / 全额投资 / 导入备份 / undo·redo)在各自出口调用 commit。
+   pendingCommit 由 mutate() 在"快照确实变化"时置位 —— 只读命令(list/summary/help…)
+   不会白写 localStorage、也不会白刷顶栏, 与收口前的行为一致。 */
+let pendingCommit = false;
+function refreshAll(){
+  refreshHeader();       // 顶栏统计 + 理财条(renderInvestBar 在 refreshHeader 末尾统一调用)
+  refreshHistoryUI();    // 撤销/重做按钮可用态
+  refreshCatlist();      // 类别下拉(自定义类别、导入备份后不再丢)
+}
+function commit(){
+  if(!state) return;     // boot 之前(loadState)还没有完整 state, 不落盘
+  save();
+  refreshAll();
+  pendingCommit = false;
+}
+function commitIfDirty(){ if(pendingCommit) commit(); }
+/* 包住一次可能修改数据的操作: 若数据确实变了, 把"改前"快照压入撤销栈, 并交给出口 commit */
 function mutate(fn){
   const before = snapshotState();
   const r = fn();
@@ -592,12 +615,13 @@ function mutate(fn){
     if(undoStack.length > HISTORY_MAX) undoStack.shift();
     redoStack.length = 0;
     refreshHistoryUI();
+    pendingCommit = true;      // 有真实改动 → 由出口统一落盘 + 刷新(H4)
   }
   return r;
 }
 function applyState(json){
   state = JSON.parse(json);
-  save(); refreshHeader(); refreshHistoryUI();
+  commit();                    // 撤销/重做也是"改数据", 走同一个提交点
 }
 function undo(){
   if(!undoStack.length){ line([{t:"没有可撤销的操作。", c:COLOR.yellow}]); return; }
@@ -653,9 +677,8 @@ function restoreFromText(text){
       (typeof data.seq==="number" && isFinite(data.seq)) ? Math.round(data.seq) : 0,
       state.records.reduce((m,r)=>Math.max(m,r.id), 0));   // 防止后续新增记录与备份里的 id 撞号
     ensureEpoch();
-    save();
   });
-  refreshHeader();
+  commit();     // 导入也是一个提交点: 落盘 + 全量刷新(含类别下拉, H4)
   fsLog("✓ 已从备份恢复 "+state.records.length+" 条记录、预算与设置已更新 (可 undo 撤销)。", COLOR.green);
   if(dropped) fsLog("⚠ 其中 "+dropped+" 条记录金额或日期无效, 已跳过(其余记录正常导入)。", COLOR.yellow);
 }
@@ -1043,7 +1066,6 @@ function investAmount(kind, amt){ // 按比例把 amt 投给该种未投池; kin
     if(isM) a.e.r.moneyInv = nv; else a.e.r.indexInv = nv;
     applied++;
   }
-  save();
   return { amt, applied };
 }
 /* 全额投资: 把该种整个未投池投掉清零; 仅当池≥该种阈值(货币100/指数20)才允许点亮/执行 */
@@ -1264,6 +1286,7 @@ const COMMANDS = [
   { n:["del","rm","delete"],                       u:"del <id>",                        d:"删除指定记录(id 见 list)" },
   { n:["update","edit"],                           u:"update <id> <金额> <类别> [..]",    d:"修改某条记录并自动重算投资额" },
   { n:["pay","invest"],                            u:"pay <id> [mm|idx|all|none]",      d:"标记投资已投状态 (货币基金 mm / 指数基金 idx)" },
+  { n:["pay"], sub:true,                           u:"pay full [mm|idx]",               d:"全额投资: 一次把未投池投掉(等同界面「全额投资」按钮); 默认货币+指数都投, 别名 invest full" },
   { n:["summary","sum"],                           u:"summary [day|week|month] [类别]",  d:"总结: 无参数=当前记账周期; month=自然月; 可加类别筛选, 如 summary week 餐饮" },
   { n:["summary"], sub:true,                       u:"summary month @YYYY-MM",          d:"指定某自然月的总结, 例 summary month 2027-07 餐饮 (也可直接写 summary 2027-07)" },
   { n:["summary"], sub:true,                       u:"summary cat [类别]",               d:"当前记账周期各类别占比" },
@@ -1360,8 +1383,10 @@ function runCommand(raw){
   try{
     // 用主名判断: 否则 `u`(undo 的别名)会走 mutate 包一层, 撤销后又被当成"新改动"压栈并把 redo 清空
     const c = canonicalCmd(cmd);
-    if(c==="undo" || c==="redo") dispatch(cmd, tokens);   // 本身不改数据, 不进入撤销栈
-    else mutate(()=>dispatch(cmd, tokens));
+    if(c==="undo" || c==="redo"){ dispatch(cmd, tokens); return; }   // applyState() 内部已 commit
+    pendingCommit = false;
+    mutate(()=>dispatch(cmd, tokens));
+    commitIfDirty();     // 唯一出口: 数据确实变了才 落盘 + 刷新(H4)
   }catch(e){
     line([{t:"[ERR] "+ (e && e.message ? e.message : e), c:COLOR.red}]);
     if(e && e.stack) console.error(e);
@@ -1402,58 +1427,51 @@ function doSet(tokens){
     const v = tokens[1];
     const n = numeric(v);
     if(n==null || n<=0){ line([{t:"用法: set budget <金额>  例 set budget 1000",c:COLOR.yellow}]); return; }
-    state.settings.budget = r2(n); save();
+    state.settings.budget = r2(n);
     line([{t:"✓ 默认预算已设为 ",c:COLOR.green},{t:"¥"+money(r2(n)),c:COLOR.pure,cls:"hl"},
           {t:"  (各期生效; 只想改本期可用 budget set <金额>)",c:COLOR.gray}]);
     showForecastLine();
-    refreshHeader();     // 顶栏"可用余额/发放进度"由预算派生, 改完必须立即重画(否则显示旧数字)
   } else if(sub==="monthstart"){
     const v = (tokens[1]||"").toLowerCase();
     let d;
     if(v==="natural"||v==="自然月"||v==="1") d=1;
     else d = numeric(tokens[1]);
     if(d==null || d<1 || d>28){ line([{t:"用法: set monthstart <1-28>  (1=自然月, 例 15 表示每月15日~下月14日)",c:COLOR.yellow}]); return; }
-    state.settings.monthStart = d; state.settings.periodMode = "month"; ensureEpoch(); save();
+    state.settings.monthStart = d; state.settings.periodMode = "month"; ensureEpoch();
     const p = currentPeriod();
     line([{t:"✓ 切换为按月周期, 起始日 "+(d===1?"自然月":"每月 "+d+" 日")+"。当前周期: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]);
-    refreshHeader();
   } else if(sub==="period"||sub==="cycle"||sub==="length"){
     // set period 15        → 滚动 15 天周期
     // set period natural|month → 回到按月周期
     const v=(tokens[1]||"").toLowerCase();
     const n = numeric(tokens[1]);
-    if(v==="natural"||v==="month"||v==="月"||v==="自然月"){ state.settings.periodMode="month"; ensureEpoch(); save(); const p=currentPeriod(); line([{t:"✓ 已切回按月周期, 当前: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]); refreshHeader(); return; }
+    if(v==="natural"||v==="month"||v==="月"||v==="自然月"){ state.settings.periodMode="month"; ensureEpoch(); const p=currentPeriod(); line([{t:"✓ 已切回按月周期, 当前: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]); return; }
     if(n==null || !Number.isInteger(n) || n<2 || n>90){ line([{t:"用法: set period <N天>  例 set period 15  → 每15天滚动一期;  set period natural 回到自然月",c:COLOR.yellow}]); return; }
     state.settings.periodMode="rolling";
     state.settings.lengthDays=n;
     // 起点：若尚未设 anchor 或想在今天重启，则从今天起算新一期
     state.settings.anchor = state.settings.anchor || todayYMD();
-    ensureEpoch(); save();
+    ensureEpoch();
     const p = currentPeriod();
     line([{t:"✓ 已切换为滚动 "+n+" 天周期, 从 "+state.settings.anchor+" 起每 "+n+" 天滚动结算。当前期: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]);
-    refreshHeader();
   } else if(sub==="periodstart"||sub==="anchor"){
     const d = cleanDateStr(tokens[1]);
     if(!d){ line([{t:"用法: set periodstart <YYYY-MM-DD>  设滚动周期起点(锚点)",c:COLOR.yellow}]); return; }
     state.settings.periodMode = state.settings.periodMode || "rolling";
-    state.settings.anchor = d; ensureEpoch(); save();
+    state.settings.anchor = d; ensureEpoch();
     const p = currentPeriod();
     line([{t:"✓ 滚动周期起点设为 "+d+"。当前期: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]);
-    refreshHeader();
   } else if(sub==="weekstart"){
     const v=(tokens[1]||"").toLowerCase();
     if(v==="mon"||v==="周一"||v==="一") state.settings.weekStart="mon";
     else if(v==="sun"||v==="周日"||v==="日") state.settings.weekStart="sun";
     else { line([{t:"用法: set weekstart <mon|sun>",c:COLOR.yellow}]); return; }
-    save();
     line([{t:"✓ 周起始日设为 "+(state.settings.weekStart==="mon"?"周一":"周日"),c:COLOR.green}]);
-    refreshHeader();
   } else if(sub==="alert"||sub==="threshold"||sub==="thresholds"){
     const rest = tokens.slice(1).join("").split(/[,，]/).map(x=>parseFloat(x)).filter(x=>!isNaN(x)&&x>0&&x<=100);
     if(!rest.length){ line([{t:"用法: set alert <p1,p2,...>  例 set alert 80,100",c:COLOR.yellow}]); return; }
-    state.settings.thresholds = [...new Set(rest)].sort((a,b)=>a-b); save();
+    state.settings.thresholds = [...new Set(rest)].sort((a,b)=>a-b);
     line([{t:"✓ 预警阈值设为 "+state.settings.thresholds.join("% , ")+"%",c:COLOR.green}]);
-    refreshHeader();     // 阈值决定顶栏红黄绿圆点与进度条颜色
   } else if(sub==="rate"||sub==="rates"){
     // set rate money 2 / set rate index 8  (年化百分比)
     const which = (tokens[1]||"").toLowerCase();
@@ -1462,7 +1480,6 @@ function doSet(tokens){
     if(which==="money"||which==="m"||which==="货币"){ state.settings.rateMoney = pct/100; }
     else if(which==="index"||which==="idx"||which==="i"||which==="指数"){ state.settings.rateIndex = pct/100; }
     else { line([{t:"用法: set rate <money|index> <年化%>",c:COLOR.yellow}]); return; }
-    save();
     line([{t:"✓ 货币年化 "+(state.settings.rateMoney*100).toFixed(2)+"%  |  指数年化 "+(state.settings.rateIndex*100).toFixed(2)+"%",c:COLOR.green}]);
   } else if(sub==="invest"||sub==="investment"||sub==="consume"||sub==="ratio"||sub==="share"){
     // set invest <投资占比%>   → 消费占比 N = 1 - 投资占比
@@ -1482,7 +1499,6 @@ function doSet(tokens){
     const oldPct = consumePct();
     state.settings.consumeShare = r6(newConsume);
     recomputeAllInvest();                                      // 历史记录按新比例重算应投
-    save();
     const sp = rateSplit();
     line([{t:"✓ 投资比例已更新: ",c:COLOR.green},
           {t:"消费占比 "+consumePct()+"%",c:COLOR.pure},
@@ -1492,23 +1508,21 @@ function doSet(tokens){
           +" (消费¥100 + 应投¥"+money(100/consumeShare()*(1-consumeShare()))+")",c:COLOR.gray}]);
     line([{t:"  ※ 已按新比例重算全部记录的应投额 (已投金额不会超过新的应投额)。",c:COLOR.gray}]);
     if(oldPct!==consumePct()) line([{t:"  原消费占比 "+oldPct+"%",c:COLOR.gray}]);
-    refreshHeader(); renderInvestBar();
   } else if(sub==="daily"||sub==="daybudget"||sub==="每日"){
     // set daily <金额>  手动设置"每日可用余额"(用于右上角今日预算红黄绿提示); set daily off 取消
     const v=(tokens[1]||"").toLowerCase();
     if(v==="off"||v==="none"||v==="clear"||v==="取消"||v==="关"){
-      state.settings.dailyBudget=null; save();
+      state.settings.dailyBudget=null;
       line([{t:"✓ 已清除每日可用余额 (右上角「今日预算」转为灰点未设置)",c:COLOR.green}]);
     } else {
       const n=numeric(tokens[1]);
       if(n==null||n<=0){ line([{t:"用法: set daily <金额>  例 set daily 100  (每日可用余额;  set daily off 取消)",c:COLOR.yellow}]); return; }
-      state.settings.dailyBudget=r2(n); save();
+      state.settings.dailyBudget=r2(n);
       const ts=todaySnapshot();
       line([{t:"✓ 每日可用余额已设为 ",c:COLOR.green},{t:"¥"+money(r2(n)),c:COLOR.pure,cls:"hl"},
             {t:"  今日已消费 ¥"+money(ts.consumption),c:COLOR.gray}]);
       line(dotLine("今日预算", ratioDot(ts.ratio)));
     }
-    refreshHeader();
   } else {
     line([{t:"set 支持: budget | daily <每日可用余额> | invest <投资比例%> | consume <消费占比%> | period <N天> | periodstart <日期> | monthstart | weekstart | alert | rate",c:COLOR.yellow}]);
   }
@@ -1523,24 +1537,24 @@ function doBudget(tokens){
     const n = numeric(tokens[1]);
     if(n==null || n<=0){ line([{t:"用法: budget set <金额>   例 budget set 1200 (仅调整当前周期)",c:COLOR.yellow}]); return; }
     state.settings.periodBudget = state.settings.periodBudget || {};
-    state.settings.periodBudget[p.start] = r2(n); save();
+    state.settings.periodBudget[p.start] = r2(n);
     line([{t:"✓ 当期预算已设为 ",c:COLOR.green},{t:"¥"+money(r2(n)),c:COLOR.pure,cls:"hl"},
           {t:"  仅影响当前周期 "+p.label+"；以后各期仍为 ¥"+money(state.settings.budget),c:COLOR.gray}]);
-    refreshHeader(); showForecastLine();
+    showForecastLine();
     return;
   }
   if(sub==="default"){
     const n = numeric(tokens[1]);
     if(n==null || n<=0){ line([{t:"用法: budget default <金额>   例 budget default 1000 (改默认, 各期生效)",c:COLOR.yellow}]); return; }
-    state.settings.budget = r2(n); save();
+    state.settings.budget = r2(n);
     line([{t:"✓ 默认预算已设为 ",c:COLOR.green},{t:"¥"+money(r2(n)),c:COLOR.pure,cls:"hl"},{t:" (未单独覆盖的周期都用它)",c:COLOR.gray}]);
-    refreshHeader(); showForecastLine();
+    showForecastLine();
     return;
   }
   if(sub==="reset" || sub==="clear"){
-    if(state.settings.periodBudget){ delete state.settings.periodBudget[p.start]; save(); }
+    if(state.settings.periodBudget){ delete state.settings.periodBudget[p.start]; }
     line([{t:"✓ 已取消当前周期的预算覆盖，恢复默认 ¥"+money(state.settings.budget),c:COLOR.green}]);
-    refreshHeader(); showForecastLine();
+    showForecastLine();
     return;
   }
   showBudget();
@@ -1607,7 +1621,7 @@ function doAdd(tokens){
   const date = cleanDateStr(rawDate);
   if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
   const rec = makeRecord(amt, cat, note, date);
-  state.records.push(rec); save();
+  state.records.push(rec);
   const st = periodSnapshot();
   const bar = progressBar(st.ratio);
   line([{t:"✓ 已记入 #",c:COLOR.green},{t:rec.id,c:COLOR.pure,cls:"hl"},
@@ -1628,7 +1642,6 @@ function doAdd(tokens){
       {t:aw.t,c:aw.c,cls:"glow"}
     ]);
   }
-  refreshHeader();
 }
 function makeRecord(amount, category, note, date, amortDays){
   state.seq += 1;
@@ -1685,7 +1698,7 @@ function doAmort(tokens){
   const date = cleanDateStr(rawDate);
   if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
   const rec = makeRecord(total, cat, note, date, d.days);
-  state.records.push(rec); save();
+  state.records.push(rec);
   const end = addDaysYMD(date, rec.amortDays-1);
   line([{t:"✓ 已记入分摊成本 #",c:COLOR.green},{t:rec.id,c:COLOR.pure,cls:"hl"},
         {t:"  "+cat+" ",c:catColor(cat)},
@@ -1706,7 +1719,6 @@ function doAmort(tokens){
     line([{t:"⚠ 本期占用 ",c:COLOR.yellow},{t:"¥"+money(st.usedUnits),c:COLOR.yellow,cls:"glow"},
           {t:" / 发放 ¥"+money(st.B),c:COLOR.white},{t:"   "+aw.t,c:aw.c,cls:"glow"}]);
   }
-  refreshHeader();
 }
 
 /* ------------------------------- list ---------------------------------- */
@@ -1739,6 +1751,9 @@ function renderRecordRow(r){
   addSeg(d,{t:"  ", c:COLOR.gray});
   const b = document.createElement("button"); b.type="button"; b.className="tbtn";
   b.title = "把 #"+r.id+" 应投货币/指数全部标记已投 (等同 pay "+r.id+" all), 再点重置";
+  // H5: 行内 ✎ 编辑(接活弹窗 edit 分支); 放在投资按钮之后, 保持"行内第一个按钮 = 投资按钮"的既有约定
+  const eb = document.createElement("button"); eb.type="button"; eb.className="tbtn";
+  eb.title = "编辑 #"+r.id+" (等同 update "+r.id+" <金额> <类别>)";
   // 行是否还指向 state 里的同一条记录: undo/redo 或 del 之后, 旧行会变成"悬空"行,
   // 不能再让它按钮上报成功(否则看起来改了数据, 实际什么都没发生)
   const alive = ()=> state.records.indexOf(r) >= 0;
@@ -1747,6 +1762,7 @@ function renderRecordRow(r){
       invSpan.textContent = ""; stSpan.textContent = "  已失效"; stSpan.style.color = COLOR.gray;
       b.disabled = true; b.className = "tbtn dimmed"; b.textContent = "已失效";
       b.title = "该行对应的记录已被删除或撤销, 请重新 list";
+      eb.disabled = true; eb.className = "tbtn dimmed"; eb.textContent = "已失效";
       return;
     }
     const noNeed = recNoNeed(r);
@@ -1767,6 +1783,7 @@ function renderRecordRow(r){
       b.textContent = f2 ? "已投资 ✓" : "标记已投资";
       b.title = "把 #"+r.id+" 应投货币/指数全部标记已投 (等同 pay "+r.id+" all), 再点重置";
     }
+    eb.disabled = false; eb.className = "tbtn"; eb.textContent = "✎ 编辑";
   };
   b.addEventListener("click", ()=>{
     if(!alive()){ line([{t:"#"+r.id+" 所在行已失效(记录已被删除或撤销), 请重新执行 list 查看最新数据。", c:COLOR.yellow}]); refresh(); return; }
@@ -1774,14 +1791,19 @@ function renderRecordRow(r){
     mutate(()=>{
       if(recFullyMoney(r) && recFullyIndex(r)){ r.moneyInv=0; r.indexInv=0; }
       else { r.moneyInv=r.mm; r.indexInv=r.idx; }
-      save();
     });
+    commitIfDirty();                 // 出口统一落盘 + 刷新(H4)
     const f2 = recFullyMoney(r) && recFullyIndex(r);
     refresh();
     line([{t:"✓ #"+r.id+" "+r.category+" ¥"+money(r.amount)+" 投资 → "+(f2?"已投资":"未投资"), c: f2?COLOR.green:COLOR.yellow}]);
-    refreshHeader(); scrollBottom();
+    scrollBottom();
+  });
+  eb.addEventListener("click", ()=>{
+    if(!alive()){ line([{t:"#"+r.id+" 所在行已失效(记录已被删除或撤销), 请重新执行 list 查看最新数据。", c:COLOR.yellow}]); refresh(); return; }
+    openEdit(r);
   });
   d.appendChild(b);
+  d.appendChild(eb);
   refresh();   // 初始化行内状态
   term.appendChild(d);
 }
@@ -1868,11 +1890,10 @@ function doDelete(tokens){
   if(id==null){ line([{t:"用法: del <id>",c:COLOR.yellow}]); return; }
   const i = state.records.findIndex(r=>r.id===id);
   if(i<0){ line([{t:"未找到 #"+id+"。用 list 查看编号",c:COLOR.yellow}]); return; }
-  const [rm] = state.records.splice(i,1); save();
+  const [rm] = state.records.splice(i,1);
   line([{t:"✗ 已删除 #",c:COLOR.red},{t:rm.id,c:COLOR.red},
         {t:"  "+rm.category+" ¥"+money(rm.amount),c:COLOR.white},
         {t:recAmortized(rm) ? ("  (分摊"+(rm.amortDays)+"天 · 总价 ¥"+money(recTotal(rm))+")") : "", c:COLOR.gray}]);
-  refreshHeader();
 }
 function doUpdate(tokens){
   if(tokens.length<3){ line([{t:"用法: update <id> <金额> <类别> [备注..] [@日期]",c:COLOR.yellow}]); return; }
@@ -1892,16 +1913,17 @@ function doUpdate(tokens){
   const inv = investOf(recTotal(rec)); rec.mm=inv.mm; rec.idx=inv.idx;
   rec.moneyInv = Math.min(rec.moneyInv||0, rec.mm);
   rec.indexInv = Math.min(rec.indexInv||0, rec.idx);
-  save();
   line([{t:"✓ 已更新 #",c:COLOR.green},{t:id,c:COLOR.pure},
         {t:"  "+cat+" ¥"+money(rec.amount)+(days>1 ? ("/天 (总价 ¥"+money(recTotal(rec))+" ÷ "+days+" 天)") : ""),
          c:COLOR.white},
         {t:"  应投按总价重算: 货币¥"+money(rec.mm)+" 指数¥"+money(rec.idx),c:COLOR.white}]);
-  refreshHeader();
 }
 function doPay(tokens){
+  // H5: 「全额投资」以前只有界面按钮 —— 这里补上命令通道 pay full [mm|idx] (别名 invest full);
+  // 界面按钮也改为回灌这条命令, 两条通道从此对称, 撤销栈也只有一个提交点。
+  if((tokens[0]||"").toLowerCase()==="full"){ doPayFull(tokens.slice(1)); return; }
   const id = numeric(tokens[0]);
-  if(id==null){ line([{t:"用法: pay <id> [mm|idx|all|none]   例 pay 3 all",c:COLOR.yellow}]); return; }
+  if(id==null){ line([{t:"用法: pay <id> [mm|idx|all|none]   例 pay 3 all;  全额投资: pay full [mm|idx]",c:COLOR.yellow}]); return; }
   const rec = state.records.find(r=>r.id===id);
   if(!rec){ line([{t:"未找到 #"+id,c:COLOR.yellow}]); return; }
   if(recNoNeed(rec)){ line([{t:"#"+id+" 应投货币/指数均为 ¥0.00, 无需投资。",c:COLOR.yellow}]); return; }
@@ -1918,28 +1940,42 @@ function doPay(tokens){
   } else if(kind==="idx"||kind==="index"){
     rec.indexInv = fi ? 0 : rec.idx; label = fi ? "指数 重置未投" : "指数 记已投";
   } else { line([{t:"kind 应为 mm | idx | all | none",c:COLOR.yellow}]); return; }
-  save();
   const st2 = recStatus(rec);
   line([{t:"✓ #"+id+" "+label+" → "+st2.t, c: st2.c===COLOR.green?COLOR.green:COLOR.yellow}]);
-  refreshHeader();
 }
 
-/* 全额投资: 整池投掉清零; 仅当该种未投池 ≥ 阈值(货币100/指数20)才可执行(否则提示需满额) */
-function doInvestFull(kind){
+/* 全额投资: 整池投掉清零; 仅当该种未投池 ≥ 阈值(货币100/指数20)才可执行(否则提示需满额)。
+   H5 收口: 把"执行 + 播报"抽成 investFullRun()(不含 mutate), 命令通道(pay full)与
+   程序化入口(doInvestFull)共用同一份实现 —— 界面按钮改为回灌 pay full 命令;
+   因为 mutate() 不可重入(嵌套会压两条撤销), 所以"执行体"不能再自带 mutate。 */
+function investFullRun(kind){
   const name = kind==="money" ? "应投货币" : "应投指数";
   const lot = kind==="money" ? INVEST_MONEY_LOT : INVEST_INDEX_LOT;
-  const r = mutate(()=>investFull(kind));
+  const r = investFull(kind);
   if(!r){
     const pend = kind==="money" ? moneyPending() : indexPending();
     if(pend <= INV_EPS) line([{t:name+" 未投池为空，暂无可投。", c:COLOR.yellow}]);
     else line([{t:name+" 未投池仅 ¥"+money(pend)+"，需累计至 ¥"+lot+" 才能全额投资。", c:COLOR.yellow}]);
-    return;
+    return false;
   }
   line([{t:"✓ 已全额投资 ",c:COLOR.green},{t:name,c:kind==="money"?COLOR.cyan:COLOR.index},
         {t:" ¥"+money(r.amt)+" (池已清零; 分摊到 "+r.applied+" 笔未投记录)",c:COLOR.white}]);
-  refreshHeader();
-  renderInvestBar();
   scrollBottom();
+  return true;
+}
+/* 程序化入口(测试/外部脚本): 自带一次 mutate + 统一提交; 界面按钮统一走 pay full 命令。
+   命令路径(pay full)由 runCommand 出口的 commitIfDirty() 提交, 这里只兜住非命令调用,
+   避免"执行体"自己 commit 造成 mutate 重入 / 多次落盘。 */
+function doInvestFull(kind){ const r = mutate(()=>investFullRun(kind)); commitIfDirty(); return r; }
+/* pay full [mm|idx] —— 全额投资的命令通道(别名 invest full); 省略参数 = 货币+指数都尝试 */
+function doPayFull(rest){
+  const arg = (rest[0]||"all").toLowerCase();
+  let kinds;
+  if(arg==="all"||arg==="")           kinds = ["money","index"];
+  else if(arg==="mm"||arg==="money")  kinds = ["money"];
+  else if(arg==="idx"||arg==="index") kinds = ["index"];
+  else { line([{t:"用法: pay full [mm|idx]   例 pay full mm (省略 = 货币+指数都尝试)",c:COLOR.yellow}]); return; }
+  for(const k of kinds) investFullRun(k);
 }
 
 /* ----------------------------- summaries ------------------------------- */
@@ -2370,7 +2406,8 @@ function invCluster(kind){
   const btnFull = document.createElement("button"); btnFull.type="button"; btnFull.className="inv-btn";
   btnFull.disabled = !ready;
   btnFull.textContent = ready ? ("全额投资 ¥"+money(pend)) : ("待满 ¥"+lot);
-  if(ready) btnFull.addEventListener("click", ()=>doInvestFull(kind));
+  // H5: 界面按钮不再直接调 doInvestFull, 而是回灌 pay full 命令(与命令行同一通道, 撤销栈单一提交点)
+  if(ready) btnFull.addEventListener("click", ()=>runCommand("pay full "+(m?"mm":"idx")));
   cl.append(kEl, pool, done, btnFull);
   if(!ready){
     const hint = document.createElement("span"); hint.className="inv-hint";
@@ -2382,10 +2419,16 @@ function invCluster(kind){
 function scrollBottom(){ term.scrollTop = term.scrollHeight; }
 
 /* modal for add/edit —— 上半部两个选项卡: 单笔消费(add) / 分摊成本(amort) */
-let modalMode = "add"; let modalId=null;
+let modalMode = "add"; let modalId=null;   // "add" | "edit"(列表行 ✎ 编辑; update 命令的 UI 入口)
 let modalTab = "add";                 // 当前选项卡: "add" | "amort"
+/* 编辑模式只走「单笔消费」表单(提交成 update 命令), 所以隐藏选项卡, 免得在"编辑一条旧记录"时
+   切到分摊面板反而新建一条 amort(假编辑)。 */
+function setModalTabsVisible(v){
+  const t = document.getElementById("mTabs");
+  if(t && t.style) t.style.display = v ? "" : "none";
+}
 function setModalTab(tab){
-  modalTab = (tab==="amort") ? "amort" : "add";
+  modalTab = (tab==="amort" && modalMode!=="edit") ? "amort" : "add";
   const panel = document.getElementById(modalTab==="amort" ? "mp_amort" : "mp_add");
   const other = document.getElementById(modalTab==="amort" ? "mp_add"   : "mp_amort");
   if(panel) panel.classList.remove("hide");
@@ -2393,7 +2436,9 @@ function setModalTab(tab){
   document.querySelectorAll("#modal .mtabs .mtab").forEach(b=>{
     b.classList.toggle("on", b.dataset && b.dataset.mtab === modalTab);
   });
-  document.getElementById("mTitle").textContent = (modalTab==="amort") ? "记一笔分摊成本" : "记一笔消费";
+  document.getElementById("mTitle").textContent = (modalMode==="edit")
+    ? ("编辑记录 #"+modalId)
+    : ((modalTab==="amort") ? "记一笔分摊成本" : "记一笔消费");
   updateAmortHint();
 }
 /* 分摊预览: 总价 ÷ 天数 = 每天; 非法输入用黄色说明原因并阻止提交(输入框加 input 监听, 实时更新) */
@@ -2447,7 +2492,26 @@ function openAdd(){ modalMode="add"; modalId=null;
   document.getElementById("fa_total").value=""; document.getElementById("fa_days").value="";
   document.getElementById("fa_note").value=""; document.getElementById("fa_cat").value="";
   document.getElementById("fa_date").value=todayYMD();   // 精确到日(以前给的是 YYYY-MM)
+  setModalTabsVisible(true);           // 新增模式: 两个选项卡都在
   setModalTab("add");                  // 每次打开都回到最常用的"单笔消费"
+  document.getElementById("modalWrap").classList.add("open");
+  document.getElementById("f_amt").focus();
+}
+/* H5: 列表行 ✎ 编辑 —— 接活原来不可达的弹窗 edit 分支(modalMode="edit" / modalId=记录 id)。
+   提交时仍拼成 update 命令回灌 runCommand, 与命令行是同一条通道。
+   分摊记录: 与 update 语义一致, 表单里填的是"每天"金额(要改总价请走 update 命令)。 */
+function openEdit(r){
+  if(!r || state.records.indexOf(r) < 0){
+    line([{t:"该行已失效(记录已被删除或撤销), 请重新 list 查看最新数据。", c:COLOR.yellow}]);
+    return;
+  }
+  modalMode="edit"; modalId=r.id;
+  setModalTabsVisible(false);
+  document.getElementById("f_amt").value  = r.amount;
+  document.getElementById("f_cat").value  = r.category;
+  document.getElementById("f_date").value = r.date;
+  document.getElementById("f_note").value = r.note || "";
+  setModalTab("add");                  // 编辑固定单笔表单(标题会变成「编辑记录 #id」)
   document.getElementById("modalWrap").classList.add("open");
   document.getElementById("f_amt").focus();
 }
@@ -2520,9 +2584,9 @@ function submitModal(){
   if(amt==null||amt<=0){ alertModal("金额需为大于0的数字"); return; }
   if(!cat){ alertModal("请输入类别，如 餐饮 / 交通"); return; }
   closeModal();
-  const cmd = modalMode==="add"
-    ? "add "+amt+" "+cat+(note?" "+quote(note):"")+" @"+date
-    : "update "+modalId+" "+amt+" "+cat+(note?" "+quote(note):"")+" @"+date;
+  const cmd = modalMode==="edit"
+    ? "update "+modalId+" "+amt+" "+cat+(note?" "+quote(note):"")+" @"+date
+    : "add "+amt+" "+cat+(note?" "+quote(note):"")+" @"+date;
   input.value = cmd; input.focus();
   runCommand(cmd);
 }
@@ -2788,7 +2852,8 @@ function argCandidates(c0, slot, tokens, cur){
   if(cmd==="del"){ if(arg===0) return recordIds(); return []; }
   if(cmd==="pay"){
     if(arg===0) return recordIds();
-    if(arg===1) return ["mm","idx","all","none"];
+    // pay full [mm|idx]: 全额投资只认两种池; pay <id> 才给 all/none
+    if(arg===1) return ((tokens[1]||"").toLowerCase()==="full") ? ["mm","idx"] : ["mm","idx","all","none"];
     return [];
   }
   if(cmd==="list"){                                   // 类别/@日期/条数 顺序自由, 各槽位都给同一组候选
@@ -2911,11 +2976,9 @@ function historyDown(){ if(hIdx<0) return; hIdx++; if(hIdx>=history.length){ hId
 
 function boot(){
   const dropped = loadState();
-  refreshCatlist();
-  refreshHeader();
+  refreshAll();               // 顶栏统计/理财条/类别下拉/撤销按钮 一次刷新(H4 的同一入口)
   bindToolbar(); bindModal(); bindInput();
   armAutoReconnect();
-  refreshHistoryUI();
   if(dropped) line([{t:"⚠ 本地数据里有 "+dropped+" 条记录金额/日期损坏, 已跳过(其余记录照常加载)。", c:COLOR.yellow}]);
   // banner
   const t=todayYMD();

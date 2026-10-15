@@ -42,6 +42,8 @@ export md               # 下载 Markdown 报告
 - 当**应投货币池累计 ≥ ¥100**、**应投指数池累计 ≥ ¥20** 时，该池金额**变绿**，旁边的 **`全额投资`** 按钮点亮（在此之前显示“待满 ¥100/¥20”并禁用）。
 - 点 **`全额投资`**：把该种整个未投池一次性投入并清零，金额**按各笔未投金额比例自动分摊**（支持一笔只投一部分），记入累计已投，池归零重新累计下一批。
 - 例：消费合计 ¥850 → 应投货币池 ¥130、应投指数池 ¥20，两个全额投资按钮同时点亮；点货币“全额投资”即投入整池 ¥130（清池），指数同理投 ¥20。
+- 同一件事也有**命令**：`pay full mm` / `pay full idx` / `pay full`（省略 = 两种池都尝试）。**按钮与命令是同一条通道**：
+  按钮同样把 `pay full …` 回灌 `runCommand`，所以撤销栈与日志格式完全一致（v0.09-rev.1 起；别名 `invest full` 等价）。
 - `list` 每行右侧按钮可一键把该行应投货币+指数全部标记已投（再点重置），行内状态即时更新。
 
 ---
@@ -73,12 +75,13 @@ export md               # 下载 Markdown 报告
 | `del <id>` | 删除记录 |
 | `update <id> <金额> <类别> [备注..] [@日期]` | 修改记录并自动重算投资额 |
 | `pay <id> [mm\|idx\|all\|none]` | 命令方式标记投资已投：`mm`货币基金 / `idx`指数基金 / `all`全投 / `none`未投 |
+| `pay full [mm\|idx]` | **全额投资**（等同理财条上的 `全额投资` 按钮）：一次把未投池投掉并清零；省略参数 = 货币+指数都尝试（池 ≥ 阈值 `¥100`/`¥20` 才执行，否则提示需继续累计）。别名 `invest full` |
 | `summary [day\|week\|month] [类别]` | 总结窗口：无参数 = **当前记账周期**；`month` = **自然月（当月 1 日～月末）**；`day` = 今日；`week` = 本周。可选在末尾**按类别筛选**，如 `summary week 餐饮` |
 | `summary month [@YYYY-MM] [类别]` | 自然月总结，可指定月份 + 类别，如 `summary month 2027-07 餐饮`；也可省略 `month` 直接写 `summary 2027-07` |
 | `summary cat [类别]` | 当前记账周期各类别占比明细 |
 | `summary 类别` | 省略窗口关键字时，默认用当前记账周期 + 该类别，如 `summary 医疗` |
 | `export [md\|txt]` | 导出报告（浏览器下载） |
-| `config` | 查看当前配置 |
+| `config` | 查看当前配置（工具栏也有「配置」按钮） |
 | `cls` | 清屏 |
 
 > 备注含空格时可加引号，如 `add 50 餐饮 "和同事 午餐 AA"`。
@@ -410,7 +413,89 @@ set daily off       # 取消设置
 
 ## 版本与更新记录
 
-当前版本：**v0.0.8**（界面标题与 `config` 中也会显示）
+当前版本：**v0.0.9**（界面标题与 `config` 中也会显示）
+
+### v0.0.9
+**合并两轮修订并交付：`v0.09-rev.1` 的 H5（双通道对称 + 弹窗 edit 分支）+ `v0.09-rev.2` 的 H4（统一提交点）。**
+数据结构、存储格式、命令清单与既有命令语义**保持不变**；本版只把两条修订线合到一起，并补齐合并时发现的护栏缺口。
+
+- **来源**：本版是两个并行修订的合并体 ——
+  - `v0.09-rev.1`：修 H5（`pay full` 命令 / 工具栏「配置」按钮 / 列表行 `✎ 编辑` 接活弹窗 edit 分支）；
+  - `v0.09-rev.2`：修 H4（命令/非命令入口统一到唯一提交点 `commit()`）。
+  两轮均未改动 `LS_KEY`、备份头、字段名、`amount` 语义与精度，**老数据/老备份零迁移**。
+- **合并点**（避免“各修一半”造成的语义打架）：
+  - `investFullRun(kind)` 是全额投资的**唯一执行体**（只改 `state`、不落盘不刷新）；命令路径由 `runCommand` 出口的 `commitIfDirty()` 提交，
+    程序化入口 `doInvestFull(kind)` 自己 `mutate` 后 `commitIfDirty()` —— 既保持“一次全额投资在撤销栈只压一步”，又不破坏 H4 的唯一提交点；
+  - `renderRecordRow()` 同时具备 `✎ 编辑` 按钮（H5）与投资按钮的出口提交（H4）；
+  - `doPay` / `doUpdate` / `renderRecordRow` 等命令函数一律只改 `state`，落到 H4 的出口提交。
+- **护栏**：全量 `node tests/run-all.mjs` = **498** 条断言（138 / 55 / 85 / 85 / 92 / 43）全绿；
+  变异测试脚本扩到 **19 组**（原有 9 组 amort + 6 组 H5 + 新增 4 组 H4：`m_commit_exit` / `m_commit_refresh` / `m_commit_save` / `m_investfull_commit`），全部被抓住。
+- **相关**：`commit()` / `commitIfDirty()` / `refreshAll()` / `pendingCommit`、`investFullRun()` / `doPayFull()`、
+  `openEdit()` / `setModalTabsVisible()`、工具栏「配置」按钮。
+
+### v0.09-rev.1
+**修掉审查项 H5：双通道覆盖不对称 + 弹窗 edit 死分支**（把命令与按钮两条通道的能力对齐）。
+**数据结构、存储格式与既有命令语义一个字都没改** —— 只补通道、接活死分支。
+
+- **现象（H5）**：README 一直宣称"命令行 + 按钮双通道"，但实际有三处不对等：
+  ① 理财条的 **`全额投资` 只有鼠标**，命令行没有等价命令；
+  ② **`config` 只有命令行**，工具栏没有按钮；
+  ③「+ 记一笔」弹窗的 edit 分支**不可达**（`modalMode` 永远 `"add"`、`modalId` 永远 `null`），
+  于是 `update` 也只能走命令行 —— 死分支还会误导维护者。
+- **原因**：功能是分几次加的，每次只做了当时顺手的那一条通道；弹窗的编辑态在早期就预留了，
+  但一直没有"进入编辑态"的入口。
+- **解决（三条都补齐，不做二选一）**：
+  - **命令通道**：新增 `pay full [mm|idx]`（别名 `invest full`）—— 省略参数 = 货币+指数都尝试；
+    内部把"执行 + 播报"抽成唯一实现 `investFullRun(kind)`，命令与按钮共用（不再各写一份）。
+  - **UI 通道**：工具栏新增 **`配置`** 按钮（`data-cmd="config"`，回灌 `runCommand`）；
+    理财条 `全额投资` 按钮改为回灌 `runCommand("pay full …")`，与命令行**同一条通道**
+    （`mutate` 不可重入，所以"执行体"不自带 `mutate`，一次全额投资在撤销栈里只压一步）。
+  - **接活 edit 分支**：`list` 每行新增 **`✎ 编辑`** 按钮 → `openEdit(record)` 进入 `modalMode="edit"`，
+    预填金额/类别/日期/备注；提交仍拼成 `update <id> …` 回灌 `runCommand`。编辑态隐藏选项卡，
+    避免"编辑一条旧记录却新建一条 amort"；失效行（undo/del 之后）不可编辑，点它会提示失效。
+- **相关**：`COMMANDS`（pay full 子用法）、`doPay()` / `doPayFull()` / `investFullRun()` / `doInvestFull()`、`invCluster()`、
+  `openEdit()` / `setModalTab()` / `setModalTabsVisible()` / `submitModal()`、`renderRecordRow()`、工具栏 HTML。
+- **兼容**：不动 `LS_KEY`、备份 `app`/`version` 头、字段名、`amount` 语义、`r2`/`r6` 精度、13:2 拆池、响应式契约；
+  新增命令是纯加法，老备份/老数据零迁移。
+- **护栏**：新增 `tests/test6.mjs`（42 条，H5 专项：命令存在且可用 / 别名等价 / 撤销栈单步 / 未满阈值不落库 /
+  config 按钮 / 按钮回灌命令 / edit 分支可达与"提交改同一条" / 失效行不可编辑）；变异测试新增
+  **`m_payfull_cmd`、`m_config_btn`、`m_invest_button`、`m_edit_branch`、`m_edit_submit`、`m_edit_tab_lock`** 六组
+  （把缺陷改回去必须变红，实测全部被抓住）。全量 `node tests/run-all.mjs` = **497** 条。
+
+### v0.09-rev.2
+**修复架构评审 H4（P0）：把"改数据 → 落盘 → 刷新"收口到唯一提交点。**
+纯结构性重构：命令名、参数、数据结构、备份格式、派生口径**一个字都没改**；
+改的只是"谁负责保存和刷新界面"。
+
+- **现象（这一类缺陷的根源）**：以前每个命令各自调用 `save()` 与 `refreshHeader()`
+  （全文件 **25 处 / 23 处**，散落在 20+ 个函数里）。新增命令时只要漏掉其中一个，
+  就会出现"数据变了但界面没变"或"界面变了但刷新后丢失"。
+  v0.0.4 修过的"改设置后顶栏不刷新"就是这个模式的必然产物。
+- **原因**：没有统一提交点，三套写法并存 ——
+  ① 多数命令靠 `runCommand` 的 `mutate()` 包一层；
+  ② UI 处理函数自己再包一层 `mutate()`（列表行按钮、`doInvestFull`）；
+  ③ 领域函数内部直接 `save()`（`investAmount`）。
+- **解决**：
+  - 新增 `refreshAll()` = `refreshHeader()` + `refreshHistoryUI()` + `refreshCatlist()`；
+  - 新增**唯一提交点** `commit()` = `save()` + `refreshAll()`；
+  - `runCommand` 出口统一调用 `commitIfDirty()`：只读命令（`list`/`summary`/`help`/`config`…）
+    不会白写盘、也不会白刷新；是否"需要提交"由 `mutate()` 在快照确实变化时置位 `pendingCommit` 决定；
+  - 命令函数（`doSet`/`doBudget`/`doAdd`/`doAmort`/`doDelete`/`doUpdate`/`doPay`…）只改 `state`，
+    删掉各自的 `save()` / `refreshHeader()`；`investAmount()` 不再自己落盘；
+  - 非命令入口（列表行「标记已投资」、`doInvestFull()`、`restoreFromText()`、
+    `applyState()`/撤销重做）各自在出口调用 `commit` / `commitIfDirty`。
+- **效果**：`save()` 从 **25 处降到 2 处**（`loadState` 启动 + `commit` 出口），
+  `refreshHeader()` 从 **23 处降到 1 处**（`refreshAll`）—— 命令路径只有**一个落盘出口 + 一个刷新出口**。
+  顺带：`refreshAll()` 含 `refreshCatlist()`，导入备份后自定义类别会立即回到表单下拉
+  （H3 的导入路径提前受益，H3 本身仍未修）。
+- **兼容**：不改 `LS_KEY`、备份 `app`/`version` 头、字段名与 `amount` 语义、`COMMANDS` 清单、响应式契约；
+  老备份与 `localStorage` 直接可用，无需迁移。
+- **护栏**：全量 **455 条断言**（`node tests/run-all.mjs`）全绿。新增 3 组变异验证收口真的被守住：
+  `m_commit_exit`（去掉出口 → test2 红 8 条）、`m_commit_refresh`（只落盘不刷新 → T21.1/2/3 红）、
+  `m_commit_save`（只刷新不落盘 → T27.x 红 5 条）。
+- **相关**：`commit()` / `commitIfDirty()` / `refreshAll()` / `pendingCommit` /
+  `runCommand()` / `mutate()` / `applyState()` / `restoreFromText()`。
+
 
 ### v0.0.8
 **分摊成本的起始日期精确到日**（原来弹窗只让选到"月"，提交时被硬拼成该月 1 号）。

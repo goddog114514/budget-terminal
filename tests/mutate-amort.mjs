@@ -48,6 +48,32 @@ const MUTANTS = [
   ["m_amort_day_precision", "test5.mjs", "弹窗起始日期吸到每月 1 号(丢失用户选的日)",
    ['  const picked = amortPickDate(document.getElementById("fa_date").value);\n  if(!picked){ alertModal("起始日期需为 YYYY-MM-DD 的合法日期（或留空 = 今天）"); return; }',
     '  const picked = { date: (document.getElementById("fa_date").value||todayYMD()).slice(0,7)+"-01", blank:false };']],
+  /* v0.09-rev.1 · H5: 双通道对称 + 弹窗 edit 分支 —— 把缺陷改回去必须让 test6 变红 */
+  ["m_payfull_cmd", "test6.mjs", "抹掉 doPay 的 full 分支(全额投资又只剩鼠标)",
+   ['  if((tokens[0]||"").toLowerCase()==="full"){ doPayFull(tokens.slice(1)); return; }\n', ""]],
+  ["m_config_btn", "test6.mjs", "拿掉工具栏 config 按钮(config 又只剩命令行)",
+   ['  <button data-cmd="config">配置</button>\n', ""]],
+  ["m_invest_button", "test6.mjs", "全额投资按钮绕过命令直调 doInvestFull(通道再次不对称)",
+   ['  if(ready) btnFull.addEventListener("click", ()=>runCommand("pay full "+(m?"mm":"idx")));',
+    '  if(ready) btnFull.addEventListener("click", ()=>doInvestFull(kind));']],
+  ["m_edit_branch", "test6.mjs", "openEdit 不回 edit 模式(弹窗 edit 分支再次成为死代码)",
+   ['  modalMode="edit"; modalId=r.id;\n  setModalTabsVisible(false);',
+    '  modalMode="add"; modalId=null;']],
+  ["m_edit_submit", "test6.mjs", "编辑提交拼成 add 命令(编辑变成新建一条)",
+   ['  const cmd = modalMode==="edit"', '  const cmd = false']],
+  ["m_edit_tab_lock", "test6.mjs", "编辑模式仍可切到分摊选项卡(编辑旧记录却新建 amort)",
+   ['  modalTab = (tab==="amort" && modalMode!=="edit") ? "amort" : "add";',
+    '  modalTab = (tab==="amort") ? "amort" : "add";']],
+  /* v0.0.9 · H4: 唯一提交点 —— 拆掉"出口提交 / 落盘 / 刷新"的任一半边都必须变红 */
+  ["m_commit_exit", "test2.mjs", "去掉 runCommand 出口的 commitIfDirty()(命令改了数据却不提交)",
+   ['    commitIfDirty();     // 唯一出口: 数据确实变了才 落盘 + 刷新(H4)\n', ""]],
+  ["m_commit_refresh", "test2.mjs", "commit() 只落盘不 refreshAll()(界面停在旧数字)",
+   ['  save();\n  refreshAll();\n  pendingCommit = false;', '  save();\n  pendingCommit = false;']],
+  ["m_commit_save", "test2.mjs", "commit() 只 refreshAll() 不 save()(刷新后数据丢失)",
+   ['  save();\n  refreshAll();\n  pendingCommit = false;', '  refreshAll();\n  pendingCommit = false;']],
+  ["m_investfull_commit", "test6.mjs", "doInvestFull 不自提交且执行体内提前 commit(程序化入口改了不落盘)",
+   ['  scrollBottom();\n  return true;\n}\n/* 程序化入口(测试/外部脚本): 自带一次 mutate + 统一提交; 界面按钮统一走 pay full 命令。\n   命令路径(pay full)由 runCommand 出口的 commitIfDirty() 提交, 这里只兜住非命令调用,\n   避免"执行体"自己 commit 造成 mutate 重入 / 多次落盘。 */\nfunction doInvestFull(kind){ const r = mutate(()=>investFullRun(kind)); commitIfDirty(); return r; }',
+    '  commitIfDirty();\n  scrollBottom();\n  return true;\n}\n/* 程序化入口(测试/外部脚本): 自带一次 mutate; 界面按钮统一走 pay full 命令 */\nfunction doInvestFull(kind){ return mutate(()=>investFullRun(kind)); }']],
 ];
 
 const tmp = os.tmpdir();

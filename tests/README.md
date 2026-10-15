@@ -12,13 +12,13 @@
 发版、或改动落在共享抽象/存储/领域口径上时才跑全量。
 
 ```powershell
-# 全量（发版 / 跨模块改动）: 顺序跑全部 5 个套件, 汇总断言数并对照交付闸门基线
+# 全量（发版 / 跨模块改动）: 顺序跑全部 6 个套件, 汇总断言数并对照交付闸门基线
 node tests/run-all.mjs
 
 # 日常小更新: 只跑相关的那一个（同样满足低档闸门）
 node tests/test5.mjs
 
-# 变异测试: 只在你新增/改动护栏后重跑（9 组分摊成本变异必须全部被抓住）
+# 变异测试: 只在你新增/改动护栏后重跑（19 组: 9 组分摊成本 + 6 组 H5 + 4 组 H4 提交点, 必须全部被抓住）
 node tests/mutate-amort.mjs
 ```
 
@@ -39,8 +39,9 @@ node tests/mutate-amort.mjs
 | `test2.mjs` | 55 | 端到端命令流/弹窗/备份数据冒烟/阈值与红黄绿圆点 |
 | `test3.mjs` | 85 | P1 护栏：颜色令牌一致、`kvRow`、自适应列宽、死代码已删、响应式 CSS |
 | `test4.mjs` | 85 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 |
-| `test5.mjs` | 92 | M2 护栏：语义槽位、`@日期` 位置无关、ghost 预览 + **`amort` 补全与双选项卡（含起始日精确到日）** |
-| **合计** | **455** | |
+| `test5.mjs` | 92 | M2 护栏：语义槽位、`@日期` 位置无关、ghost 预览 + `amort` 补全与双选项卡（含起始日精确到日） |
+| `test6.mjs` | 43 | **H5 护栏**：双通道对称（`pay full` 命令 / `config` 按钮 / 弹窗 edit 分支可达、提交走 `update`、失效行不可编辑） |
+| **合计** | **498** | |
 
 ## 环境变量（都有默认值，通常不用设）
 
@@ -130,9 +131,9 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 
 ## 变异测试（证明护栏真的有效）
 
-把已知缺陷改回去，确认对应断言会红。装置已用此法验证 15 组（覆盖全部 5 个套件）。
+把已知缺陷改回去，确认对应断言会红。装置已用此法验证 **26 组**（脚本 19 组 + 早期手工 7 组），覆盖全部 **6** 个套件。
 
-**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 9 组、
+**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 19 组、
 自动校验"变异点恰好命中一次"、并汇总哪些没被抓住。
 
 | 变异体 | 套件 | 还原的缺陷 | 结果 |
@@ -143,16 +144,26 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 | `m_atdate` | test5 | 让 `@日期` 重新占槽位（M2） | 5 条红 |
 | `m_ratio` | test | 比例区间改回开区间（端点被拒，F5） | 8 条红 |
 | `m_stale` | test | 失效行不再提示失效（假成功，B7） | T12.2 红 |
-| `m_header` | test2 | 拿掉 `set budget` 后的 `refreshHeader()`（H4/F10） | T21.1 红 |
+| `m_header` | test2 | 拿掉 `set budget` 后的 `refreshHeader()`（H4/F10）—— **v0.09-rev.2 后该调用点已不存在**，改由下面 3 组守护 | T21.1 红 |
+| `m_commit_exit` | test2 | 去掉 `runCommand` 出口的 `commitIfDirty()`（H4 复发） | 8 条红 |
+| `m_commit_refresh` | test2 | `commit()` 只 `save()` 不 `refreshAll()` | T21.1/2/3 红 |
+| `m_commit_save` | test2 | `commit()` 只 `refreshAll()` 不 `save()` | T27.x 红 5 条 |
+| `m_investfull_commit` | test6 | `doInvestFull` 不自提交且执行体内提前 commit（程序化入口改了不落盘） | 1 条红 |
 | `m_amort_dispatch` | test4 | 抹掉 `dispatch` 的 `amort` 分支（F2） | 1 条红 |
-| `m_amort_invest` | test | 投资改按**每天**算（投资被分摊，少算 N 倍） | 4 条红 |
-| `m_amort_days` | test | `12月` 只当 12 天（不按 30 天/月折算） | 4 条红 |
+| `m_amort_invest` | test | 投资改按**每天**算（投资被分摊，少算 N 倍） | 3 条红 |
+| `m_amort_days` | test | `12月` 只当 12 天（不按 30 天/月折算） | 3 条红 |
 | `m_amort_bounds` | test | 放宽天数上限（越界天数不再被拒） | 3 条红 |
 | `m_amort_tab` | test5 | 切选项卡时不换面板（点了没反应） | 4 条红 |
-| `m_amort_total` | test | 归一化时丢掉摊销总价（旧备份导入失真） | 5 条红 |
+| `m_amort_total` | test | 归一化时丢掉摊销总价（旧备份导入失真） | 4 条红 |
 | `m_amort_window_sum` | test | **只按记账当天求和**（其余天数的钱不计入消费，v0.0.7 修的缺陷） | 9 条红 |
 | `m_amort_window_rows` | test | **只按 `r.date` 筛选窗口**（窗口内其余天查不到这笔分摊） | 3 条红 |
 | `m_amort_day_precision` | test5 | **起始日期吸到每月 1 号**（丢掉用户选的日，v0.0.8 修的缺陷） | 4 条红 |
+| `m_payfull_cmd` | test6 | 抹掉 `doPay` 的 `full` 分支（全额投资又只剩鼠标，H5） | 6 条红 |
+| `m_config_btn` | test6 | 拿掉工具栏 `config` 按钮（H5） | 1 条红 |
+| `m_invest_button` | test6 | 按钮绕过命令直调 `doInvestFull`（通道再次不对称，H5） | 2 条红 |
+| `m_edit_branch` | test6 | `openEdit` 不回 edit 模式（edit 分支又成死代码，H5） | 9 条红 |
+| `m_edit_submit` | test6 | 编辑提交拼成 `add` 命令（编辑变成新建一条，H5） | 2 条红 |
+| `m_edit_tab_lock` | test6 | 编辑模式仍可切到分摊选项卡（H5） | 1 条红 |
 
 做法：改一份副本 → `$env:BT_HTML` 指过去 → 跑对应套件，**必须变红**。新写的护栏也应做一次。
 
@@ -164,12 +175,12 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 
 ```
 tests/
-├─ run-all.mjs            单一入口(5 套件 + 基线校验)
-├─ mutate-amort.mjs       变异测试(v0.0.6 起: 9 组分摊成本变异, 含窗口口径 2 组 + 日精度 1 组)
+├─ run-all.mjs            单一入口(6 套件 + 基线校验)
+├─ mutate-amort.mjs       变异测试(19 组: 分摊成本 9 + H5 6 + H4 4, 含窗口口径 2 组 + 日精度 1 组)
 ├─ env.mjs                路径解析单一入口(仓库根 / HTML / README / 夹具)
 ├─ dom.mjs                极简 DOM stub(元素/classList/style/事件/localStorage)
 ├─ app.mjs                加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now})
-├─ test.mjs test2..test5  5 个套件
-├─ gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window.mjs   浏览器验证用页面生成器
+├─ test.mjs test2..test6  6 个套件(含 test6 H5 专项)
+├─ gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window/gen-h5.mjs   浏览器验证用页面生成器
 └─ fixtures/user_backup.json                            合成账本夹具(无真实数据)
 ```

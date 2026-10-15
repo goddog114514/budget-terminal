@@ -1,5 +1,6 @@
 // M1 修复的护栏: 命令清单四处一致 —— COMMANDS(登记表) ↔ dispatch 的 case ↔ help 输出 ↔ Tab 补全 ↔ README
 import fs from "node:fs";
+import path from "node:path";
 import { loadApp } from "./app.mjs";
 import { HTML_PATH, README_PATH } from "./env.mjs";
 
@@ -140,6 +141,43 @@ const S = loadApp(); S.boot();
 {
   S.clearTerm(); S.runCommand("nosuchcmd");
   ok("M1.37 未知命令提示", /未知命令/.test(S.lines().join("\n")), S.lines().join("|"));
+}
+
+/* ---------- 9. ARCHITECTURE-REVIEW §1.4 的命令表必须与登记表同步 ----------
+   背景: 2026-10-10 把"命令速查"从 HANDOVER 附录搬进了 ARCHITECTURE-REVIEW §1.4。
+   搬进被跟踪文件就要有护栏 —— 否则它会变成一份"没人守着的副本"(F1/F12 的老毛病)。
+   做法: 以登记表(唯一数据源)为基准，要求每个主名/别名都能在那个代码块里查到；
+         再反向查一遍"块里出现的命令名是否都还在登记表里"(防删了命令却留着文档)。
+   注意 §1.4 是**两栏排版**(一 physical line 含两三条命令)，所以按"存在性"判定而不是按行解析。 */
+{
+  const arch = fs.readFileSync(path.join(path.dirname(README_PATH), "ARCHITECTURE-REVIEW.md"), "utf8");
+  const start = arch.indexOf("### 1.4 命令表");
+  const bs = start >= 0 ? arch.indexOf("```", start) : -1;
+  const be = bs >= 0 ? arch.indexOf("```", bs + 3) : -1;
+  const block = (bs >= 0 && be > bs) ? arch.slice(bs, be) : "";
+  ok("M1.38 ARCHITECTURE-REVIEW §1.4 存在且含命令表代码块", start >= 0 && block.includes("help"), "start=" + start);
+
+  const has = (n) => new RegExp("(^|[^a-z])" + n.replace(/[?]/g, "\\?") + "([^a-z]|$)").test(block);
+  const missing = S.COMMAND_NAMES.filter(n => !has(n));
+  eq("M1.39 架构文件 §1.4 列出了全部主命令", missing, []);
+  const aliasMissing = Object.keys(S.CMD_ALIAS).filter(a => !has(a));
+  eq("M1.40 架构文件 §1.4 列出了全部别名", aliasMissing, []);
+
+  // 反向: 块里的命令名不得是"已删除的命令"(白名单 = 登记表 + set 子命令关键字)
+  const subs = ["budget","daily","invest","consume","ratio","period","periodstart","monthstart",
+                "weekstart","alert","rate","natural","off","mon","sun","money","index","md","txt",
+                "day","week","month","cat","today"];
+  const known = new Set([...S.COMMAND_NAMES, ...Object.keys(S.CMD_ALIAS), "?", "set", ...subs]);
+  const inBlock = new Set();
+  for (const raw of block.split(/\r?\n/)) {
+    const line = raw.trim();
+    const m = /^([a-z?][a-z0-9?]*(?:\s*\([a-z0-9?]+\))*)/.exec(line);
+    if (m) for (const n of m[1].matchAll(/[a-z]+|\?/g)) inBlock.add(n[0]);
+    const col2 = /^\S.*?\s{2,}([a-z?][a-z0-9?]*(?:\s*\([a-z0-9?]+\))*)\s{2,}/.exec(line);
+    if (col2) for (const n of col2[1].matchAll(/[a-z]+|\?/g)) inBlock.add(n[0]);
+  }
+  const extra = [...inBlock].filter(n => !known.has(n));
+  eq("M1.41 架构文件 §1.4 没有已不存在的命令名", extra, []);
 }
 
 console.log("PASS " + pass + " / FAIL " + fails.length);

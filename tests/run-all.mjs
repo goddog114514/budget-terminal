@@ -15,6 +15,7 @@ const SUITES = [
   { file:"test3.mjs", expect:85,  what:"P1 护栏: 颜色令牌/kvRow/自适应列宽/死代码/响应式" },
   { file:"test4.mjs", expect:85,  what:"M1 护栏: 登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表" },
   { file:"test5.mjs", expect:92,  what:"M2 护栏: 语义槽位/@日期位置无关/ghost 预览 + amort 补全与双选项卡(含起始日精确到日)" },
+  { file:"test6.mjs", expect:43,  what:"H5 护栏: 双通道对称(pay full 命令/按钮同通道、config 按钮、弹窗 edit 分支可达) + 程序化入口统一提交" },
 ];
 
 const indent = (s)=> (s||"").trim().split("\n").map(l=>"      "+l).join("\n");
