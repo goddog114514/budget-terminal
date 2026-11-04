@@ -16,7 +16,7 @@ const SUITES = [
   { file:"test4.mjs", expect:90,  what:"M1 护栏: 登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表" },
   { file:"test5.mjs", expect:92,  what:"M2 护栏: 语义槽位/@日期位置无关/ghost 预览 + amort 补全与双选项卡(含起始日精确到日)" },
   { file:"test6.mjs", expect:43,  what:"H5 护栏: 双通道对称(pay full 命令/按钮同通道、config 按钮、弹窗 edit 分支可达) + 程序化入口统一提交" },
-  { file:"test7.mjs", expect:190, what:"v0.0.10 图表总结 + 合并入口 report: 四窗口/三图型/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/规范自检" },
+  { file:"test7.mjs", expect:196, what:"v0.0.10 图表总结 + 合并入口 report: 四窗口/三图型/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/输出去重与排序/规范自检" },
 ];
 
 const indent = (s)=> (s||"").trim().split("\n").map(l=>"      "+l).join("\n");

@@ -1066,6 +1066,15 @@ function collectWindow(start,end,category){
            cats:[...byCat.entries()].sort((a,b)=>b[1]-a[1]),
            start, end, days:Math.max(1, daysBetween(start,end)+1), category:catFilter };
 }
+/* 窗口内"截至今天"已发生的消费(预算对比/日均用)。
+   进行中的窗口若直接用 win.total, 会把未来日期的分摊成本提前算进分子,
+   而参考额度只按已过天数算 —— 分子分母口径不一致(F13), 预算使用率会虚高。
+   已结束的窗口直接用 win.total(与整窗口口径相同, 不变)。 */
+function spentUpToToday(win){
+  const t = todayYMD();
+  if(win.end <= t) return win.total;
+  return r2(sumRange(win.rows, win.start, t).total);
+}
 /* 一组记录的应投合计(总结/导出/周期快照共用, 避免同一份 reduce 抄三遍) */
 function investTotalsOf(rows){
   let mm = 0, idx = 0, mmInv = 0, idxInv = 0;
@@ -2036,22 +2045,26 @@ function printSummaryReport(win, windowName, opts){
   const carry = r2(st.usedUnits - st.B);       // >0 透支; <=0 本期剩余可结转
   const bal = availableBalance();
   const title = windowName;
-  line([{t:"═ "+title+" 总结 ═", c:COLOR.cyan}]);
+  if(!opts.noTitle) line([{t:"═ "+title+" 总结 ═", c:COLOR.cyan}]);
   const invTotal = r2(win.mmT+win.idxT);
   // stat table rows: [key, value, color, glow?]
   const rows=[
     ["窗口总消费", "¥"+money(win.total), COLOR.pure],
     ["消费笔数", String(win.count), COLOR.white],
   ];
-  for(const [cat,amt] of win.cats){
-    const pct = win.total>0? (amt/win.total*100).toFixed(1)+"%":"0%";
-    rows.push(["  类别·"+cat, "¥"+money(amt)+"  ("+pct+")", catColor(cat)]);
+  /* compact = 合并入口 report 专用: 类别明细与下面的饼图图例重复, 不再在表格里列一遍。
+     summary 单命令仍保留这段(它的类别信息没有别的出口)。 */
+  if(!opts.compact){
+    for(const [cat,amt] of win.cats){
+      const pct = win.total>0? (amt/win.total*100).toFixed(1)+"%":"0%";
+      rows.push(["  类别·"+cat, "¥"+money(amt)+"  ("+pct+")", catColor(cat)]);
+    }
   }
   /* 分摊成本的占比: 它已经按天算进"窗口总消费"里了, 这里只是让用户看得见有多少来自分摊
      (以前分摊只在记账当天计一天, 其余天数在总结里完全不可见) */
   if(win.amortTotal>0){
     const pA = win.total>0? (win.amortTotal/win.total*100).toFixed(1)+"%":"0%";
-    rows.push(["  其中分摊成本", "¥"+money(win.amortTotal)+"  ("+pA+")", COLOR.gray]);
+    rows.push(["其中分摊成本", "¥"+money(win.amortTotal)+"  ("+pA+")", COLOR.gray]);
   }
   rows.push(["应投货币("+mmPct()+"%)", "¥"+money(win.mmT), COLOR.cyan]);
   rows.push(["应投指数("+idxPct()+"%)", "¥"+money(win.idxT), COLOR.index]);
@@ -2068,8 +2081,8 @@ function printSummaryReport(win, windowName, opts){
   // visual bar for the period
   line([{t:" 本期发放进度 ",c:COLOR.gray},{t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%",c:COLOR.white}]);
   line([{t:" 换算口径: 消费÷"+consumePct()+"%=占用; 占用×"+invPct()+"% 应投(货币"+mmPct()+"%/指数"+idxPct()+"%)", c:COLOR.gray}]);
-  // category mini-bars
-  if(win.cats.length && win.total>0){
+  // category mini-bars（compact 时类别交给饼图图例，避免同一份数据出现两次）
+  if(!opts.compact && win.cats.length && win.total>0){
     line([{t:" 类别占比(按消费):",c:COLOR.gray}]);
     for(const [cat,amt] of win.cats){
       const ratioC = amt/win.total;
@@ -2095,12 +2108,15 @@ function printSummaryReport(win, windowName, opts){
     const totalDays = win.days || 1;
     const endEff = (win.end && win.end < today) ? win.end : today;
     const usedDays = Math.max(1, daysBetween(win.start, endEff) + 1);
-    const avg = r2(win.total / usedDays);
+    /* summary 单命令保持原口径(窗口总消费 ÷ 已过天数, T29.22 守着);
+       report(compact) 改用截至今天的消费, 与分析里的预算使用率同口径, 避免未来分摊抬高日均。 */
+    const base = opts.compact ? spentUpToToday(win) : win.total;
+    const avg = r2(base / usedDays);
     line([{t:" ── 平均每日消费 ──", c:COLOR.gray}]);
     line([
       {t:" 日均 ", c:COLOR.gray},
       {t:"¥"+money(avg), c:COLOR.cyan, cls:"glow"},
-      {t:"   = 窗口总消费 ¥"+money(win.total)+" ÷ "+usedDays+" 天", c:COLOR.gray}
+      {t:"   = "+(opts.compact?"窗口消费":"窗口总消费")+" ¥"+money(base)+" ÷ "+usedDays+" 天", c:COLOR.gray}
     ]);
     line([
       {t:" 统计口径: ", c:COLOR.gray},
@@ -2338,8 +2354,12 @@ function printChartAnalysis(win, data, meta){
   const today = todayYMD();
   const endEff = (win.end < today) ? win.end : today;
   const usedDays = Math.max(1, daysBetween(win.start, endEff)+1);
-  const avg = r2(win.total/usedDays);
-  const usedUnits = r2(win.total/consumeShare());
+  /* 预算对比只算"已经发生"的消费: 进行中的窗口若把未来日期的分摊成本也算进分子,
+     用率会虚高(窗口 7 天只过了 1 天, 却拿 7 天的分摊去除 1 天的额度) —— 口径不一致是 F13。
+     柱状图/饼图仍展示整窗口(消费归属日), 这里的占用/日均/结论按"截至今天"算, 文案注明。 */
+  const spent = spentUpToToday(win);
+  const avg = r2(spent/usedDays);
+  const usedUnits = r2(spent/consumeShare());
   const refGrant = r2(perDay*usedDays);
   const usage = refGrant>0 ? usedUnits/refGrant : 0;
   const aw = alertWord(usage);
@@ -2351,10 +2371,15 @@ function printChartAnalysis(win, data, meta){
   const top3 = r2(win.cats.slice(0,3).reduce((s,x)=>s+x[1],0));
   const top3pct = win.total>0 ? top3/win.total*100 : 0;
   const amortPct = win.total>0 ? win.amortTotal/win.total*100 : 0;
+  /* skipCore = 合并入口 report 专用: 总消费 / 日均 / 分摊占比已经在「预算总结」里出现过,
+     这里不再重复同一行; chart 单命令没有总结表, 仍完整输出。 */
+  const skipCore = !!(meta && meta.skipCore);
   line([{t:"  ▓ 自动分析", c:COLOR.cyan}]);
-  kvRow("窗口总消费", "¥"+money(win.total), 0, COLOR.pure);
-  kvRow("平均每日消费", "¥"+money(avg)+"   (÷"+usedDays+" 天)", 0, COLOR.white);
-  kvRow("窗口占用(消费÷"+consumePct()+"%)", "¥"+money(usedUnits), 0, COLOR.white);
+  if(!skipCore){
+    kvRow("窗口总消费", "¥"+money(win.total), 0, COLOR.pure);
+    kvRow("平均每日消费", "¥"+money(avg)+"   (÷"+usedDays+" 天)", 0, COLOR.white);
+  }
+  kvRow("窗口占用(截至今天, 消费÷"+consumePct()+"%)", "¥"+money(usedUnits), 0, COLOR.white);
   kvRow("参考发放额度", "¥"+money(refGrant)+"   (日均 ¥"+money(perDay)+" × "+usedDays+" 天)", 0, COLOR.white);
   kvRow("预算使用率", (usage*100).toFixed(1)+"%   "+aw.t, 0, aw.c);
   kvRow("峰值"+(mode==="date"?"时段":"类别"), peak ? (peak.name+"  ¥"+money(peak.total)) : "—", 0, COLOR.white);
@@ -2362,7 +2387,7 @@ function printChartAnalysis(win, data, meta){
   kvRow("零消费", zero+" 个"+(mode==="date"?"时段":"类别"), 0, COLOR.gray);
   kvRow("Top1 类别", top1 ? (top1[0]+"  "+top1pct.toFixed(1)+"%") : "—", 0, top1?catColor(top1[0]):COLOR.gray);
   kvRow("Top3 集中度", top3pct.toFixed(1)+"%", 0, COLOR.white);
-  if(win.amortTotal>0) kvRow("其中分摊成本", "¥"+money(win.amortTotal)+"  ("+amortPct.toFixed(1)+"%)", 0, COLOR.gray);
+  if(win.amortTotal>0 && !skipCore) kvRow("其中分摊成本", "¥"+money(win.amortTotal)+"  ("+amortPct.toFixed(1)+"%)", 0, COLOR.gray);
   if(mode==="date" && buckets.length>=2){
     const mid = Math.floor(buckets.length/2);
     const a = r2(buckets.slice(0,mid).reduce((s,b)=>s+b.total,0));
@@ -2377,7 +2402,7 @@ function printChartAnalysis(win, data, meta){
   if(win.total<=0){
     concl = meta.name+" 内没有消费记录，图表与指标均按 0 显示；记一笔后再来看趋势。";
   } else {
-    concl = meta.name+" 消费 ¥"+money(win.total)+"，占参考预算 "+(usage*100).toFixed(1)+"%（"+aw.t+"）"
+    concl = meta.name+" 消费 ¥"+money(spent)+"，占参考预算 "+(usage*100).toFixed(1)+"%（"+aw.t+"）"
           + "；主要支出为 "+(top1?top1[0]:"—")+"（"+top1pct.toFixed(1)+"%）。";
   }
   line([{t:"  "+concl, c:win.total<=0?COLOR.gray:COLOR.white}]);
@@ -2405,9 +2430,12 @@ function printChartAnalysis(win, data, meta){
 }
 /* 图表输出的唯一实现(v0.0.10): chart 与 report 共用, 不在两处各画一遍。
    type = bar | pie | both；合并后的「总结与图表」固定传 both, 一次同时出柱状图和饼图。 */
-function renderChartBody(win, name, isDay, cat, type){
+function renderChartBody(win, name, isDay, cat, type, opts){
+  opts = opts || {};
   const typeName = type==="bar" ? "柱状图" : (type==="pie" ? "饼图" : "柱状图 + 饼图");
-  line([{t:"  图型: "+typeName+"    窗口: "+win.start+" ~ "+win.end+"（"+win.days+" 天）", c:COLOR.gray}]);
+  if(!opts.hideMeta){
+    line([{t:"  图型: "+typeName+"    窗口: "+win.start+" ~ "+win.end+"（"+win.days+" 天）", c:COLOR.gray}]);
+  }
   const data = chartBuckets(win, isDay, cat);
   if(type==="bar" || type==="both"){
     line([{t:"  ▓ 柱状图 · "+(data.mode==="date"?"按时间段":"按类别")+"（虚线 = 日均预算参考）", c:COLOR.cyan}]);
@@ -2422,7 +2450,7 @@ function renderChartBody(win, name, isDay, cat, type){
     line([{t:"  共 "+win.cats.length+" 个类别；占比按窗口内实际计入的金额计算。", c:COLOR.gray}]);
   }
   printChartTable(data);
-  printChartAnalysis(win, data, {name});
+  printChartAnalysis(win, data, {name, skipCore:!!opts.skipCore});
   blank();
   return data;
 }
@@ -2451,8 +2479,13 @@ function doReport(tokens){
   const {win, name, isDay} = resolveWindow(p.kind, p.ref, p.cat);
   const label = name+(p.cat ? "  [类别: "+p.cat+"]" : "");
   if(p.cat && win.count===0) noCategoryHint(p.cat);
-  printSummaryReport(win, label, {isDay, catFilter:p.cat});
-  renderChartBody(win, name, isDay, p.cat, "both");
+  /* 输出顺序(去重后): 预算总结 → 柱状图 → 饼图 → 数据明细 → 自动分析 → 结论。
+     类别只在饼图图例里出现一次; 总消费/日均/分摊占比也不在分析里重复。 */
+  line([{t:"═ 总结与图表 · "+label+" ═", c:COLOR.cyan}]);
+  line([{t:"  ▓ 预算总结", c:COLOR.cyan}]);
+  printSummaryReport(win, label, {isDay, catFilter:p.cat, noTitle:true, compact:true});
+  line([{t:" ── 图表 · 柱状图 + 饼图（消费口径）──", c:COLOR.gray}]);
+  renderChartBody(win, name, isDay, p.cat, "both", {hideMeta:true, skipCore:true});
 }
 
 /* ------------------------------ export --------------------------------- */

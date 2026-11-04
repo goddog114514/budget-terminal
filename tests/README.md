@@ -18,7 +18,7 @@ node tests/run-all.mjs
 # 日常小更新: 只跑相关的那一个（同样满足低档闸门）
 node tests/test5.mjs
 
-# 变异测试: 只在你新增/改动护栏后重跑（27 组: 9 组分摊成本 + 6 组 H5 + 4 组 H4 + 4 组图表 + 4 组合并入口, 必须全部被抓住）
+# 变异测试: 只在你新增/改动护栏后重跑（28 组: 9 组分摊成本 + 6 组 H5 + 4 组 H4 + 4 组图表 + 5 组合并入口, 必须全部被抓住）
 node tests/mutate-amort.mjs
 ```
 
@@ -41,8 +41,8 @@ node tests/mutate-amort.mjs
 | `test4.mjs` | 90 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 |
 | `test5.mjs` | 92 | M2 护栏：语义槽位、`@日期` 位置无关、ghost 预览 + `amort` 补全与双选项卡（含起始日精确到日） |
 | `test6.mjs` | 43 | **H5 护栏**：双通道对称（`pay full` 命令 / `config` 按钮 / 弹窗 edit 分支可达、提交走 `update`、失效行不可编辑） |
-| `test7.mjs` | 190 | **v0.0.10 图表总结 + 合并入口 `report`**：四窗口 / 三图型 / 桶金额恒等式 / 分摊口径 / 预算口径 / 分析与结论 / 空数据 / 双通道 / 日期弹窗复用 / 规范自检 |
-| **合计** | **693** | |
+| `test7.mjs` | 196 | **v0.0.10 图表总结 + 合并入口 `report`**：四窗口 / 三图型 / 桶金额恒等式 / 分摊口径 / 预算口径 / 分析与结论 / 空数据 / 双通道 / 日期弹窗复用 / 规范自检 |
+| **合计** | **699** | |
 
 ## 环境变量（都有默认值，通常不用设）
 
@@ -132,9 +132,9 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 
 ## 变异测试（证明护栏真的有效）
 
-把已知缺陷改回去，确认对应断言会红。装置已用此法验证 **34 组**（脚本 27 组 + 早期手工 7 组），覆盖全部 **7** 个套件。
+把已知缺陷改回去，确认对应断言会红。装置已用此法验证 **35 组**（脚本 28 组 + 早期手工 7 组），覆盖全部 **7** 个套件。
 
-**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 27 组、
+**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 28 组、
 自动校验"变异点恰好命中一次"、并汇总哪些没被抓住。
 
 | 变异体 | 套件 | 还原的缺陷 | 结果 |
@@ -185,7 +185,7 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 ```
 tests/
 ├─ run-all.mjs            单一入口(7 套件 + 基线校验)
-├─ mutate-amort.mjs       变异测试(27 组: 分摊成本 9 + H5 6 + H4 4 + 图表 4 + 合并入口 4)
+├─ mutate-amort.mjs       变异测试(28 组: 分摊成本 9 + H5 6 + H4 4 + 图表 4 + 合并入口 5)
 ├─ env.mjs                路径解析单一入口(仓库根 / HTML / README / 夹具)
 ├─ dom.mjs                极简 DOM stub(元素/classList/style/事件/localStorage)
 ├─ app.mjs                加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now})

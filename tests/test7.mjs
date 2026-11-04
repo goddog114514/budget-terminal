@@ -290,14 +290,29 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
 
   /* 一次输出必须同时含总结表 / 柱状图 / 饼图 / 自动分析 / 结论 */
   const txt = runChart(S, "report week");
-  for(const k of ["总结 ═","窗口总消费","本期发放进度","▓ 柱状图","▓ 饼图","▓ 数据明细","▓ 自动分析","▓ 总结与建议"]){
+  for(const k of ["总结与图表 ·","▓ 预算总结","窗口总消费","本期发放进度","▓ 柱状图","▓ 饼图","▓ 数据明细","▓ 自动分析","▓ 总结与建议"]){
     ok("CH9.10 report 输出含 "+k, txt.includes(k), "");
   }
   eq("CH9.11 report 固定画两张图", [!!chartNode(S,"bars"), !!chartNode(S,"pie"), boxes(S).length], [true,true,2]);
   eq("CH9.12 report 的柱状图按时间分桶", safeNode(S,"bars").dataset.kind, "date");
-  ok("CH9.13 report 的饼图切片数 = 类别数", Number(safeNode(S,"pie").dataset.slices), 3);
-  ok("CH9.14 report 输出仍含总结专属的进度条与类别迷你条",
-     /本期发放进度/.test(txt) && /类别占比\(按消费\)/.test(txt), "");
+  eq("CH9.13 report 的饼图切片数 = 类别数", Number(safeNode(S,"pie").dataset.slices), 3);
+  /* 去重(v0.0.10 同版迭代): 旧版 summary 的「类别·X」行与「类别占比」迷你条,
+     与饼图图例是同一份数据 —— report 里只在饼图出现一次。 */
+  ok("CH9.14 report 不再重复旧版类别明细(交给饼图图例)", !/类别·/.test(txt) && !/类别占比\(按消费\)/.test(txt), "");
+  eq("CH9.14b 窗口总消费只出现一次", (txt.match(/窗口总消费/g)||[]).length, 1);
+  eq("CH9.14c 平均每日消费只出现一次", (txt.match(/平均每日消费/g)||[]).length, 1);
+  const amortS = seed(); amortS.runCommand("amort 300 10 居住 房租 @2027-08-25");
+  const amortTxt = runChart(amortS, "report week");
+  eq("CH9.14d 分摊成本只出现一次", (amortTxt.match(/其中分摊成本/g)||[]).length, 1);
+  const pos = (k)=>txt.indexOf(k);
+  ok("CH9.14e 输出顺序: 预算总结 → 柱状图 → 饼图 → 数据明细 → 分析 → 结论",
+     pos("▓ 预算总结")>=0 && pos("▓ 预算总结")<pos("▓ 柱状图") && pos("▓ 柱状图")<pos("▓ 饼图")
+     && pos("▓ 饼图")<pos("▓ 数据明细") && pos("▓ 数据明细")<pos("▓ 自动分析")
+     && pos("▓ 自动分析")<pos("▓ 总结与建议"),
+     [pos("▓ 预算总结"),pos("▓ 柱状图"),pos("▓ 饼图"),pos("▓ 数据明细"),pos("▓ 自动分析"),pos("▓ 总结与建议")].join(","));
+  /* 预算对比口径: 进行中的窗口只算"截至今天", 未来日期的分摊不能把使用率抬高 */
+  ok("CH9.14f 预算使用率按截至今天的消费算(不含未来分摊)",
+     /窗口占用\(截至今天/.test(amortTxt), "");
 
   /* 四种窗口 + 指定日期 / 指定月份 */
   for(const [cmd, needle] of [["report day","今日"],["report week","本周"],
@@ -348,7 +363,7 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
 
   /* 规范: 共用绘图实现 + 纯只读 */
   ok("CH9.33 chart 与 report 共用 renderChartBody",
-     /doChart[\s\S]{0,600}renderChartBody\(/.test(jsCode) && /doReport[\s\S]{0,600}renderChartBody\(/.test(jsCode), "");
+     /doChart[\s\S]{0,900}renderChartBody\(/.test(jsCode) && /doReport[\s\S]{0,1600}renderChartBody\(/.test(jsCode), "");
   ok("CH9.34 report 区没有第二份绘图代码", !/function doReport[\s\S]{0,900}renderBarChart\(/.test(jsCode), "");
   const R = seed();
   const before = {u:R.undoDepth, ls:R.__storage.getItem("budget_term_v1")};

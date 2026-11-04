@@ -86,15 +86,18 @@ const MUTANTS = [
    ["      const pct = amt/win.total*100;", "      const pct = 100/win.cats.length;"]],
   /* v0.0.10 同版迭代 · 四个按钮合并成 report：新增护栏同样要能被"改回去"证明有效 */
   ["m_report_summary", "test7.mjs", "合并入口又丢掉总结报告(只剩图表)",
-   ["  printSummaryReport(win, label, {isDay, catFilter:p.cat});\n", ""]],
+   ['  printSummaryReport(win, label, {isDay, catFilter:p.cat, noTitle:true, compact:true});\n', ""]],
   ["m_report_both", "test7.mjs", "合并入口退化成只画柱状图(要求同时出两图)",
-   ['  renderChartBody(win, name, isDay, p.cat, "both");',
-    '  renderChartBody(win, name, isDay, p.cat, "bar");']],
+   ['  renderChartBody(win, name, isDay, p.cat, "both", {hideMeta:true, skipCore:true});',
+    '  renderChartBody(win, name, isDay, p.cat, "bar", {hideMeta:true, skipCore:true});']],
   ["m_report_date_modal", "test7.mjs", "手动输日期弹窗又拼回 list 命令(选了总结却跳去消费列表)",
    ['  const base = target==="report" ? "report" : "list";', '  const base = "list";']],
   ["m_report_date_window", "test7.mjs", "填了具体日期却按整月统计(指定日期窗口失效)",
    ['    out.kind = /^\\d{4}-\\d{1,2}-\\d{1,2}$/.test(out.ref) ? "date" : "month";',
     '    out.kind = "month";']],
+  ["m_report_dup", "test7.mjs", "合并入口又把旧版类别行/迷你条打一遍(与饼图重复)",
+   ['  printSummaryReport(win, label, {isDay, catFilter:p.cat, noTitle:true, compact:true});',
+    '  printSummaryReport(win, label, {isDay, catFilter:p.cat, noTitle:true});']],
 ];
 
 const tmp = os.tmpdir();
