@@ -169,6 +169,27 @@
   .sep{border-bottom:1px solid var(--border);margin:4px 0;}
   .hl{background:rgba(61,255,122,.14);}
 
+  /* ---- v0.0.10 图表总结: 柱状图 / 饼图(只用到主题令牌, 颜色值由 JS 的 COLOR.* 注入) ----
+     图形是 DOM 元素(不是图片), 下方始终另有一份纯文本数据表, 便于复制/导出/无障碍阅读。 */
+  .chartbox{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin:8px 0 6px 2px;max-width:100%;}
+  .chart-bars{position:relative;display:flex;align-items:flex-end;gap:5px;height:150px;
+    padding:0 8px;margin-bottom:20px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);}
+  .chart-col{position:relative;height:100%;min-width:30px;}
+  .chart-bar{position:absolute;left:50%;transform:translateX(-50%);bottom:0;width:20px;min-height:2px;
+    border-radius:2px 2px 0 0;}
+  .chart-v{position:absolute;left:-6px;right:-6px;text-align:center;font-size:10px;line-height:1.1;
+    color:var(--white);white-space:nowrap;}
+  .chart-k{position:absolute;left:-8px;right:-8px;bottom:-17px;text-align:center;font-size:10px;
+    color:var(--gray);white-space:nowrap;}
+  .chart-refline{position:absolute;left:0;right:0;border-top:1px dashed var(--yellow);pointer-events:none;}
+  .chart-reflabel{position:absolute;right:2px;font-size:10px;color:var(--yellow);white-space:nowrap;}
+  .chart-pie{width:136px;height:136px;border-radius:50%;border:1px solid var(--border);flex:0 0 auto;}
+  .chart-legend{display:flex;flex-direction:column;gap:4px;font-size:12px;min-width:0;}
+  .chart-legend .li{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+  .chart-swatch{width:10px;height:10px;border-radius:2px;display:inline-block;flex:0 0 auto;}
+  .chart-legend .nm{color:var(--white);}
+  .chart-legend .vl{color:var(--gray);}
+
   /* ---- input ---- */
   footer{
     flex:0 0 auto;background:var(--panel);border-top:1px solid var(--border);
@@ -267,15 +288,25 @@
     <button id="btnListDd" class="accent" type="button">消费列表 ▾</button>
     <div class="dd-menu" id="listDdMenu">
       <span class="dd-hint">查看范围</span>
-      <button type="button" data-list="today">当日</button>
-      <button type="button" data-list="period">周期</button>
-      <button type="button" data-list="month">月份</button>
-      <button type="button" data-list="manual">手动输日期…</button>
+      <button type="button" data-range="today" data-range-target="list">当日</button>
+      <button type="button" data-range="period" data-range-target="list">周期</button>
+      <button type="button" data-range="month" data-range-target="list">月份</button>
+      <button type="button" data-range="manual" data-range-target="list">手动输日期…</button>
     </div>
   </span>
-  <button data-cmd="summary">周期总结</button>
-  <button data-cmd="summary day">日总结</button>
-  <button data-cmd="summary week">周总结</button>
+  <!-- v0.0.10: 原先「周期总结 / 日总结 / 周总结 / 图表总结」四个入口合成一个。
+       范围选项与「消费列表」共用同一套 data-range + onRangeMenuItem + 手动输日期弹窗。 -->
+  <span class="dd" id="reportDd">
+    <button id="btnReportDd" class="accent" type="button">总结与图表 ▾</button>
+    <div class="dd-menu" id="reportDdMenu">
+      <span class="dd-hint">先选统计范围</span>
+      <button type="button" data-range="today" data-range-target="report">当日</button>
+      <button type="button" data-range="week" data-range-target="report">本周</button>
+      <button type="button" data-range="period" data-range-target="report">记账周期</button>
+      <button type="button" data-range="month" data-range-target="report">自然月</button>
+      <button type="button" data-range="manual" data-range-target="report">手动输日期…</button>
+    </div>
+  </span>
   <button data-cmd="assets">资产看板</button>
   <button data-cmd="config">配置</button>
   <button id="btnUndo" data-cmd="undo" disabled>↩ 撤销</button>
@@ -355,7 +386,7 @@
 
 <div id="dateWrap">
   <div id="dateModal">
-    <h3>按日期 / 月份查看消费</h3>
+    <h3 id="d_title">按日期 / 月份查看消费</h3>
     <label>日期 <span class="fmt">统一格式 YYYY-MM-DD</span></label>
     <div class="drow">
       <input id="d_date" type="text" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="如 2027-08-18">
@@ -386,7 +417,7 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.9";          // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.0.10";         // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
 /* --- 分摊成本(amort)的字段与口径 ---
    一笔"分摊成本"= 一次性付出的**总价**(如年费/房租/保险费), 按 **分摊天数** 平均分到每一天。
@@ -412,6 +443,14 @@ const IDX_RATE  = 0.02;               // 基准: 其中指数基金占比(占总
 const INVEST_MONEY_LOT = 100;         // 货币基金每次投入额(触发阈值)
 const INVEST_INDEX_LOT = 20;          // 指数基金每次投入额(触发阈值)
 const DEFAULT_CATEGORIES = ["餐饮","交通","购物","娱乐","居住","医疗","教育","人情","旅行","其他"];
+/* v0.0.10 图表总结: 柱状图上限桶数 / 绘图区像素高(与 CSS .chart-bars 的 150px 对应,
+   顶部 18px 留给数值标签)。柱数有上限, 保证长窗口在窄屏下也能完整显示。 */
+const CHART_MAX_BUCKETS = 12;
+const CHART_PLOT_H = 132;
+const CHART_WINDOWS = new Set(["day","日","today","week","周","month","月","natural",
+                               "period","周期","cycle"]);
+const CHART_TYPES = new Set(["bar","bars","柱","柱状图","柱图","pie","饼","饼图",
+                             "both","all","全部","双图","两者"]);
 
 /* ======================= 颜色表 (单一数据源) =======================
    终端输出里的颜色以前是散落各处的 "#rrggbb" 字面量(220+ 处), 想换主题就得全文件替换。
@@ -1290,6 +1329,10 @@ const COMMANDS = [
   { n:["summary","sum"],                           u:"summary [day|week|month] [类别]",  d:"总结: 无参数=当前记账周期; month=自然月; 可加类别筛选, 如 summary week 餐饮" },
   { n:["summary"], sub:true,                       u:"summary month @YYYY-MM",          d:"指定某自然月的总结, 例 summary month 2027-07 餐饮 (也可直接写 summary 2027-07)" },
   { n:["summary"], sub:true,                       u:"summary cat [类别]",               d:"当前记账周期各类别占比" },
+  { n:["chart","charts","viz"],                    u:"chart [day|week|period|month] [bar|pie|both]", d:"图表总结: 柱状图/饼图/两者(默认), 附自动分析与建议, 如 chart week pie" },
+  { n:["report","overview"],                       u:"report [day|week|period|month] [类别] [@日期]", d:"总结+柱状图+饼图+分析一次输出(工具栏「总结与图表 ▾」); 先选范围或手动输日期" },
+  { n:["chart"], sub:true,                         u:"chart month @YYYY-MM [类别]",      d:"指定自然月的图表总结, 例 chart month 2027-07 餐饮; 末尾可加类别筛选" },
+  { n:["report"], sub:true,                        u:"report @YYYY-MM-DD|@YYYY-MM",       d:"手动输日期/月份后生成该窗口的总结与图表, 例 report 2027-08-18 餐饮" },
   { n:["export"],                                  u:"export [md|txt]",                 d:"导出报告文件(浏览器下载)" },
   { n:["assets","asset","networth"],               u:"assets [N年]",                     d:"资产看板: 现金+基金本金+复利预估(默认10年)与增长曲线" },
   { n:["undo","u"],                                u:"undo",                            d:"撤销上一次数据改动 (Ctrl+Z)" },
@@ -1409,6 +1452,8 @@ function dispatch(cmd, tokens){
     case "update":   doUpdate(tokens); break;
     case "pay":      doPay(tokens); break;
     case "summary":  doSummary(tokens); break;
+    case "chart":    doChart(tokens); break;
+    case "report":   doReport(tokens); break;
     case "export":   doExport(tokens); break;
     case "assets":   doAssets(tokens); break;
     case "undo":     undo(); break;
@@ -2082,12 +2127,19 @@ function parseSummaryArgs(tokens){
   }
   return {kind, cat, ref};
 }
-function doSummary(tokens){
-  const {kind, cat, ref} = parseSummaryArgs(tokens);
-  const isDay = (kind==="day"||kind==="日"||kind==="today");
-  const tag = cat ? "  [类别: "+cat+"]" : "";
+/* 窗口解析唯一入口(v0.0.10): summary / chart / report 共用同一份窗口定义。
+   现象: 窗口边界原先整段写在 doSummary 里; 图表与合并后的总结也要按同样的窗口统计, 再抄一遍就会有两套边界。
+   原因: 分摊成本按"落在窗口内的天数"计入, 边界差一天数字就差一天(v0.0.7 的 F13)。
+   修复: 抽成单一函数, 三个命令都只传 kind/ref/cat, 金额一律由 collectWindow() 给出。
+   kind="date" 是"手动输日期"弹窗选了具体某天时的窗口(不是 todayYMD), 同样按单日分桶。 */
+function resolveWindow(kind, ref, cat){
+  let isDay = (kind==="day"||kind==="日"||kind==="today");
   let win, name;
-  if(isDay){
+  if(kind==="date"){
+    const p = parseYMD(ref) || parseYMD(todayYMD());
+    const t = mkYMD(p.y,p.m,p.d);
+    win=collectWindow(t,t,cat); name="指定日期 "+t; isDay=true;
+  } else if(isDay){
     const t=todayYMD(); win=collectWindow(t,t,cat); name="今日 "+t;
   } else if(kind==="week"||kind==="周"){
     const w=weekBounds(todayYMD()); win=collectWindow(w.start,w.end,cat);
@@ -2111,12 +2163,296 @@ function doSummary(tokens){
     const w1 = p.mode==="rolling" ? "本周期(每"+p.len+"天)" : "本月周期";
     name = w1+" "+p.label;
   }
-  if(cat && win.count===0){
-    line([{t:"⚠ 该窗口内没有“"+cat+"”的记录，已按 0 显示。", c:COLOR.yellow}]);
-    const used = [...new Set(state.records.map(r=>r.category))];
-    if(used.length) line([{t:"  现有类别: "+used.join("  "), c:COLOR.gray}]);
-  }
+  return {win, name, isDay};
+}
+function noCategoryHint(cat){
+  if(!cat) return;
+  line([{t:"⚠ 该窗口内没有“"+cat+"”的记录，已按 0 显示。", c:COLOR.yellow}]);
+  const used = [...new Set(state.records.map(r=>r.category))];
+  if(used.length) line([{t:"  现有类别: "+used.join("  "), c:COLOR.gray}]);
+}
+function doSummary(tokens){
+  const {kind, cat, ref} = parseSummaryArgs(tokens);
+  const {win, name, isDay} = resolveWindow(kind, ref, cat);
+  const tag = cat ? "  [类别: "+cat+"]" : "";
+  if(cat && win.count===0) noCategoryHint(cat);
   printSummaryReport(win, name+tag, {isDay, catFilter:cat});
+}
+
+/* ============================ 图表总结 (v0.0.10) ============================
+   把 日 / 周 / 周期 / 自然月 的预算情况画成柱状图与饼图, 并给出自动分析与结论。
+   口径纪律(§2.6 / F13): 窗口一律来自 resolveWindow(), 金额一律来自 collectWindow(),
+   柱状图的每个桶也单独走 collectWindow(桶起, 桶止, 类别) —— 分摊成本按"落在桶内的天数"计入,
+   不能拿 r.date 直接筛。图上的预算参考线用**消费口径**(本期日均发放 × consumeShare()),
+   与柱高同口径; 分析里的"占用 / 参考发放额度"用**预算口径**, 两者差一个 N, 文案里写明。 */
+function parseChartArgs(tokens){
+  const out = {kind:"", type:"both", cat:null, ref:null, bad:null};
+  let sawWindow = false;
+  for(const tk of tokens){
+    const low = String(tk).toLowerCase();
+    if(low[0]==="@" || /^\d{4}-\d{1,2}(-\d{1,2})?$/.test(low)){
+      const v = low[0]==="@" ? low.slice(1) : low;
+      if(!/^\d{4}-\d{1,2}(-\d{1,2})?$/.test(v)){ out.bad = "日期参数需为 @YYYY-MM 或 @YYYY-MM-DD"; continue; }
+      out.ref = v; continue;
+    }
+    if(CHART_WINDOWS.has(low)){
+      if(sawWindow){ out.bad = "只能指定一个统计窗口"; continue; }
+      sawWindow = true;
+      out.kind = (low==="period"||low==="周期"||low==="cycle") ? "" : low;
+      continue;
+    }
+    if(CHART_TYPES.has(low)){
+      out.type = (low==="bar"||low==="bars"||low==="柱"||low==="柱状图"||low==="柱图") ? "bar"
+               : (low==="pie"||low==="饼"||low==="饼图") ? "pie" : "both";
+      continue;
+    }
+    if(out.cat){ out.bad = "只能指定一个类别"; continue; }
+    out.cat = tk;
+  }
+  if(out.ref && out.kind && !/^(month|月|natural)$/.test(out.kind)){
+    out.bad = "指定月份时窗口只能用 month / period";
+  }
+  /* 手动输日期弹窗会给完整日期或只给月份: 前者要按**那一天**统计(不是整月), 后者按自然月。
+     两者都走 resolveWindow 的单一入口, 所以这里只负责把 ref 归一成正确的窗口 kind。 */
+  if(out.ref && !out.kind){
+    out.kind = /^\d{4}-\d{1,2}-\d{1,2}$/.test(out.ref) ? "date" : "month";
+  }
+  return out;
+}
+/* 分桶: 时间桶最多 CHART_MAX_BUCKETS 个(长窗口自动按天合并), 单日窗口改按类别分桶。 */
+function chartBuckets(win, isDay, cat){
+  const st = periodSnapshot();
+  const pDays = Math.max(1, periodDayCount(st.p));
+  const perDay = r2(st.B / pDays);                   // 占用口径: 本期发放 ÷ 本期天数
+  const perDaySpend = r2(perDay * consumeShare());  // 消费口径: 与柱高/参考线同口径
+  const buckets = [];
+  let mode;
+  if(isDay){
+    mode = "category";
+    const cats = win.cats;
+    const keep = cats.length > CHART_MAX_BUCKETS ? CHART_MAX_BUCKETS-1 : CHART_MAX_BUCKETS;
+    for(const [nm,amt] of cats.slice(0,keep)){
+      buckets.push({label:String(nm).slice(0,4), name:nm, total:r2(amt), quota:perDaySpend, days:1});
+    }
+    if(cats.length > CHART_MAX_BUCKETS){
+      const rest = cats.slice(keep).reduce((s,x)=>s+x[1],0);
+      buckets.push({label:"其他", name:"其他", total:r2(rest), quota:perDaySpend, days:1});
+    }
+  } else {
+    mode = "date";
+    const step = Math.max(1, Math.ceil(win.days / CHART_MAX_BUCKETS));
+    let s = win.start;
+    while(s <= win.end){
+      let e = addDaysYMD(s, step-1);
+      if(e > win.end) e = win.end;
+      const days = daysBetween(s,e)+1;
+      const cw = collectWindow(s, e, cat);
+      buckets.push({label:s.slice(5), name:s.slice(5)+(days>1?("~"+e.slice(5)):""), start:s, end:e,
+                    total:cw.total, quota:r2(perDaySpend*days), days});
+      s = addDaysYMD(e,1);
+    }
+  }
+  const maxVal = Math.max(1, ...buckets.map(b=>b.total));
+  return {buckets, mode, perDay, perDaySpend, maxVal};
+}
+function chartFrame(){
+  const box = document.createElement("div");
+  box.className = "l chartbox";
+  term.appendChild(box);
+  return box;
+}
+function renderBarChart(box, data){
+  const {buckets, perDaySpend, maxVal, mode} = data;
+  const wrap = document.createElement("div");
+  wrap.className = "chart-bars";
+  wrap.dataset.chart = "bars";
+  wrap.dataset.kind = mode;
+  wrap.dataset.count = String(buckets.length);
+  const typicalDays = buckets.length ? buckets[0].days : 1;
+  const refQuota = r2(perDaySpend * typicalDays);
+  const refH = Math.min(CHART_PLOT_H, Math.round(CHART_PLOT_H * refQuota / maxVal));
+  for(const b of buckets){
+    const col = document.createElement("div"); col.className = "chart-col";
+    const h = Math.max(2, Math.round(CHART_PLOT_H * b.total / maxVal));
+    const bar = document.createElement("div"); bar.className = "chart-bar";
+    bar.style.height = h+"px";
+    bar.style.background = LEVEL_COLOR[barLevel(b.quota>0 ? b.total/b.quota : 0)];
+    bar.dataset.value = String(b.total);
+    bar.dataset.label = b.name;
+    const v = document.createElement("span"); v.className = "chart-v";
+    v.style.bottom = (h+3)+"px"; v.textContent = money(b.total);
+    const k = document.createElement("span"); k.className = "chart-k"; k.textContent = b.label;
+    col.append(bar, v, k);
+    wrap.appendChild(col);
+  }
+  if(refQuota > 0){
+    const ln = document.createElement("div"); ln.className = "chart-refline"; ln.style.bottom = refH+"px";
+    const lb = document.createElement("div"); lb.className = "chart-reflabel"; lb.style.bottom = (refH+2)+"px";
+    lb.textContent = "预算 ¥"+money(refQuota);
+    wrap.append(ln, lb);
+    wrap.dataset.refQuota = String(refQuota);
+  }
+  box.appendChild(wrap);
+  return {refQuota};
+}
+function renderPieChart(box, win){
+  const pie = document.createElement("div");
+  pie.className = "chart-pie"; pie.dataset.chart = "pie"; pie.dataset.total = String(win.total);
+  const legend = document.createElement("div"); legend.className = "chart-legend";
+  if(!win.cats.length || win.total<=0){
+    pie.style.background = "var(--panel)";
+    pie.dataset.slices = "0";
+    const li = document.createElement("div"); li.className = "li";
+    const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = "窗口内无消费记录";
+    li.appendChild(nm); legend.appendChild(li);
+  } else {
+    let acc = 0; const segs = [];
+    win.cats.forEach(([cat,amt], i)=>{
+      const pct = amt/win.total*100;
+      const from = acc, to = (i===win.cats.length-1) ? 100 : acc+pct;
+      acc = to;
+      const col = catColor(cat);
+      segs.push(col+" "+from.toFixed(2)+"% "+to.toFixed(2)+"%");
+      const li = document.createElement("div"); li.className = "li";
+      const sw = document.createElement("span"); sw.className = "chart-swatch"; sw.style.background = col;
+      const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = cat;
+      const vl = document.createElement("span"); vl.className = "vl";
+      vl.textContent = "¥"+money(amt)+"  "+pct.toFixed(1)+"%";
+      li.append(sw, nm, vl); legend.appendChild(li);
+    });
+    pie.style.background = "conic-gradient("+segs.join(",")+")";
+    pie.dataset.slices = String(win.cats.length);
+  }
+  box.append(pie, legend);
+}
+function printChartTable(data){
+  line([{t:"  ▓ 数据明细（消费口径，与柱状图一一对应）", c:COLOR.cyan}]);
+  for(const b of data.buckets){
+    const pct = b.quota>0 ? (b.total/b.quota*100).toFixed(1)+"%" : "—";
+    kvRow(b.name, "¥"+money(b.total)+"   / 参考 ¥"+money(b.quota)+"   ("+pct+")", 0,
+          b.total>b.quota ? COLOR.red : COLOR.white);
+  }
+}
+function printChartAnalysis(win, data, meta){
+  const {buckets, mode, perDay, perDaySpend} = data;
+  const today = todayYMD();
+  const endEff = (win.end < today) ? win.end : today;
+  const usedDays = Math.max(1, daysBetween(win.start, endEff)+1);
+  const avg = r2(win.total/usedDays);
+  const usedUnits = r2(win.total/consumeShare());
+  const refGrant = r2(perDay*usedDays);
+  const usage = refGrant>0 ? usedUnits/refGrant : 0;
+  const aw = alertWord(usage);
+  const over = buckets.filter(b=>b.quota>0 && b.total>b.quota).length;
+  const zero = buckets.filter(b=>b.total<=0).length;
+  const peak = buckets.reduce((a,b)=> b.total>(a?a.total:-1) ? b : a, null);
+  const top1 = win.cats[0];
+  const top1pct = (top1 && win.total>0) ? top1[1]/win.total*100 : 0;
+  const top3 = r2(win.cats.slice(0,3).reduce((s,x)=>s+x[1],0));
+  const top3pct = win.total>0 ? top3/win.total*100 : 0;
+  const amortPct = win.total>0 ? win.amortTotal/win.total*100 : 0;
+  line([{t:"  ▓ 自动分析", c:COLOR.cyan}]);
+  kvRow("窗口总消费", "¥"+money(win.total), 0, COLOR.pure);
+  kvRow("平均每日消费", "¥"+money(avg)+"   (÷"+usedDays+" 天)", 0, COLOR.white);
+  kvRow("窗口占用(消费÷"+consumePct()+"%)", "¥"+money(usedUnits), 0, COLOR.white);
+  kvRow("参考发放额度", "¥"+money(refGrant)+"   (日均 ¥"+money(perDay)+" × "+usedDays+" 天)", 0, COLOR.white);
+  kvRow("预算使用率", (usage*100).toFixed(1)+"%   "+aw.t, 0, aw.c);
+  kvRow("峰值"+(mode==="date"?"时段":"类别"), peak ? (peak.name+"  ¥"+money(peak.total)) : "—", 0, COLOR.white);
+  kvRow("超参考额度", over+" / "+buckets.length+" 个"+(mode==="date"?"时段":"类别"), 0, over?COLOR.yellow:COLOR.green);
+  kvRow("零消费", zero+" 个"+(mode==="date"?"时段":"类别"), 0, COLOR.gray);
+  kvRow("Top1 类别", top1 ? (top1[0]+"  "+top1pct.toFixed(1)+"%") : "—", 0, top1?catColor(top1[0]):COLOR.gray);
+  kvRow("Top3 集中度", top3pct.toFixed(1)+"%", 0, COLOR.white);
+  if(win.amortTotal>0) kvRow("其中分摊成本", "¥"+money(win.amortTotal)+"  ("+amortPct.toFixed(1)+"%)", 0, COLOR.gray);
+  if(mode==="date" && buckets.length>=2){
+    const mid = Math.floor(buckets.length/2);
+    const a = r2(buckets.slice(0,mid).reduce((s,b)=>s+b.total,0));
+    const c = r2(buckets.slice(mid).reduce((s,b)=>s+b.total,0));
+    const delta = a>0 ? (c-a)/a*100 : (c>0?100:0);
+    const word = delta>5 ? "上升" : (delta<-5 ? "下降" : "持平");
+    kvRow("前后半段趋势", word+"  "+Math.abs(delta).toFixed(1)+"%   (前 ¥"+money(a)+" → 后 ¥"+money(c)+")", 0,
+          delta>5 ? COLOR.red : (delta<-5 ? COLOR.green : COLOR.gray));
+  }
+  line([{t:"  ▓ 总结与建议", c:COLOR.cyan}]);
+  let concl;
+  if(win.total<=0){
+    concl = meta.name+" 内没有消费记录，图表与指标均按 0 显示；记一笔后再来看趋势。";
+  } else {
+    concl = meta.name+" 消费 ¥"+money(win.total)+"，占参考预算 "+(usage*100).toFixed(1)+"%（"+aw.t+"）"
+          + "；主要支出为 "+(top1?top1[0]:"—")+"（"+top1pct.toFixed(1)+"%）。";
+  }
+  line([{t:"  "+concl, c:win.total<=0?COLOR.gray:COLOR.white}]);
+  const advice = [];
+  const th = [...state.settings.thresholds].sort((a,b)=>a-b);
+  const warn = th.length ? th[0]/100 : 0.8, overP = th.length ? th[th.length-1]/100 : 1;
+  if(win.total<=0){
+    advice.push("暂无消费数据，先记一笔即可生成日 / 周 / 周期 / 月的预算图表。");
+  } else {
+    if(usage>=overP) advice.push("已超出参考发放额度，建议把后续日均消费压到 ¥"+money(perDaySpend)+" 以下，并核对大额支出。");
+    else if(usage>=warn) advice.push("预算进度已进入预警区间，注意后续大额支出。");
+    else advice.push("预算执行平稳，剩余额度可继续按当前节奏使用。");
+    if(top1 && top1pct>=50) advice.push("支出集中在「"+top1[0]+"」（"+top1pct.toFixed(1)+"%），可优先检查这一类的可压缩空间。");
+    if(peak && avg>0 && peak.total>2*avg){
+      advice.push("峰值 "+peak.name+" 消费 ¥"+money(peak.total)+"，约为日均的 "+(peak.total/avg).toFixed(1)+" 倍，留意一次性大额支出。");
+    }
+    if(over>0) advice.push("有 "+over+" 个"+(mode==="date"?"时段":"类别")+"超过日均预算参考线（图中黄色虚线）。");
+    if(amortPct>=20) advice.push("分摊成本占 "+amortPct.toFixed(1)+"%，属于固定支出，短期削减空间有限。");
+    const unpaid = win.rows.filter(r=> !(recFullyMoney(r) && recFullyIndex(r)));
+    if(unpaid.length) advice.push("还有 "+unpaid.length+" 笔未完全投资，可用 pay <id> all 或 pay full 处理。");
+  }
+  if(!advice.length) advice.push("各项指标平稳，保持当前节奏即可。");
+  for(const s of advice) line([{t:"   · "+s, c:COLOR.gray}]);
+  line([{t:"  口径: 柱高与饼图均为消费口径; 参考线 = 本期日均发放 × "+consumePct()+"% × 桶天数; 分摊成本按落入桶内的天数计入。", c:COLOR.gray}]);
+}
+/* 图表输出的唯一实现(v0.0.10): chart 与 report 共用, 不在两处各画一遍。
+   type = bar | pie | both；合并后的「总结与图表」固定传 both, 一次同时出柱状图和饼图。 */
+function renderChartBody(win, name, isDay, cat, type){
+  const typeName = type==="bar" ? "柱状图" : (type==="pie" ? "饼图" : "柱状图 + 饼图");
+  line([{t:"  图型: "+typeName+"    窗口: "+win.start+" ~ "+win.end+"（"+win.days+" 天）", c:COLOR.gray}]);
+  const data = chartBuckets(win, isDay, cat);
+  if(type==="bar" || type==="both"){
+    line([{t:"  ▓ 柱状图 · "+(data.mode==="date"?"按时间段":"按类别")+"（虚线 = 日均预算参考）", c:COLOR.cyan}]);
+    renderBarChart(chartFrame(), data);
+    line([{t:"  "+(data.mode==="date"
+        ? "每柱 "+data.buckets[0].days+" 天（长窗口自动合并，最多 "+CHART_MAX_BUCKETS+" 柱）"
+        : "单日没有时间维度，按类别对比；参考线为当日消费额度"), c:COLOR.gray}]);
+  }
+  if(type==="pie" || type==="both"){
+    line([{t:"  ▓ 饼图 · 类别消费占比", c:COLOR.cyan}]);
+    renderPieChart(chartFrame(), win);
+    line([{t:"  共 "+win.cats.length+" 个类别；占比按窗口内实际计入的金额计算。", c:COLOR.gray}]);
+  }
+  printChartTable(data);
+  printChartAnalysis(win, data, {name});
+  blank();
+  return data;
+}
+function doChart(tokens){
+  const p = parseChartArgs(tokens);
+  if(p.bad){
+    line([{t:"用法: chart [day|week|period|month] [bar|pie|both] [类别] [@YYYY-MM]", c:COLOR.yellow}]);
+    line([{t:"  ⚠ "+p.bad, c:COLOR.yellow}]);
+    return;
+  }
+  const {win, name, isDay} = resolveWindow(p.kind, p.ref, p.cat);
+  const tag = p.cat ? "  [类别: "+p.cat+"]" : "";
+  line([{t:"═ 图表总结 · "+name+tag+" ═", c:COLOR.cyan}]);
+  if(p.cat && win.count===0) noCategoryHint(p.cat);
+  renderChartBody(win, name, isDay, p.cat, p.type);
+}
+/* 合并入口: 一次把「总结报告 + 柱状图 + 饼图 + 自动分析」全部输出。
+   窗口/类别/日期参数与 chart 共用 parseChartArgs() + resolveWindow()（A2：不造第二套口径）。 */
+function doReport(tokens){
+  const p = parseChartArgs(tokens);
+  if(p.bad){
+    line([{t:"用法: report [day|week|period|month] [类别] [@YYYY-MM-DD|@YYYY-MM]", c:COLOR.yellow}]);
+    line([{t:"  ⚠ "+p.bad, c:COLOR.yellow}]);
+    return;
+  }
+  const {win, name, isDay} = resolveWindow(p.kind, p.ref, p.cat);
+  const label = name+(p.cat ? "  [类别: "+p.cat+"]" : "");
+  if(p.cat && win.count===0) noCategoryHint(p.cat);
+  printSummaryReport(win, label, {isDay, catFilter:p.cat});
+  renderChartBody(win, name, isDay, p.cat, "both");
 }
 
 /* ------------------------------ export --------------------------------- */
@@ -2621,11 +2957,13 @@ function alertModal(msg){ const old=document.getElementById("btnSubmit").textCon
 function bindToolbar(){
   document.querySelectorAll("nav.toolbar button").forEach(b=>{
     b.addEventListener("click",(ev)=>{
-      // 消费列表下拉: 4 个快捷范围
-      if(b.dataset && b.dataset.list!==undefined){ onListMenuItem(b.dataset.list); return; }
-      if(b.id==="btnListDd"){ toggleListDd(ev); return; }
+      // 范围下拉: 「消费列表」与「总结与图表」共用同一套 data-range + 菜单处理
+      if(b.dataset && b.dataset.range!==undefined){ onRangeMenuItem(b.dataset.range, b.dataset.rangeTarget); return; }
+      if(b.id==="btnListDd"){ toggleDd("listDd", ev); return; }
+      if(b.id==="btnReportDd"){ toggleDd("reportDd", ev); return; }
       const c=b.dataset.cmd;
       if(!c) return;
+      closeDd("listDd"); closeDd("reportDd");
       if(c==="open-add"){ openAdd(); return; }
       if(c==="open-budget"){ openBudgetModal(); return; }
       if(c==="backup-download"){ doBackupDownload(); return; }
@@ -2645,31 +2983,49 @@ function bindToolbar(){
   });
   // 点空白处收起下拉
   document.addEventListener("click",(ev)=>{
-    const dd=document.getElementById("listDd");
-    if(dd && ev.target && dd.contains && !dd.contains(ev.target)) dd.classList.remove("open");
+    for(const id of ["listDd","reportDd"]){
+      const dd=document.getElementById(id);
+      if(dd && ev.target && dd.contains && !dd.contains(ev.target)) dd.classList.remove("open");
+    }
   });
   restoreLocalHandleQuiet(); // 尝试重连上次选择的本地目录(若权限仍在)
 }
-/* ---- 消费列表下拉 ---- */
-function toggleListDd(ev){
-  const dd=document.getElementById("listDd");
+/* ---- 范围下拉(v0.0.10): 「消费列表」与合并后的「总结与图表」共用一套开合/选范围逻辑 ----
+   现象: 以前四个总结按钮各拼一条固定命令, 图表又另有一个下拉, 选范围与手动输日期只在 list 里有。
+   原因: 两套下拉 = 两套行为, 且"先选日期再输出"只有列表能用(F1 横向重复)。
+   修复: 统一 data-range + onRangeMenuItem(kind, target); target 决定拼 list 还是 report 命令,
+        手动输日期复用同一个 #dateModal, 只是提交时按 target 换命令名。 */
+function toggleDd(id, ev){
+  const dd=document.getElementById(id);
   if(!dd) return;
   dd.classList.toggle("open");
   if(ev && ev.stopPropagation) ev.stopPropagation();
 }
-function closeListDd(){ const dd=document.getElementById("listDd"); if(dd) dd.classList.remove("open"); }
-function onListMenuItem(kind){
-  closeListDd();
-  if(kind==="today")       runCommand("list @today");
-  else if(kind==="period") runCommand("list @period");
-  else if(kind==="month")  runCommand("list @month");
-  else if(kind==="manual") openDateModal();
+function closeDd(id){ const dd=document.getElementById(id); if(dd) dd.classList.remove("open"); }
+const RANGE_COMMANDS = {
+  list:   { today:"list @today", period:"list @period", month:"list @month" },
+  report: { today:"report day", week:"report week", period:"report period", month:"report month" }
+};
+function onRangeMenuItem(kind, target){
+  const t = (target==="report") ? "report" : "list";
+  closeDd(t==="report" ? "reportDd" : "listDd");
+  if(kind==="manual"){ openDateModal(t); scrollBottom(); return; }
+  const cmd = RANGE_COMMANDS[t][kind];
+  if(!cmd){ line([{t:"⚠ 未知查看范围: "+kind, c:COLOR.yellow}]); return; }
+  runCommand(cmd);
   scrollBottom();
 }
 /* ---- 手动输入日期/月份查看 ----
    两个输入框统一为 ISO 文本: 日期 YYYY-MM-DD、月份 YYYY-MM(与命令 @日期 一致),
    旁边 📅 仍可调原生日历/月份选择器, 选完同样回填成统一格式。 */
-const DATE_HINT = "格式统一: 日期 YYYY-MM-DD、月份 YYYY-MM（等同命令 @2027-08-18 / @2027-08）；填日期 → 只看当天，只填月份 → 看整月，两个都填则优先日期。";
+const DATE_HINT = "格式统一: 日期 YYYY-MM-DD、月份 YYYY-MM（等同命令 @2027-08-18 / @2027-08）；填日期 → 只看当天/只出当天总结，只填月份 → 看整月/整月总结，两个都填则优先日期。";
+/* 同一个弹窗服务两个入口: "list" = 消费列表, "report" = 合并后的总结与图表。
+   只改命令名与标题, 日期归一化/校验/预览全部共用(v0.0.8 的 B6/B7 修复不重复实现)。 */
+let dateModalTarget = "list";
+function dateModalCmd(target, cat, when){
+  const base = target==="report" ? "report" : "list";
+  return base+(cat ? (" "+cat) : "")+" "+when;
+}
 function dateModalEl(id){ return document.getElementById(id); }
 function normDateField(id, kind){                    // 读取并归一化某个输入框
   const el = dateModalEl(id);
@@ -2690,7 +3046,7 @@ function updateDatePreview(){
   else                    setDateHint(DATE_HINT, false);
   const when = d.value ? ("@"+d.value) : (m.value ? ("@"+m.value) : "");
   const pv = dateModalEl("d_preview");
-  pv.textContent = when ? ("将执行:  list"+(cat?(" "+cat):"")+" "+when)
+  pv.textContent = when ? ("将执行:  "+dateModalCmd(dateModalTarget, cat, when))
                         : "将执行:  (请先填写「日期」或「月份」)";
   pv.style.color = d.value ? COLOR.green : (m.value ? COLOR.cyan : COLOR.faint);
   return { d, m, cat, when };
@@ -2701,7 +3057,10 @@ function normalizeDateField(id, kind){
   if(f.ok && f.raw) f.el.value = f.value;
   updateDatePreview();
 }
-function openDateModal(){
+function openDateModal(target){
+  dateModalTarget = (target==="report") ? "report" : "list";
+  const title = dateModalEl("d_title");
+  if(title) title.textContent = dateModalTarget==="report" ? "按日期 / 月份生成总结与图表" : "按日期 / 月份查看消费";
   ["d_date","d_month","d_cat"].forEach(id=>{ dateModalEl(id).value=""; });
   ["d_date_native","d_month_native"].forEach(id=>{ dateModalEl(id).value=""; });
   setDateHint(DATE_HINT,false);
@@ -2718,7 +3077,7 @@ function applyDateModal(){
   dateModalEl("d_date").value  = st.d.value;   // 回填统一格式, 下次打开看到的就是规范写法
   dateModalEl("d_month").value = st.m.value;
   closeDateModal();
-  runCommand("list"+(st.cat?(" "+st.cat):"")+" "+st.when);
+  runCommand(dateModalCmd(dateModalTarget, st.cat, st.when));
   scrollBottom();
 }
 /* 📅 按钮 → 原生选择器; 选中后把 ISO 结果填回文本输入框 */
@@ -2863,6 +3222,10 @@ function argCandidates(c0, slot, tokens, cur){
     if(arg===0) return ["day","week","month","cat", ...allCategories()];
     return allCategories();                           // 类别筛选
   }
+  /* chart: 窗口 / 图型 / 类别顺序自由, 各槽位给同一组候选(与 list 的做法一致) */
+  if(cmd==="chart") return ["day","week","period","month","bar","pie","both", ...allCategories()];
+  /* report: 固定双图, 只补窗口与类别 */
+  if(cmd==="report") return ["day","week","period","month", ...allCategories()];
   if(cmd==="export"){ if(arg===0) return ["md","txt"]; return []; }
   return [];
 }

@@ -12,13 +12,13 @@
 发版、或改动落在共享抽象/存储/领域口径上时才跑全量。
 
 ```powershell
-# 全量（发版 / 跨模块改动）: 顺序跑全部 6 个套件, 汇总断言数并对照交付闸门基线
+# 全量（发版 / 跨模块改动）: 顺序跑全部 7 个套件, 汇总断言数并对照交付闸门基线
 node tests/run-all.mjs
 
 # 日常小更新: 只跑相关的那一个（同样满足低档闸门）
 node tests/test5.mjs
 
-# 变异测试: 只在你新增/改动护栏后重跑（19 组: 9 组分摊成本 + 6 组 H5 + 4 组 H4 提交点, 必须全部被抓住）
+# 变异测试: 只在你新增/改动护栏后重跑（27 组: 9 组分摊成本 + 6 组 H5 + 4 组 H4 + 4 组图表 + 4 组合并入口, 必须全部被抓住）
 node tests/mutate-amort.mjs
 ```
 
@@ -38,10 +38,11 @@ node tests/mutate-amort.mjs
 | `test.mjs` | 138 | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + **分摊成本 `amort`（T28）** + **分摊窗口口径（T29）** |
 | `test2.mjs` | 55 | 端到端命令流/弹窗/备份数据冒烟/阈值与红黄绿圆点 |
 | `test3.mjs` | 85 | P1 护栏：颜色令牌一致、`kvRow`、自适应列宽、死代码已删、响应式 CSS |
-| `test4.mjs` | 85 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 |
+| `test4.mjs` | 90 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 |
 | `test5.mjs` | 92 | M2 护栏：语义槽位、`@日期` 位置无关、ghost 预览 + `amort` 补全与双选项卡（含起始日精确到日） |
 | `test6.mjs` | 43 | **H5 护栏**：双通道对称（`pay full` 命令 / `config` 按钮 / 弹窗 edit 分支可达、提交走 `update`、失效行不可编辑） |
-| **合计** | **498** | |
+| `test7.mjs` | 190 | **v0.0.10 图表总结 + 合并入口 `report`**：四窗口 / 三图型 / 桶金额恒等式 / 分摊口径 / 预算口径 / 分析与结论 / 空数据 / 双通道 / 日期弹窗复用 / 规范自检 |
+| **合计** | **693** | |
 
 ## 环境变量（都有默认值，通常不用设）
 
@@ -131,9 +132,9 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 
 ## 变异测试（证明护栏真的有效）
 
-把已知缺陷改回去，确认对应断言会红。装置已用此法验证 **26 组**（脚本 19 组 + 早期手工 7 组），覆盖全部 **6** 个套件。
+把已知缺陷改回去，确认对应断言会红。装置已用此法验证 **34 组**（脚本 27 组 + 早期手工 7 组），覆盖全部 **7** 个套件。
 
-**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 19 组、
+**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 27 组、
 自动校验"变异点恰好命中一次"、并汇总哪些没被抓住。
 
 | 变异体 | 套件 | 还原的缺陷 | 结果 |
@@ -164,6 +165,14 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 | `m_edit_branch` | test6 | `openEdit` 不回 edit 模式（edit 分支又成死代码，H5） | 9 条红 |
 | `m_edit_submit` | test6 | 编辑提交拼成 `add` 命令（编辑变成新建一条，H5） | 2 条红 |
 | `m_edit_tab_lock` | test6 | 编辑模式仍可切到分摊选项卡（H5） | 1 条红 |
+| `m_chart_dispatch` | test7 | 抹掉 `dispatch` 的 `chart` 分支（命令又只剩登记表，F2） | 74 条红 |
+| `m_chart_both` | test7 | `both` 退化成只画柱状图（饼图选项失效） | 14 条红 |
+| `m_chart_bucket_window` | test7 | 柱桶金额又按 `r.date` 求和（分摊成本除记账当天全漏，F13） | 5 条红 |
+| `m_chart_pie_count` | test7 | 饼图占比按笔数而不是按金额 | 2 条红 |
+| `m_report_summary` | test7 | 合并入口又丢掉总结报告（只剩图表） | 4 条红 |
+| `m_report_both` | test7 | 合并入口退化成只画柱状图（要求同时出两图） | 8 条红 |
+| `m_report_date_modal` | test7 | 手动输日期弹窗又拼回 `list` 命令 | 2 条红 |
+| `m_report_date_window` | test7 | 填了具体日期却按整月统计 | 2 条红 |
 
 做法：改一份副本 → `$env:BT_HTML` 指过去 → 跑对应套件，**必须变红**。新写的护栏也应做一次。
 
@@ -175,12 +184,12 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 
 ```
 tests/
-├─ run-all.mjs            单一入口(6 套件 + 基线校验)
-├─ mutate-amort.mjs       变异测试(19 组: 分摊成本 9 + H5 6 + H4 4, 含窗口口径 2 组 + 日精度 1 组)
+├─ run-all.mjs            单一入口(7 套件 + 基线校验)
+├─ mutate-amort.mjs       变异测试(27 组: 分摊成本 9 + H5 6 + H4 4 + 图表 4 + 合并入口 4)
 ├─ env.mjs                路径解析单一入口(仓库根 / HTML / README / 夹具)
 ├─ dom.mjs                极简 DOM stub(元素/classList/style/事件/localStorage)
 ├─ app.mjs                加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now})
-├─ test.mjs test2..test6  6 个套件(含 test6 H5 专项)
-├─ gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window/gen-h5.mjs   浏览器验证用页面生成器
+├─ test.mjs test2..test7  7 个套件(含 test6 H5 专项 / test7 图表专项)
+├─ gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window/gen-h5/gen-chart.mjs   浏览器验证用页面生成器
 └─ fixtures/user_backup.json                            合成账本夹具(无真实数据)
 ```

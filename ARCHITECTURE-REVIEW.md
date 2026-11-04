@@ -40,17 +40,19 @@ v0.0.6 的新增代码（分摊成本）**没有引入新的重复**，反而新
 ### 1.1 代码分区
 
 ```
-index.html (2944 行, LF, 单文件, 无构建, 无依赖)
-├─ <style>  ~290 行  :root 19 个令牌 → 组件规则 → 弹窗规则 → 终端/表格规则 → 选项卡规则
-├─ <body>   ~130 行  header#statusbar · nav.toolbar(18 按钮 + 1 下拉) · #investbar
+index.html (3371 行, LF, 单文件, 无构建, 无依赖)
+├─ <style>  ~310 行  :root 19 个令牌 → 组件规则 → 弹窗规则 → 终端/表格规则 → 选项卡规则
+│                     → 图表规则(.chart-bars/.chart-pie/.chart-legend, v0.0.10)
+├─ <body>   ~140 行  header#statusbar · nav.toolbar(命令按钮 + 2 个范围下拉: 消费列表 / 总结与图表) · #investbar
 │                     main#term · footer(输入框 + ghost) · 3 个弹窗(XWrap > XModal,
 │                     记一笔弹窗内含 2 个选项卡面板 #mp_add / #mp_amort)
-└─ <script> ~2520 行 按分区注释组织：
-    常量(含 AMORT_* / COLOR / CAT_PALETTE / COMMANDS) → 比率助手 → 状态与持久化 → undo/redo →
+└─ <script> ~2790 行 按分区注释组织：
+    常量(含 AMORT_* / CHART_* / COLOR / CAT_PALETTE / COMMANDS) → 比率助手 → 状态与持久化 → undo/redo →
     FSA 自动写盘 → 日期工具 → 周期引擎 → 投资换算(含 recDays/recTotal/recWindow) →
     ★窗口统计唯一入口(collectWindow/sumRange/recAmountInRange) → 预算派生 →
     渲染助手(kvRow) → 输入/分发(COMMANDS→dispatch) → 各命令(含 doAmort) →
-    总结/导出 → 配置/燃尽/资产 → UI 装配(弹窗/选项卡/工具栏/补全) → boot
+    ★窗口解析唯一入口(resolveWindow, summary/chart/report 共用) → 总结/图表/合并入口/导出 →
+    配置/燃尽/资产 → UI 装配(弹窗/选项卡/工具栏/下拉/补全) → boot
 ```
 
 ### 1.2 数据流（每个命令都走这条线）
@@ -85,7 +87,7 @@ localStorage[budget_term_v1]  ⇄  budget_term_backup.json（FSA，带 {app,vers
 **设计基准（判断"统一"的标尺）**：单文件、零依赖、命令行 + 按钮双通道、单一可变 `state` + 纯派生计算、
 所有用户数据走 `textContent`（无注入）、中文注释 + 英文标识符。
 
-### 1.4 命令表（36 个名字 = 17 主名 + 19 别名）
+### 1.4 命令表（41 个名字 = 19 主名 + 22 别名）
 
 由代码里的 `COMMANDS` 登记表派生 —— 改命令请改登记表，别在别处抄（M1）。
 
@@ -95,7 +97,8 @@ budget           当期预算进度                  forecast(burn)(predict)  �
 add(a)           记一笔                        amort(amortize) 分摊成本(总价/天数/类别)
 list(ls)         消费列表(类别/@日期/@period)   del(rm)(delete)  删除
 update(edit)     修改                          pay(invest)    标记已投
-summary(sum)     总结(day/week/month/cat/类别)  export         导出 md|txt
+summary(sum)     总结(day/week/month/cat/类别)  chart(charts)(viz)  图表总结(柱状图/饼图 + 分析)
+report(overview) 总结与图表(合并入口)          export         导出 md|txt
 assets(asset)(networth)  资产看板              undo(u)        撤销
 redo             重做                          config(settings)(thresholds)(alerts)  查看配置
 cls(clear)       清屏
@@ -120,6 +123,11 @@ set 子命令: budget | daily | period | periodstart | monthstart | weekstart | 
 | `moneyPending` / `indexPending` / `totalCharge` / `grantedTotal` / `availableBalance` / `periodSnapshot` | 934 / 935 / 1104 / 1033 / 1041 / 1110 | 池累计、占用合计（**只累计到今天**）、发放/结转/当期口径（复用 `collectWindow`） |
 | `kvColWidth` / `kvRow` | 1092 / 1102 | **统一表格渲染器（含窗口自适应列宽）** |
 | `COMMANDS` / `CMD_ALIAS` / `canonicalCmd` | 1177 / 1209 / 1217 | **命令登记表与别名解析** |
+| `resolveWindow` / `noCategoryHint` | 2130 附近 | **窗口解析唯一入口**：`summary` / `chart` / `report` 共用，返回 `{win,name,isDay}`；`kind="date"` 支持指定某一天 |
+| `parseChartArgs` / `chartBuckets` / `renderBarChart` / `renderPieChart` | 2190 附近 | 图表参数 / 分桶(每桶走 `collectWindow`) / 柱状图 DOM / 饼图 DOM（v0.0.10） |
+| `printChartTable` / `printChartAnalysis` / `renderChartBody` / `doChart` / `doReport` | 2380 附近 | 文本数据表 / 自动分析 / **绘图唯一实现(`chart` 与 `report` 共用)** / 两个命令入口（v0.0.10） |
+| `toggleDd` / `closeDd` / `onRangeMenuItem` / `RANGE_COMMANDS` | 2990 附近 | **范围下拉唯一实现**：消费列表与合并后的总结共用（v0.0.10 同版迭代） |
+| `dateModalTarget` / `dateModalCmd` / `openDateModal` / `applyDateModal` | 3050 附近 | 同一个手动输日期弹窗按 target 拼 `list` / `report` 命令（v0.0.10 同版迭代） |
 | `printHelp` / `runCommand` / `dispatch` | 1220 / 1286 / 1305 | help 渲染 / 命令入口 / 分派 |
 | `doXxx`（17 个命令处理器） | 1331（`doSet`）– 2176（`doAssets`） | 各命令实现 |
 | `makeRecord` / `amortSplitLine` / `parseDaysToken` / `doAmort` | 1565 / 1577 / 1588 / 1602 | 记录工厂、分摊明细行、天数解析、`amort` 命令 |
@@ -333,7 +341,7 @@ v0.0.5 已把它整体移入仓库并相对化：
 
 ```
 tests/
-  run-all.mjs        全量入口：顺序跑 6 个套件 + 按 §7.2 基线校验断言数（护栏被删/改期望值也会红）
+  run-all.mjs        全量入口：顺序跑 7 个套件 + 按 §7.2 基线校验断言数（护栏被删/改期望值也会红）
   env.mjs            路径解析单一入口（仓库根 / index.html / README / 夹具）
   dom.mjs            极简 DOM stub（元素/classList/style/事件/localStorage）
   app.mjs            加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now})
@@ -343,10 +351,11 @@ tests/
   test4.mjs   85 条  M1 护栏（COMMANDS ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 双向校验）
   test5.mjs   92 条  M2 护栏（语义槽位、@日期 位置无关、ghost 预览）+ amort 补全与双选项卡
   test6.mjs   43 条  **H5 护栏**（pay full 命令 / config 按钮 / 弹窗 edit 分支可达；双通道等价）
-  mutate-amort.mjs   **变异测试**: 15 组"把缺陷改回去" → 期望对应断言变红
-                     （v0.0.6 的 6 组 + v0.0.7 的 2 组 + v0.0.8 的 1 组 + v0.09-rev.1 的 6 组 H5）
-  gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window/gen-h5.mjs   浏览器验证用页面生成器（默认输出到系统临时目录；
-                                                    gen-window 自带 Date 桩把时钟钉在 2027-08-30，见 §7.3）
+  test7.mjs  190 条  **v0.0.10 图表总结 + 合并入口护栏**（四窗口/三图型/桶金额恒等式/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/规范自检）
+  mutate-amort.mjs   **变异测试**: 27 组"把缺陷改回去" → 期望对应断言变红
+                     （amort 9 组 + H5 6 组 + H4 4 组 + 图表 4 组 + 合并入口 4 组）
+  gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window/gen-h5/gen-chart.mjs   浏览器验证用页面生成器（默认输出到系统临时目录；
+                                                    gen-window / gen-chart 自带 Date 桩把时钟钉在 2027-08-30，见 §7.3）
   fixtures/user_backup.json                  **全合成**账本夹具（不含任何真实账目）
 ```
 
@@ -363,9 +372,9 @@ tests/
 ### 7.2 跑法与验证闸门（两档）
 
 ```powershell
-# 全量（发版 / 跨模块改动）：顺序跑 5 个套件 + 基线校验，任一项失败/断基数不符即非 0 退出
+# 全量（发版 / 跨模块改动）：顺序跑 7 个套件 + 基线校验，任一项失败/断言数不符即非 0 退出
 node tests/run-all.mjs
-#   ✓ test.mjs 138 ✓ test2.mjs 55 ✓ test3.mjs 85 ✓ test4.mjs 85 ✓ test5.mjs 92 → 合计 455
+#   ✓ 138 / 55 / 85 / 90 / 92 / 43 / 190 → 合计 693
 
 # 日常小更新：只跑本次改动涉及的套件 —— 这已经满足低档闸门
 node tests/test5.mjs
@@ -389,7 +398,7 @@ $env:BT_FIXTURE="C:\...\budget_term_backup.json"; node tests/run-all.mjs
 **高档 · 发版，或改动落在共享抽象上（跨模块）**
 
 ```
-[ ] node tests/run-all.mjs  → 合计 455 PASS / 0 FAIL（138/55/85/85/92，且与基线一致）
+[ ] node tests/run-all.mjs  → 合计 693 PASS / 0 FAIL（138/55/85/90/92/43/190，且与基线一致）
 [ ] 改动涉及 UI/视觉 → 浏览器确认改的那块对；**发版或专门动样式**时顺带量 1400 / 900 / 520 三档，
     scrollWidth === clientWidth（适配性是发版检查项，不是每次小更新的检查项）
 [ ] 改动涉及颜色/主题 → 探针确认 COLOR.* 与 CSS 令牌（js_* vs css_*）逐项相等
@@ -428,6 +437,7 @@ node tests/gen-tab.mjs   "$t\bt-tab.html"      # 真实按键驱动 Tab 补全
 node tests/gen-help.mjs  "$t\bt-help.html"     # 只看 help 排版
 node tests/gen-amort.mjs "$t\bt-amort.html"    # 真实点击选项卡 + 输入事件 → 分摊预览/面板切换
 node tests/gen-window.mjs "$t\bt-window.html"  # 分摊"窗口口径"端到端: 冻结时钟 + 真实按键 → 每日/周期/列表/总结四处取值
+node tests/gen-chart.mjs "$t\bt-chart.html"    # v0.0.10 图表端到端: 冻结时钟 + 真实点击工具栏下拉 → 柱/饼 DOM、高度、配色、回灌命令
 
 # 截图（默认 520 窄窗就够；要顺带看适配性再补 1400/900）
 & $edge --headless=new --disable-gpu --no-first-run "--user-data-dir=$t\bt-ep" `
@@ -481,7 +491,7 @@ $env:BT_HTML="C:\temp\mut.html"; node tests/test5.mjs      # 必须 FAIL，且�
 v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 组、自动校验"命中恰好一次"），
 新增功能时**照它加一段 `MUTANTS` 就行**，别再手搓命令。
 
-已实测 26 组（脚本 `mutate-amort.mjs` 19 组 + 早期手工 7 组），覆盖全部 **6** 个套件：
+已实测 34 组（脚本 `mutate-amort.mjs` 27 组 + 早期手工 7 组），覆盖全部 **7** 个套件：
 
 | 变异体 | 套件 | 还原的缺陷 | 应变红 |
 | --- | --- | --- | --- |
@@ -511,6 +521,14 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 
 | `m_edit_branch` | test6 | `openEdit` 不回 edit 模式（弹窗 edit 分支又成死代码，H5） | 9 条红 |
 | `m_edit_submit` | test6 | 编辑提交拼成 `add` 命令（编辑变成新建一条，H5） | 2 条红 |
 | `m_edit_tab_lock` | test6 | 编辑模式仍可切到分摊选项卡（编辑旧记录却新建 amort，H5） | 1 条红 |
+| `m_chart_dispatch` | test7 | 抹掉 dispatch 的 `chart` 分支（命令又只剩登记表，F2） | 74 条红 |
+| `m_chart_both` | test7 | `both` 退化成只画柱状图（饼图选项失效） | 14 条红 |
+| `m_chart_bucket_window` | test7 | 柱桶金额又按 `r.date` 求和（分摊成本除记账当天全漏，F13） | 5 条红 |
+| `m_chart_pie_count` | test7 | 饼图占比按笔数而不是按金额（¥240 与 ¥60 同宽） | 2 条红 |
+| `m_report_summary` | test7 | 合并入口又丢掉总结报告（只剩图表） | 4 条红 |
+| `m_report_both` | test7 | 合并入口退化成只画柱状图（要求同时出两图） | 8 条红 |
+| `m_report_date_modal` | test7 | 手动输日期弹窗又拼回 `list`（选了总结却跳去消费列表） | 2 条红 |
+| `m_report_date_window` | test7 | 填了具体日期却按整月统计（指定日期窗口失效） | 2 条红 |
 
 > 后两组是 v0.0.7 新增：它们**打的是同一个缺陷的两个不同点**（金额求和 / 行筛选），
 > 所以必须各自变红 —— 只改金额时列表里连行都看不到，只改筛选时行在但金额不对（F14 的做法）。
@@ -558,29 +576,30 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 
 
 ## 8. 附：量化指标
 
-| 指标 | v0.0.5 | v0.0.6 | v0.0.7 | v0.0.8 | **v0.0.9** | 说明 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `index.html` 行数 | 2609 | 2846 | 2924 | 2944 | **3007** | 合并 rev.1（H5）与 rev.2（H4）：新增 `pay full` / `openEdit` / 提交点与注释；数据结构未动 |
-| CSS 令牌 / `var(--x)` 使用 | 19 / 103 | 19 / 111 | 19 / 111 | 19 / 111 | 19 / 111 | 未新增令牌（复用既有色） |
-| JS `COLOR.*` 引用 / 残留颜色字面量 | 299 / 15 | 333 / 15 | 335 / 15 | 335 / 15 | 335 / 15 | 新增代码全部走 `COLOR.*`（H1 未回退） |
-| 命令登记行 / 命令名+别名 | 29 / 34（16+18） | 30 / 36（17 主名 + 19 别名） | 30 / 36 | 30 / 36 | **31 / 36** | 新增 `pay full` **子用法行**（不新增主名/别名） |
-| `save()` / `refreshHeader()` / `mutate()` | 24 / 22 / 5 | 25 / 23 / 5 | 25 / 23 / 5 | 25 / 23 / 5 | **2 / 1 / 6** | H4 收口：落盘只剩 `loadState` 启动 + `commit` 出口，刷新只剩 `refreshAll`；`mutate()` 因 `doInvestFull` 兜底提交 +1（旧版列按含定义口径计） |
-| `catch` 块 / `innerHTML` / `Escape` 处理 | 24 / 4 / 0 | 24 / 4 / 0 | 24 / 4 / 0 | 24 / 4 / 0 | 24 / 4 / 0 | 未新增 `catch` |
-| `padEnd(2x)` 表格残留 | 0 | 2 | 2 | 2 | 2 | 均为 `renderRecordRow()` 的**行内列对齐**（H2 未回退） |
-| 断言总数 | 353 | **415** | **455** | **455** | **498** | v0.0.9 +43（`test6.mjs` H5 专项 + 程序化入口提交）；此前 v0.0.7 +29、v0.0.8 +11 |
-| 变异测试组数 | 7 | 13 | **16** | **16** | **26** | v0.0.9 新增 10 组（H5 六组 + H4 四组：`m_commit_exit` / `m_commit_refresh` / `m_commit_save` / `m_investfull_commit`），全部被抓住 |
+| 指标 | v0.0.5 | v0.0.6 | v0.0.7 | v0.0.8 | v0.0.9 | **v0.0.10** | 说明 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `index.html` 行数 | 2609 | 2846 | 2924 | 2944 | 3007 | **3371** | 新增图表 CSS / DOM 图形 / `chart` + `report` 命令区与 `resolveWindow()` 抽公共窗口；数据结构未动 |
+| CSS 令牌 / `var(--x)` 使用 | 19 / 103 | 19 / 111 | 19 / 111 | 19 / 111 | 19 / 111 | **19 / 119** | 图表复用既有令牌，未新增令牌 |
+| JS `COLOR.*` 引用 / 残留颜色字面量 | 299 / 15 | 333 / 15 | 335 / 15 | 335 / 15 | 335 / 15 | **372 / 15** | 新增代码全部走 `COLOR.*` / `catColor()`（H1 未回退） |
+| 命令登记行 / 命令名+别名 | 29 / 34（16+18） | 30 / 36（17 主名 + 19 别名） | 30 / 36 | 30 / 36 | 31 / 36 | **35 / 41（19 主名 + 22 别名）** | 新增 `chart` 与合并入口 `report` 两个主名（+3 别名 +2 子用法行） |
+| `save()` / `refreshHeader()` / `mutate()` | 24 / 22 / 5 | 25 / 23 / 5 | 25 / 23 / 5 | 25 / 23 / 5 | 2 / 1 / 6 | **2 / 1 / 6** | `chart` 是纯派生命令，不改 `state`、不落盘（H4 未回退） |
+| `catch` 块 / `innerHTML` / `Escape` 处理 | 24 / 4 / 0 | 24 / 4 / 0 | 24 / 4 / 0 | 24 / 4 / 0 | 24 / 4 / 0 | **24 / 4 / 0** | 图表区零 `innerHTML`、零新增 `catch` |
+| `padEnd(2x)` 表格残留 | 0 | 2 | 2 | 2 | 2 | **2** | 均为 `renderRecordRow()` 的**行内列对齐**（H2 未回退） |
+| 断言总数 | 353 | **415** | **455** | **455** | **498** | **693** | v0.0.10 相对 v0.0.9 +195：`test7.mjs` 190 条 + `test4.mjs` 因两个新主名/三别名的循环断言 5 条 |
+| 变异测试组数 | 7 | 13 | **16** | **16** | **26** | **34** | v0.0.10 新增 8 组（图表 4 组 + 合并入口 4 组：`m_report_summary` / `m_report_both` / `m_report_date_modal` / `m_report_date_window`），全部被抓住 |
 
 ### 8.1 测试装置自身的量化（增删护栏时同步这里与 `run-all.mjs` 的基线表）
 
-| 套件 | v0.0.5 | v0.0.6 | v0.0.8 | **v0.0.9** | 责任范围 |
-| --- | --- | --- | --- | --- | --- |
-| `test.mjs` | 78 | 110 | **138** | 138 | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + `amort`(T28) + 分摊窗口口径(T29) |
-| `test2.mjs` | 55 | 55 | 55 | 55 | 端到端命令流/弹窗/备份冒烟/阈值与圆点 |
-| `test3.mjs` | 84 | 84 | **85** | 85 | P1 护栏：颜色令牌/`kvRow`/自适应列宽/死代码/响应式 CSS 规则 |
-| `test4.mjs` | 79 | 85 | 85 | 85 | M1 护栏：登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 |
-| `test5.mjs` | 57 | 81 | **92** | 92 | M2 护栏：语义槽位/`@日期`/ghost + `amort` 补全与双选项卡 + 起始日精确到日 |
-| `test6.mjs` | — | — | — | **43** | **H5 护栏**：双通道对称（`pay full` 命令/按钮同通道、`config` 按钮、弹窗 edit 分支可达） |
-| **合计** | 353 | 415 | **455** | **498** | 增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
+| 套件 | v0.0.5 | v0.0.6 | v0.0.8 | v0.0.9 | **v0.0.10** | 责任范围 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `test.mjs` | 78 | 110 | **138** | 138 | 138 | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + `amort`(T28) + 分摊窗口口径(T29) |
+| `test2.mjs` | 55 | 55 | 55 | 55 | 55 | 端到端命令流/弹窗/备份冒烟/阈值与圆点 |
+| `test3.mjs` | 84 | 84 | **85** | 85 | 85 | P1 护栏：颜色令牌/`kvRow`/自适应列宽/死代码/响应式 CSS 规则 |
+| `test4.mjs` | 79 | 85 | 85 | 85 | **90** | M1 护栏：登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 |
+| `test5.mjs` | 57 | 81 | **92** | 92 | 92 | M2 护栏：语义槽位/`@日期`/ghost + `amort` 补全与双选项卡 + 起始日精确到日 |
+| `test6.mjs` | — | — | — | **43** | 43 | **H5 护栏**：双通道对称（`pay full` 命令/按钮同通道、`config` 按钮、弹窗 edit 分支可达） |
+| `test7.mjs` | — | — | — | — | **190** | **v0.0.10 图表总结 + 合并入口**：四窗口/三图型/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用 |
+| **合计** | 353 | 415 | **455** | **498** | **693** | 增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
 
 ---
 
@@ -612,6 +631,22 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 
 ---
 
 ## 10. 各版变更对既有结论的影响
+
+### v0.0.10：图表总结（`chart`）+ 合并入口（`report`）——本版新增，未改写既有结论
+
+新增"日 / 周 / 周期 / 自然月 → 柱状图 + 饼图 + 自动分析与建议"能力，并在**同一版本内**把工具栏四个总结入口合并成
+「总结与图表 ▾」（先复用消费列表的范围选择/手动输日期，再一次输出总结 + 两张图 + 分析）。**纯派生、零状态变更**：
+
+| 既有结论 | 影响 |
+| --- | --- |
+| H1（颜色双轨）/ H2（4 套表格） | 未回退：图形配色全走 `COLOR.*` / `catColor()`（字面 hex 仍 15 个），文本明细全走 `kvRow()`（`padEnd(2x)` 仍 2 处行内对齐） |
+| M1 / M2（命令清单与补全槽位漂移） | `chart` / `report` 各只登记一次（`COMMANDS` + 3 别名 + 2 子用法），`dispatch` / `help` / 补全 / README / §1.4 由 `test4.mjs` 双向守着；补全按语义槽位给同一组候选 |
+| H4（唯一提交点）/ H5（双通道对称） | 未回退：`chart` / `report` 都不改 `state`，不调 `save()` / `refreshHeader()`；范围下拉项都拼完整命令回灌 `runCommand()`；`innerHTML` 仍 4 处且都是清空 |
+| F13 / §3.8（一个数字两套口径） | **本版重点**：窗口解析抽成 `resolveWindow()` 供 `summary` / `chart` / `report` 共用；每个柱桶单独走 `collectWindow(桶起,桶止,类别)`，`test7.mjs` 把"桶合计 == 窗口总消费"写成恒等式断言；8 组新变异体（含把桶金额改回按 `r.date` 求和）全部被抓住 |
+| F1（横向重复）/ F12（死代码漂移） | 合并迭代的重点：四个固定命令按钮 + 图表下拉删净，范围选择统一到 `data-range` + `onRangeMenuItem(kind,target)` + `RANGE_COMMANDS`；绘图统一到 `renderChartBody()`（`chart` / `report` 共用）；同一个 `#dateModal` 用 `dateModalTarget` 决定拼 `list` / `report`，没有第二份日期归一化或预览逻辑 |
+| M5（工具栏 `data-cmd` 混装） | **略有改善**：新增范围项都走 `data-range` 而非 `data-cmd`，命令与伪动作进一步分开；但历史按钮未整体重构，M5 仍标记未修 |
+| 术语 / 领域口径 | 新增一对**显式标注**的口径：柱高与饼图 = 消费口径，预算使用率 = 预算口径（消费 ÷ N = 占用），输出文案里写明换算；未改 `amount` 语义、`r2`/`r6`、13:2 拆池、存储格式 |
+| 技术债 | 除上行的 M5 略有改善外，H3（类别 3 个真相来源）/ M3 / M4 / M6 / M7 / M8 状态全部不变 |
 
 > §10.0 v0.0.9（合并 H4 + H5：统一提交点 + 双通道对称）、§10.1 v0.09-rev.1（H5 双通道对称 + 弹窗 edit 分支）、
 > §10.2 v0.0.8（起始日期精确到日）、§10.3 v0.0.7（窗口口径修复）、§10.4 v0.0.6（分摊成本引入）。

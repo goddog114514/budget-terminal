@@ -74,6 +74,27 @@ const MUTANTS = [
   ["m_investfull_commit", "test6.mjs", "doInvestFull 不自提交且执行体内提前 commit(程序化入口改了不落盘)",
    ['  scrollBottom();\n  return true;\n}\n/* 程序化入口(测试/外部脚本): 自带一次 mutate + 统一提交; 界面按钮统一走 pay full 命令。\n   命令路径(pay full)由 runCommand 出口的 commitIfDirty() 提交, 这里只兜住非命令调用,\n   避免"执行体"自己 commit 造成 mutate 重入 / 多次落盘。 */\nfunction doInvestFull(kind){ const r = mutate(()=>investFullRun(kind)); commitIfDirty(); return r; }',
     '  commitIfDirty();\n  scrollBottom();\n  return true;\n}\n/* 程序化入口(测试/外部脚本): 自带一次 mutate; 界面按钮统一走 pay full 命令 */\nfunction doInvestFull(kind){ return mutate(()=>investFullRun(kind)); }']],
+  /* v0.0.10 · chart 图表总结: 新增护栏必须能被"把缺陷改回去"证明有效(§7.4) */
+  ["m_chart_dispatch", "test7.mjs", "抹掉 dispatch 的 chart 分支(命令又只剩登记表)",
+   ['    case "chart":    doChart(tokens); break;\n', ""]],
+  ["m_chart_both", "test7.mjs", "both 退化成只画柱状图(饼图选项失效)",
+   ['  if(type==="pie" || type==="both"){', '  if(type==="pie" && type==="both"){']],
+  ["m_chart_bucket_window", "test7.mjs", "柱桶金额又按 r.date 求和(分摊成本除记账当天全漏, F13)",
+   ["      const cw = collectWindow(s, e, cat);",
+    "      const cw = { total: r2(state.records.filter(r=>r.date>=s && r.date<=e && (!cat||r.category===cat)).reduce((a,r)=>a+(Number(r.amount)||0),0)) };"]],
+  ["m_chart_pie_count", "test7.mjs", "饼图占比按笔数而不是按金额(240 元与 60 元同宽)",
+   ["      const pct = amt/win.total*100;", "      const pct = 100/win.cats.length;"]],
+  /* v0.0.10 同版迭代 · 四个按钮合并成 report：新增护栏同样要能被"改回去"证明有效 */
+  ["m_report_summary", "test7.mjs", "合并入口又丢掉总结报告(只剩图表)",
+   ["  printSummaryReport(win, label, {isDay, catFilter:p.cat});\n", ""]],
+  ["m_report_both", "test7.mjs", "合并入口退化成只画柱状图(要求同时出两图)",
+   ['  renderChartBody(win, name, isDay, p.cat, "both");',
+    '  renderChartBody(win, name, isDay, p.cat, "bar");']],
+  ["m_report_date_modal", "test7.mjs", "手动输日期弹窗又拼回 list 命令(选了总结却跳去消费列表)",
+   ['  const base = target==="report" ? "report" : "list";', '  const base = "list";']],
+  ["m_report_date_window", "test7.mjs", "填了具体日期却按整月统计(指定日期窗口失效)",
+   ['    out.kind = /^\\d{4}-\\d{1,2}-\\d{1,2}$/.test(out.ref) ? "date" : "month";',
+    '    out.kind = "month";']],
 ];
 
 const tmp = os.tmpdir();
