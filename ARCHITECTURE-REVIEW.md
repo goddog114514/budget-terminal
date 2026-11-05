@@ -87,7 +87,7 @@ localStorage[budget_term_v1]  ⇄  budget_term_backup.json（FSA，带 {app,vers
 **设计基准（判断"统一"的标尺）**：单文件、零依赖、命令行 + 按钮双通道、单一可变 `state` + 纯派生计算、
 所有用户数据走 `textContent`（无注入）、中文注释 + 英文标识符。
 
-### 1.4 命令表（41 个名字 = 19 主名 + 22 别名）
+### 1.4 命令表（41 个名字 = 19 主名 + 22 别名；设置入口在 config 下）
 
 由代码里的 `COMMANDS` 登记表派生 —— 改命令请改登记表，别在别处抄（M1）。
 
@@ -101,8 +101,10 @@ summary(sum)     总结(day/week/month/cat/类别)  chart(charts)(viz)  图表�
 report(overview) 总结与图表(合并入口)          export         导出 md|txt
 assets(asset)(networth)  资产看板              undo(u)        撤销
 redo             重做                          config(settings)(thresholds)(alerts)  查看配置
-cls(clear)       清屏
-set 子命令: budget | daily | period | periodstart | monthstart | weekstart | alert | invest | consume(ratio) | rate
+cls(clear)       清屏                          config set budget <金额> [now]  配置预算(now=仅当期)
+config set invest <比例%>  配置投资比例        set            周期/阈值/年化等设置(见下)
+set 子命令: daily | period | periodstart | monthstart | weekstart | alert | rate
+注: 旧写法 set budget / set invest(consume/ratio) 仍兼容, 但 help 只推荐 config set …
 ```
 
 ### 1.5 关键符号索引（v0.0.8 行号，仅作起点，定位以符号名为准）
@@ -352,7 +354,7 @@ tests/
   test5.mjs   92 条  M2 护栏（语义槽位、@日期 位置无关、ghost 预览）+ amort 补全与双选项卡
   test6.mjs   43 条  **H5 护栏**（pay full 命令 / config 按钮 / 弹窗 edit 分支可达；双通道等价）
   test7.mjs  196 条  **v0.0.10 图表总结 + 合并入口护栏**（四窗口/三图型/桶金额恒等式/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/规范自检）
-  mutate-amort.mjs   **变异测试**: 28 组"把缺陷改回去" → 期望对应断言变红
+  mutate-amort.mjs   **变异测试**: 33 组"把缺陷改回去" → 期望对应断言变红
                      （amort 9 组 + H5 6 组 + H4 4 组 + 图表 4 组 + 合并入口 4 组 + 去重 1 组）
   gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window/gen-h5/gen-chart.mjs   浏览器验证用页面生成器（默认输出到系统临时目录；
                                                     gen-window / gen-chart 自带 Date 桩把时钟钉在 2027-08-30，见 §7.3）
@@ -374,7 +376,7 @@ tests/
 ```powershell
 # 全量（发版 / 跨模块改动）：顺序跑 7 个套件 + 基线校验，任一项失败/断言数不符即非 0 退出
 node tests/run-all.mjs
-#   ✓ 138 / 55 / 85 / 90 / 92 / 43 / 196 → 合计 699
+#   ✓ 138 / 55 / 103 / 90 / 92 / 43 / 197 → 合计 718
 
 # 日常小更新：只跑本次改动涉及的套件 —— 这已经满足低档闸门
 node tests/test5.mjs
@@ -398,7 +400,7 @@ $env:BT_FIXTURE="C:\...\budget_term_backup.json"; node tests/run-all.mjs
 **高档 · 发版，或改动落在共享抽象上（跨模块）**
 
 ```
-[ ] node tests/run-all.mjs  → 合计 699 PASS / 0 FAIL（138/55/85/90/92/43/196，且与基线一致）
+[ ] node tests/run-all.mjs  → 合计 718 PASS / 0 FAIL（138/55/103/90/92/43/197，且与基线一致）
 [ ] 改动涉及 UI/视觉 → 浏览器确认改的那块对；**发版或专门动样式**时顺带量 1400 / 900 / 520 三档，
     scrollWidth === clientWidth（适配性是发版检查项，不是每次小更新的检查项）
 [ ] 改动涉及颜色/主题 → 探针确认 COLOR.* 与 CSS 令牌（js_* vs css_*）逐项相等
@@ -491,7 +493,7 @@ $env:BT_HTML="C:\temp\mut.html"; node tests/test5.mjs      # 必须 FAIL，且�
 v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 组、自动校验"命中恰好一次"），
 新增功能时**照它加一段 `MUTANTS` 就行**，别再手搓命令。
 
-已实测 35 组（脚本 `mutate-amort.mjs` 28 组 + 早期手工 7 组），覆盖全部 **7** 个套件：
+已实测 40 组（脚本 `mutate-amort.mjs` 33 组 + 早期手工 7 组），覆盖全部 **7** 个套件：
 
 | 变异体 | 套件 | 还原的缺陷 | 应变红 |
 | --- | --- | --- | --- |
@@ -585,7 +587,7 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 
 | `save()` / `refreshHeader()` / `mutate()` | 24 / 22 / 5 | 25 / 23 / 5 | 25 / 23 / 5 | 25 / 23 / 5 | 2 / 1 / 6 | **2 / 1 / 6** | `chart` 是纯派生命令，不改 `state`、不落盘（H4 未回退） |
 | `catch` 块 / `innerHTML` / `Escape` 处理 | 24 / 4 / 0 | 24 / 4 / 0 | 24 / 4 / 0 | 24 / 4 / 0 | 24 / 4 / 0 | **24 / 4 / 0** | 图表区零 `innerHTML`、零新增 `catch` |
 | `padEnd(2x)` 表格残留 | 0 | 2 | 2 | 2 | 2 | **2** | 均为 `renderRecordRow()` 的**行内列对齐**（H2 未回退） |
-| 断言总数 | 353 | **415** | **455** | **455** | **498** | **699** | v0.0.10 相对 v0.0.9 +201：`test7.mjs` 196 条 + `test4.mjs` 因两个新主名/三别名的循环断言 5 条 |
+| 断言总数 | 353 | **415** | **455** | **455** | **498** | **718** | v0.0.11 相对 v0.0.10 +19：`test3.mjs` §8 统一视觉（标题/比例条/堆叠条/类别行/迷你柱）；v0.0.10 曾相对 v0.0.9 +201（`test7.mjs` 196 条 + `test4.mjs` 5 条） |
 | 变异测试组数 | 7 | 13 | **16** | **16** | **26** | **35** | v0.0.10 新增 9 组（图表 4 组 + 合并入口 4 组：`m_report_summary` / `m_report_both` / `m_report_date_modal` / `m_report_date_window`），全部被抓住 |
 
 ### 8.1 测试装置自身的量化（增删护栏时同步这里与 `run-all.mjs` 的基线表）
@@ -599,7 +601,7 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 
 | `test5.mjs` | 57 | 81 | **92** | 92 | 92 | M2 护栏：语义槽位/`@日期`/ghost + `amort` 补全与双选项卡 + 起始日精确到日 |
 | `test6.mjs` | — | — | — | **43** | 43 | **H5 护栏**：双通道对称（`pay full` 命令/按钮同通道、`config` 按钮、弹窗 edit 分支可达） |
 | `test7.mjs` | — | — | — | — | **196** | **v0.0.10 图表总结 + 合并入口**：四窗口/三图型/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用 |
-| **合计** | 353 | 415 | **455** | **498** | **699** | 增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
+| **合计** | 353 | 415 | **455** | **498** | **718** | 增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
 
 ---
 
@@ -631,6 +633,24 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 
 ---
 
 ## 10. 各版变更对既有结论的影响
+
+### v0.0.11：输出层视觉统一 —— 只动渲染，不动口径
+
+把 `budget` / `forecast` / `assets` / `config` / `list` / `summary` / `chart` / `report` 的**输出渲染**统一到五类图形块
+（`sectionHead` / `ratioBar` / `stackBar` / `catRows` / `miniBars`）。**没有任何计算、存储或命令语义变更**。
+
+| 既有结论 | 影响 |
+| --- | --- |
+| H1（颜色双轨）/ H2（多套表格） | 未回退：新图形块的颜色全部取自 `COLOR.*` / `LEVEL_COLOR` / `catColor()`，图表区仍无 hex 字面量（`test7` CH8.3 守着）；表格仍只走 `kvRow()`，`padEnd(2x)` 仍是 2 处行内对齐 |
+| F1（横向重复）/ F12（死代码漂移） | **本版重点**：标题渲染从"图表一份、命令各写一份"收口到 `sectionHead()`（`chartHead()` 降级为别名）；`sparkline()`（字符曲线）被 `miniBars()` 取代后删除，不留死代码（`test3` D 段仍在扫） |
+| F13 / §3.8（一个数字两套口径） | 未触碰：所有金额仍来自 `collectWindow()` / `periodSnapshot()` / `forecastData()`，本轮**只读不重算**；`test.mjs` 的 T29 口径断言全绿 |
+| M1 / M2（命令与补全漂移） | 未改命令、别名、槽位与补全（`test4` / `test5` 全绿） |
+| H4（唯一提交点）/ H5（双通道对称） | 未回退：新图形块只 append 到 `#term`，不改 `state`、不调 `save()` / `refreshHeader()` |
+| M5（`data-cmd` 混装）/ H3（类别真相来源） | 状态不变（本轮不碰工具栏与类别登记） |
+| 视觉一致性（新增结论） | 比例类信息**只有一种画法**（`ratioBar` / `stackBar`），不再出现 `█░` 字符条；`test3` §8 的 V9–V12 断言四条命令确实产出对应图形块且输出无 `█░` |
+| 进度条形状/配色（同版迭代） | 全部进度条改**直角方形 + 双色分段**（已用=语义色实心、剩余=同色 16% 实色，无点阵/斜纹）；顶部栏「发放进度」与终端共用 `hbarTrack()`（`progressBar()` 只再算等级色与百分比）。`test3` §9 的 V13–V18 守住形状、分色、顶部栏与"只有一份实现" |
+| 饼图闭合（同版修复） | `renderPieChart()` 不再向 `conic-gradient` 插 `transparent` 停靠点（那等于挖掉 0.5% 的扇形，相邻同色时看着就是"少了一块"）；切片严格 `from→to` 首尾相接、最后一片收敛到 100%。`test7` CH4.19 逐停靠点校验"无透明漏洞 + 0%→100% 连续"，`m_chart_pie_gap` 证明护栏有效 |
+
 
 ### v0.0.10：图表总结（`chart`）+ 合并入口（`report`）——本版新增，未改写既有结论
 

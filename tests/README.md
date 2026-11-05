@@ -18,7 +18,7 @@ node tests/run-all.mjs
 # 日常小更新: 只跑相关的那一个（同样满足低档闸门）
 node tests/test5.mjs
 
-# 变异测试: 只在你新增/改动护栏后重跑（28 组: 9 组分摊成本 + 6 组 H5 + 4 组 H4 + 4 组图表 + 5 组合并入口, 必须全部被抓住）
+# 变异测试: 只在你新增/改动护栏后重跑（33 组: 9 组分摊成本 + 6 组 H5 + 4 组 H4 + 5 组图表 + 5 组合并入口 + 4 组统一视觉, 必须全部被抓住）
 node tests/mutate-amort.mjs
 ```
 
@@ -132,9 +132,9 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 
 ## 变异测试（证明护栏真的有效）
 
-把已知缺陷改回去，确认对应断言会红。装置已用此法验证 **35 组**（脚本 28 组 + 早期手工 7 组），覆盖全部 **7** 个套件。
+把已知缺陷改回去，确认对应断言会红。装置已用此法验证 **40 组**（脚本 33 组 + 早期手工 7 组），覆盖全部 **7** 个套件。
 
-**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 28 组、
+**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 33 组、
 自动校验"变异点恰好命中一次"、并汇总哪些没被抓住。
 
 | 变异体 | 套件 | 还原的缺陷 | 结果 |
@@ -185,7 +185,7 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 ```
 tests/
 ├─ run-all.mjs            单一入口(7 套件 + 基线校验)
-├─ mutate-amort.mjs       变异测试(28 组: 分摊成本 9 + H5 6 + H4 4 + 图表 4 + 合并入口 5)
+├─ mutate-amort.mjs       变异测试(33 组: 分摊成本 9 + H5 6 + H4 4 + 图表 5 + 合并入口 5 + 统一视觉 4)
 ├─ env.mjs                路径解析单一入口(仓库根 / HTML / README / 夹具)
 ├─ dom.mjs                极简 DOM stub(元素/classList/style/事件/localStorage)
 ├─ app.mjs                加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now})

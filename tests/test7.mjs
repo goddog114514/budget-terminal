@@ -52,8 +52,8 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
   eq("CH1.8 别名 charts 的参数补全与 chart 一致",
      S.argCandidates("charts", 1, ["charts"], ""), cands);
   eq("CH1.9 第二槽位仍给候选(顺序自由)", S.argCandidates("chart", 2, ["chart","week"], ""), cands);
-  eq("CH1.10 版本号已升到 v0.0.10", S.APP_VERSION, "v0.0.10");
-  ok("CH1.11 README 当前版本同步", /当前版本：\*\*v0\.0\.10\*\*/.test(readme), "");
+  eq("CH1.10 版本号已升到 v0.0.11", S.APP_VERSION, "v0.0.11");
+  ok("CH1.11 README 当前版本同步", /当前版本：\*\*v0\.0\.11\*\*/.test(readme), "");
   ok("CH1.12 README 命令表含 chart", /`chart \[/.test(readme), "");
   /* 工具栏(v0.0.10 同版迭代): 周期/日/周总结 + 图表总结 四个入口合成一个 */
   ok("CH1.13 旧的四个总结按钮与图表下拉已移除",
@@ -146,6 +146,20 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
   ok("CH4.14 饼图用 conic-gradient 绘制", /conic-gradient\(/.test(String(pie.style.background)), String(pie.style.background).slice(0,80));
   ok("CH4.15 饼图配色取自 COLOR 表", [S.COLOR.green,S.COLOR.cyan,S.COLOR.yellow,S.COLOR.orange,
       S.COLOR.magenta,S.COLOR.red].some(c=>String(pie.style.background).includes(c)), "");
+  /* 闭合(v0.0.11 修复): 切片必须严格首尾相接 —— 一旦为了"分隔线"插入 transparent 段,
+     饼图上就被挖掉一个 1.8° 的缺口; 相邻两片同色时看起来就是"少了一块"(用户报的 bug)。 */
+  const arc = String(pie.style.background).replace(/^conic-gradient\(\s*from -?[\d.]+deg\s*,/, "").replace(/\)$/, "");
+  const stops = arc.split(",").map(x=>x.trim()).filter(Boolean);
+  const spans = stops.map(x=>{ const m = /^(#[0-9a-fA-F]{3,8}|transparent|rgba?\([^)]*\))\s+([\d.]+)%\s+([\d.]+)%$/.exec(x); return m ? [m[1], Number(m[2]), Number(m[3])] : null; });
+  let t = 0, closed = stops.length === spans.filter(Boolean).length, hasHole = false;
+  for(const sp of spans){
+    if(!sp){ break; }
+    if(Math.abs(sp[1]-t) > 0.011){ closed = false; }   // 上一片结束 == 这一片开始(容差 = 两位小数取整)
+    if(sp[0] === "transparent"){ hasHole = true; }
+    t = sp[2];
+  }
+  ok("CH4.19 饼图严格闭合(无透明缺口, 0%→100% 连续)", closed && !hasHole && Math.abs(t-100) < 0.011,
+     "closed="+closed+" hole="+hasHole+" end="+t);
   const legend = boxes(S).map(b=>b.children.find(c=>c.className==="chart-legend")).filter(Boolean)[0];
   const legendText = legend ? legend.textContent : "";
   ok("CH4.16 图例含类别名", /餐饮/.test(legendText) && /购物/.test(legendText), legendText);
@@ -286,7 +300,7 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
   const rc = S.argCandidates("report", 1, ["report"], "");
   for(const w of ["day","week","period","month"]) ok("CH9.7 补全含 "+w, rc.includes(w), rc.join(","));
   ok("CH9.8 report 补全不含图型(固定双图)", !rc.includes("bar") && !rc.includes("pie") && !rc.includes("both"), rc.join(","));
-  eq("CH9.9 版本号保持 v0.0.10 不变", S.APP_VERSION, "v0.0.10");
+  eq("CH9.9 版本号随视觉改造升到 v0.0.11", S.APP_VERSION, "v0.0.11");
 
   /* 一次输出必须同时含总结表 / 柱状图 / 饼图 / 自动分析 / 结论 */
   const txt = runChart(S, "report week");

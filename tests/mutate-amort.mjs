@@ -98,6 +98,18 @@ const MUTANTS = [
   ["m_report_dup", "test7.mjs", "合并入口又把旧版类别行/迷你条打一遍(与饼图重复)",
    ['  printSummaryReport(win, label, {isDay, catFilter:p.cat, noTitle:true, compact:true});',
     '  printSummaryReport(win, label, {isDay, catFilter:p.cat, noTitle:true});']],
+  /* v0.0.11 · 统一视觉: 新增护栏(§8 V1–V12)同样要能被"改回去"证明不是摆设 */
+  ["m_visual_hbar_cap", "test3.mjs", "比例条超额时不再截断到 100%(填充溢出容器)",
+   ['  const usedPct = Math.min(100, r*100);', '  const usedPct = r*100;']],
+  ["m_visual_rest", "test3.mjs", "进度条剩余段与已用段同色(分色退化成一条纯色)",
+   ['  rest.style.background = withAlpha(col, 0.16);', '  rest.style.background = col;']],
+  ["m_visual_marker", "test3.mjs", "100% 刻度线钉死在最左边(越线位置失去意义)",
+   ['  mk.style.left = (100/Math.max(r,1)).toFixed(2)+"%";', '  mk.style.left = "0";']],
+  ["m_chart_pie_gap", "test7.mjs", "饼图切片之间又挖 0.5% 透明缺口(饼图不闭合/少一块)",
+   ['      segs.push(col+" "+from.toFixed(2)+"% "+to.toFixed(2)+"%");',
+    '      segs.push(col+" "+from.toFixed(2)+"% "+(to-0.5).toFixed(2)+"%");\n      segs.push("transparent "+(to-0.5).toFixed(2)+"% "+to.toFixed(2)+"%");']],
+  ["m_visual_head", "test3.mjs", "章节标题丢掉 chart-h 类(标题层级又回到正文大小)",
+   ['  el.className = "l chart-h";', '  el.className = "l";']],
 ];
 
 const tmp = os.tmpdir();

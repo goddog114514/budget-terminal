@@ -44,6 +44,7 @@
     --panel-2:#07090a;              /* 二级面板: 弹窗 / 下拉 / 理财条 */
     --panel-3:#080a0b;              /* 工具栏底色 */
     --field:#0c100e;                /* 输入框底色 */
+    --chart-axis:#2b4a55;           /* 图表坐标轴(左/下)细亮线, 比 --border 更醒目 */
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;}
@@ -169,26 +170,88 @@
   .sep{border-bottom:1px solid var(--border);margin:4px 0;}
   .hl{background:rgba(61,255,122,.14);}
 
-  /* ---- v0.0.10 图表总结: 柱状图 / 饼图(只用到主题令牌, 颜色值由 JS 的 COLOR.* 注入) ----
-     图形是 DOM 元素(不是图片), 下方始终另有一份纯文本数据表, 便于复制/导出/无障碍阅读。 */
-  .chartbox{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin:8px 0 6px 2px;max-width:100%;}
-  .chart-bars{position:relative;display:flex;align-items:flex-end;gap:5px;height:150px;
-    padding:0 8px;margin-bottom:20px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);}
-  .chart-col{position:relative;height:100%;min-width:30px;}
-  .chart-bar{position:absolute;left:50%;transform:translateX(-50%);bottom:0;width:20px;min-height:2px;
-    border-radius:2px 2px 0 0;}
-  .chart-v{position:absolute;left:-6px;right:-6px;text-align:center;font-size:10px;line-height:1.1;
-    color:var(--white);white-space:nowrap;}
-  .chart-k{position:absolute;left:-8px;right:-8px;bottom:-17px;text-align:center;font-size:10px;
+  /* ---- 图表总结: 柱状图 / 饼图 / 图例(只用到主题令牌, 颜色值由 JS 的 COLOR.* 注入) ----
+     图形是 DOM 元素(不是图片), 下方始终另有一份纯文本数据表, 便于复制/导出/无障碍阅读。
+     视觉规格(与参考图一致): 左/下轴线细亮线; 柱宽 22px、顶部 3px 圆角; 柱顶数值与柱同色;
+     黄色虚线 = 消费口径预算参考线, 标签右对齐压在线上方; 饼图无描边、切片之间留 0.5% 暗缝;
+     图例为「色块 + 类别 + 金额 + 占比」四列, 类别列定宽以保证金额纵向对齐。 */
+  .chartbox{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;margin:10px 0 8px 2px;max-width:100%;}
+  .chart-h{font-size:15px;letter-spacing:.4px;margin:6px 0 2px;}
+  /* 柱状图**随分辨率自适应**(v0.0.12):
+     - 绘图区高度由 JS 写入 --plot-h(按视口高度缩放, 见 plotHeight()), CSS 只负责加顶部标签留白,
+       两者共用同一个数字, 不会出现"柱高 192px、容器只有 150px"的错位;
+     - 柱列 flex:1 均分可见宽度: 宽屏柱距拉开、柱宽随列宽收放(clamp), 窄屏自动收窄不溢出;
+     - 柱宽用百分比 + clamp 上下限, 12 根柱挤在窄屏也不会糊成一片。 */
+  .chart-bars{position:relative;display:flex;align-items:flex-end;gap:clamp(4px,0.9vw,18px);
+    width:100%;flex:1 1 420px;min-width:0;
+    height:calc(var(--plot-h,192px) + 24px);
+    padding:24px 10px 0;margin:2px 0 22px;
+    border-left:1px solid var(--chart-axis);border-bottom:1px solid var(--chart-axis);}
+  .chart-col{position:relative;flex:1 1 0;min-width:0;height:100%;}
+  .chart-bar{position:absolute;left:50%;transform:translateX(-50%);bottom:0;
+    width:clamp(10px,58%,34px);min-height:2px;
+    border-radius:3px 3px 0 0;box-shadow:0 0 12px -3px currentColor;}
+  .chart-v{position:absolute;left:-9px;right:-9px;text-align:center;font-size:11px;line-height:1.1;
+    font-weight:bold;color:var(--white);white-space:nowrap;}
+  .chart-k{position:absolute;left:-11px;right:-11px;bottom:-19px;text-align:center;font-size:11px;
     color:var(--gray);white-space:nowrap;}
-  .chart-refline{position:absolute;left:0;right:0;border-top:1px dashed var(--yellow);pointer-events:none;}
-  .chart-reflabel{position:absolute;right:2px;font-size:10px;color:var(--yellow);white-space:nowrap;}
-  .chart-pie{width:136px;height:136px;border-radius:50%;border:1px solid var(--border);flex:0 0 auto;}
-  .chart-legend{display:flex;flex-direction:column;gap:4px;font-size:12px;min-width:0;}
-  .chart-legend .li{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
-  .chart-swatch{width:10px;height:10px;border-radius:2px;display:inline-block;flex:0 0 auto;}
-  .chart-legend .nm{color:var(--white);}
-  .chart-legend .vl{color:var(--gray);}
+  .chart-refline{position:absolute;left:0;right:0;border-top:1px dashed var(--yellow);
+    pointer-events:none;opacity:.92;}
+  /* 负值时的 0 刻度线(负柱在左/下方) */
+  .chart-zero{position:absolute;left:0;right:0;border-top:1px solid var(--gray);
+    pointer-events:none;opacity:.55;}
+  .chart-reflabel{position:absolute;right:2px;font-size:11px;color:var(--yellow);white-space:nowrap;
+    text-shadow:0 0 7px rgba(255,210,61,.4);}
+  .chart-pie{width:190px;height:190px;border-radius:50%;flex:0 0 auto;}
+  .chart-legend{display:flex;flex-direction:column;gap:6px;font-size:13px;min-width:0;padding-top:2px;}
+  .chart-legend .li{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;}
+  .chart-swatch{width:11px;height:11px;border-radius:3px;display:inline-block;flex:0 0 auto;}
+  .chart-legend .nm{color:var(--white);flex:0 0 auto;min-width:4.2em;}
+  .chart-legend .vl{display:inline-flex;align-items:baseline;gap:10px;color:var(--gray);}
+  .chart-legend .vl .amt{color:var(--white);}
+  .chart-legend .vl .pc{color:var(--green);min-width:3.2em;text-align:right;}
+
+  /* ---- 统一视觉: 章节标题 / 横向比例条 / 堆叠条 / 迷你柱 ----
+     budget / forecast / assets / summary / config / list 与图表共用一套语言:
+     标题同为「▓ + 大一档青色」, 比例一律是「方形轨道 + 分色填充 + 100% 刻度」,
+     不再用 █░ 字符条(字符条的字宽/亮度随字体漂移, 且和柱状图不是同一套颜色语义)。
+     进度条一律**直角方形**: 已用部分 = 语义色实心, 剩余部分 = 同色低透明度实色(不是点阵/斜纹),
+     两段之间是一条 1px 分界线 —— 分色靠"色块", 不靠纹理。 */
+  .hbar-wrap{margin:7px 0 3px;max-width:640px;}
+  .hbar-top{display:flex;align-items:baseline;gap:10px;font-size:12.5px;}
+  .hbar-top .hbar-k{color:var(--gray);}
+  .hbar-top .hbar-v{margin-left:auto;font-weight:bold;letter-spacing:.3px;}
+  .hbar{position:relative;display:flex;height:12px;margin-top:5px;border-radius:0;
+    border:1px solid var(--chart-axis);background:transparent;}
+  .hbar-fill{height:100%;border-radius:0;min-width:2px;}
+  .hbar-rest{height:100%;border-radius:0;}
+  .hbar-100{position:absolute;top:-3px;bottom:-3px;border-left:1px dashed var(--yellow);opacity:.8;}
+  .hbar-sub{font-size:11.5px;color:var(--gray);margin-top:5px;}
+  .hbar-mini{display:inline-flex;width:104px;height:9px;margin:0;vertical-align:middle;border-radius:0;}
+  .stat .hbar-mini{margin-right:6px;}
+  .hbar-pct{font-size:11.5px;vertical-align:middle;}
+  /* 堆叠条同样随分辨率自适应: 占满可用宽度(不再固定在 640px), 条高随视口微调;
+     旧实现的 640px 上限让它在 2K/4K 屏上只占中间一小段, 图例也被挤在左边。 */
+  .stack-wrap{margin:7px 0 3px;width:100%;max-width:100%;}
+  .stack{display:flex;height:clamp(12px,1.1vh,18px);border-radius:0;overflow:hidden;margin-top:5px;
+    border:1px solid var(--chart-axis);background:transparent;}
+  .stack i{display:block;height:100%;box-shadow:2px 0 0 0 var(--bg);}
+  /* 含负值: 条内按"零轴"绝对定位, 负段在零轴左侧、正段在右侧, 零轴画一条灰实线 */
+  .stack.mixed{display:block;position:relative;}
+  .stack.mixed i{position:absolute;top:0;bottom:0;height:auto;}
+  .stack-zero{position:absolute;top:-4px;bottom:-4px;width:1px;background:var(--gray);opacity:.85;}
+  .stack-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11.5px;color:var(--gray);margin-top:6px;}
+  .stack-li{display:inline-flex;align-items:center;gap:6px;}
+  .stack-li .chart-swatch{width:9px;height:9px;}
+  .chart-bars.mini{height:calc(var(--plot-h,128px) + 22px);padding:20px 8px 0;margin:4px 0 22px;}
+  .cat-rows{display:flex;flex-direction:column;gap:3px;margin:5px 0 6px;max-width:520px;}
+  .cat-row{display:grid;grid-template-columns:4.2em 1fr 3.2em 5.4em;align-items:center;gap:8px;font-size:12px;}
+  .cat-nm{color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cat-track{display:block;height:8px;border-radius:0;overflow:hidden;
+    background:rgba(61,255,122,.05);border:1px solid var(--chart-axis);}
+  .cat-track i{display:block;height:100%;border-radius:0;}
+  .cat-pc{color:var(--green);text-align:right;}
+  .cat-amt{color:var(--gray);text-align:right;}
 
   /* ---- input ---- */
   footer{
@@ -212,26 +275,30 @@
   #ghost.show{opacity:1;}
 
   /* ---- modal forms (auxiliary) ---- */
-  #modalWrap,#budgetWrap,#dateWrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:20;}
-  #modalWrap.open,#budgetWrap.open,#dateWrap.open{display:flex;}
-  #modal,#budgetModal,#dateModal{
+  #modalWrap,#budgetWrap,#investWrap,#dateWrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:20;}
+  #modalWrap.open,#budgetWrap.open,#investWrap.open,#dateWrap.open{display:flex;}
+  #modal,#budgetModal,#investModal,#dateModal{
     width:min(560px,94vw);max-height:90vh;overflow:auto;
     background:var(--panel-2);border:1px solid var(--green);border-radius:6px;padding:18px 20px;
     box-shadow:0 0 30px rgba(61,255,122,.15);
   }
-  #modal h3,#budgetModal h3,#dateModal h3{color:var(--cyan);font-size:15px;letter-spacing:1px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;}
-  #modal label,#budgetModal label,#dateModal label{display:block;color:var(--gray);font-size:12px;margin:10px 0 4px;}
-  #modal input,#modal select,#budgetModal input,#dateModal input{
+  #modal h3,#budgetModal h3,#investModal h3,#dateModal h3{color:var(--cyan);font-size:15px;letter-spacing:1px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;}
+  #modal label,#budgetModal label,#investModal label,#dateModal label{display:block;color:var(--gray);font-size:12px;margin:10px 0 4px;}
+  #modal input,#modal select,#budgetModal input,#investModal input,#dateModal input{
     width:100%;background:var(--field);border:1px solid var(--border);color:var(--white);
     font-family:inherit;font-size:14px;padding:6px 8px;border-radius:3px;outline:none;
   }
-  #modal input:focus,#modal select:focus,#budgetModal input:focus,#dateModal input:focus{border-color:var(--green);}
+  #modal input:focus,#modal select:focus,#budgetModal input:focus,#investModal input:focus,#dateModal input:focus{border-color:var(--green);}
   .mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap;}
   /* 兜底: 弹窗按钮默认用主题绿字, 避免落到浏览器默认的黑色 ButtonText(在近黑底上完全看不清) */
   .mbtns button{font-family:inherit;padding:6px 16px;cursor:pointer;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--green);}
   #btnSubmit,#b_current{color:var(--green);border-color:var(--green);}
   #btnCancel,#b_cancel{color:var(--red);border-color:var(--red);}
   #b_default{color:var(--cyan);border-color:var(--cyan);}
+  #i_save{color:var(--green);border-color:var(--green);}
+  #i_save:hover{background:rgba(61,255,122,.1);}
+  #i_cancel{color:var(--red);border-color:var(--red);}
+  #i_cancel:hover{background:rgba(255,77,94,.1);}
   #btnSubmit:hover,#b_current:hover{background:rgba(61,255,122,.1);}
   #btnCancel:hover,#b_cancel:hover{background:rgba(255,77,94,.1);}
   #b_default:hover{background:rgba(77,232,255,.1);}
@@ -243,8 +310,8 @@
   #d_cancel{color:var(--red);border-color:var(--red);}
   #d_cancel:hover{background:rgba(255,77,94,.1);}
   /* 输入框的日历/微调图标在暗色下也需要提亮 */
-  #modal input,#budgetModal input,#dateModal input{color-scheme:dark;}
-  #budgetModal .hint{color:var(--gray);font-size:12px;margin-top:12px;line-height:1.6;}
+  #modal input,#budgetModal input,#investModal input,#dateModal input{color-scheme:dark;}
+  #budgetModal .hint,#investModal .hint{color:var(--gray);font-size:12px;margin-top:12px;line-height:1.6;}
 
   /* ---- 「记一笔」的双选项卡: 单笔消费 / 分摊成本 ---- */
   #modal .mtabs{display:flex;gap:8px;margin:0 0 4px;flex-wrap:wrap;}
@@ -281,7 +348,16 @@
 <nav class="toolbar">
   <button data-cmd="help">[F1] 帮助</button>
   <button data-cmd="budget">预算进度</button>
-  <button data-cmd="open-budget" class="accent">配置预算</button>
+  <!-- v0.0.11: 「配置预算」「配置投资比例」收进同一个「配置 ▾」下拉, 两个子项各自弹窗,
+       弹窗提交时回灌 config 命令(config set budget / config set invest), 输出即当前配置表。 -->
+  <span class="dd" id="configDd">
+    <button id="btnConfigDd" class="accent" type="button">配置 ▾</button>
+    <div class="dd-menu" id="configDdMenu">
+      <span class="dd-hint">设置项</span>
+      <button type="button" data-config="budget">配置预算</button>
+      <button type="button" data-config="invest">配置投资比例</button>
+    </div>
+  </span>
   <button data-cmd="forecast">燃尽预测</button>
   <button data-cmd="open-add" class="accent">+ 记一笔</button>
   <span class="dd" id="listDd">
@@ -308,7 +384,7 @@
     </div>
   </span>
   <button data-cmd="assets">资产看板</button>
-  <button data-cmd="config">配置</button>
+  <button data-cmd="config">当前配置</button>
   <button id="btnUndo" data-cmd="undo" disabled>↩ 撤销</button>
   <button id="btnRedo" data-cmd="redo" disabled>↪ 重做</button>
   <button data-cmd="export md">导出 .md</button>
@@ -384,6 +460,19 @@
   </div>
 </div>
 
+<div id="investWrap">
+  <div id="investModal">
+    <h3>配置投资比例</h3>
+    <label>投资比例 (%) — 消费占比自动 = 100 − 投资比例</label>
+    <input id="i_pct" type="number" step="0.1" min="0" max="50" placeholder="如 15">
+    <div class="hint" id="i_hint"></div>
+    <div class="mbtns">
+      <button id="i_cancel">取消</button>
+      <button id="i_save">保存</button>
+    </div>
+  </div>
+</div>
+
 <div id="dateWrap">
   <div id="dateModal">
     <h3 id="d_title">按日期 / 月份查看消费</h3>
@@ -417,7 +506,7 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.10";         // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.0.11";         // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
 /* --- 分摊成本(amort)的字段与口径 ---
    一笔"分摊成本"= 一次性付出的**总价**(如年费/房租/保险费), 按 **分摊天数** 平均分到每一天。
@@ -443,10 +532,10 @@ const IDX_RATE  = 0.02;               // 基准: 其中指数基金占比(占总
 const INVEST_MONEY_LOT = 100;         // 货币基金每次投入额(触发阈值)
 const INVEST_INDEX_LOT = 20;          // 指数基金每次投入额(触发阈值)
 const DEFAULT_CATEGORIES = ["餐饮","交通","购物","娱乐","居住","医疗","教育","人情","旅行","其他"];
-/* v0.0.10 图表总结: 柱状图上限桶数 / 绘图区像素高(与 CSS .chart-bars 的 150px 对应,
-   顶部 18px 留给数值标签)。柱数有上限, 保证长窗口在窄屏下也能完整显示。 */
+/* 图表总结: 柱状图上限桶数 / 绘图区像素高(与 CSS .chart-bars 的 218px - 24px 预留标签高度对应)
+   柱数有上限, 保证长窗口在窄屏下也能完整显示。 */
 const CHART_MAX_BUCKETS = 12;
-const CHART_PLOT_H = 132;
+const CHART_PLOT_H = 192;
 const CHART_WINDOWS = new Set(["day","日","today","week","周","month","月","natural",
                                "period","周期","cycle"]);
 const CHART_TYPES = new Set(["bar","bars","柱","柱状图","柱图","pie","饼","饼图",
@@ -1235,11 +1324,287 @@ function kvColWidth(){
 if(typeof window!=="undefined" && window.addEventListener){
   window.addEventListener("resize", ()=>{ _kvW = 0; });   // 分辨率/窗口大小变化 → 下次输出重新计算列宽
 }
-/* kvRow("本期消费", "¥300.00") 或 kvRow(key, value, width, color, glow) */
+/* kvRow("本期消费", "¥300.00") 或 kvRow(key, value, width, color, glow)
+   value 也接受**分段**写法(段数组 [{t,c,cls}]), 用于同一行里"金额红/参考灰/占比红"这种多色行;
+   字符串走原来的单段路径(颜色/glow 语义不变)。 */
 function kvRow(key, value, width, color, glow){
   const w = (typeof width==="number" && width>0) ? width : kvColWidth();
-  return line([{ t:("  "+key).padEnd(w," "), c:COLOR.gray },
-               { t:String(value==null?"":value), c:color||COLOR.white, cls:glow?"glow":"" }]);
+  const row = line([{ t:("  "+key).padEnd(w," "), c:COLOR.gray }]);
+  const segs = Array.isArray(value)
+    ? value
+    : [{ t:String(value==null?"":value), c:color||COLOR.white, cls:glow?"glow":"" }];
+  for(const s of segs){
+    const sp = document.createElement("span");
+    if(s && s.c) sp.style.color = s.c;
+    if(s && s.cls) sp.className = s.cls;
+    sp.textContent = (s && s.t!=null) ? String(s.t) : "";
+    row.appendChild(sp);
+  }
+  return row;
+}
+
+/* ===================== 统一"图形块" (v0.0.11) =====================
+   budget / forecast / assets / summary / config / list 与图表共用一套视觉语言。
+   全部是 DOM 元素(不是图片): 数字仍在可复制的文本里, 图形只负责"一眼看出比例/构成"。
+     sectionHead() 章节标题 —— 「▓ + 大一档青色 + 灰色副标题」, 与图表章节同款
+     hbarTrack()   方形进度条 —— 直角边框 + 已用色块 + 剩余同色浅块 + 100% 虚线刻度
+     ratioBar()    带标题/说明的进度条块 —— hbarTrack() + 标签 + 百分比 + 脚注
+     stackBar()    堆叠条 —— 资产构成 / 额度拆分, 自带色块图例
+     catRows()     类别四列条
+     miniBars()    迷你柱状图 —— 增长曲线, 复用 .chart-bars 的柱样式
+   颜色语义与图表一致: 绿=正常/结余, 黄=预警, 橙/红=越线/超支, 青=货币, 浅黄=指数。 */
+function sectionHead(title, meta, color){
+  const segs = [{t:"  ▓ ", c:color||COLOR.cyan},{t:title, c:color||COLOR.cyan}];
+  if(meta) segs.push({t:"  "+meta, c:COLOR.gray});
+  const el = line(segs);
+  el.className = "l chart-h";
+  return el;
+}
+/* "#rrggbb" → "rgba(r,g,b,a)"; 其它写法(变量/rgb 字面量)原样返回, 由 CSS 兜底。 */
+function withAlpha(col, a){
+  const m = /^#([0-9a-fA-F]{6})$/.exec(String(col||""));
+  if(!m) return col;
+  const n = parseInt(m[1], 16);
+  return "rgba("+((n>>16)&255)+","+((n>>8)&255)+","+(n&255)+","+a+")";
+}
+/* 方形进度条: 直角、无圆角、无点阵 —— 已用=语义色实心, 剩余=同色 16% 的实色块,
+   两段之间由填充色的左边界天然形成分界(不需要额外纹理)。ratio>1 时填充拉满,
+   100% 刻度线落到内部 1/r 处。 */
+function hbarTrack(ratio, color, opts){
+  opts = opts || {};
+  const r = (typeof ratio==="number" && isFinite(ratio)) ? Math.max(0, ratio) : 0;
+  const col = color || LEVEL_COLOR[barLevel(r)];
+  const usedPct = Math.min(100, r*100);
+  const track = document.createElement("div");
+  track.className = "hbar" + (opts.mini ? " hbar-mini" : "");
+  const fill = document.createElement("div"); fill.className = "hbar-fill";
+  fill.style.width = usedPct.toFixed(2)+"%";
+  fill.style.background = col;
+  fill.style.color = col;                 // 与图表柱同一套"同色微光"语义
+  fill.dataset.pct = usedPct.toFixed(2);
+  const rest = document.createElement("div"); rest.className = "hbar-rest";
+  rest.style.width = (100-usedPct).toFixed(2)+"%";
+  rest.style.background = withAlpha(col, 0.16);
+  track.append(fill, rest);
+  const mk = document.createElement("i"); mk.className = "hbar-100";
+  mk.style.left = (100/Math.max(r,1)).toFixed(2)+"%";
+  track.appendChild(mk);
+  return track;
+}
+function ratioBar(ratio, opts){
+  opts = opts || {};
+  const r = (typeof ratio==="number" && isFinite(ratio)) ? Math.max(0, ratio) : 0;
+  const col = opts.color || LEVEL_COLOR[barLevel(r)];
+  const wrap = document.createElement("div"); wrap.className = "l hbar-wrap";
+  const top = document.createElement("div"); top.className = "hbar-top";
+  const k = document.createElement("span"); k.className = "hbar-k"; k.textContent = opts.label||"";
+  const v = document.createElement("span"); v.className = "hbar-v";
+  v.style.color = col; v.textContent = (r*100).toFixed(1)+"%";
+  top.append(k, v);
+  wrap.append(top, hbarTrack(r, col));
+  if(opts.sub){
+    const sub = document.createElement("div"); sub.className = "hbar-sub"; sub.textContent = opts.sub;
+    wrap.appendChild(sub);
+  }
+  term.appendChild(wrap);
+  return wrap;
+}
+function stackBar(parts, opts){
+  opts = opts || {};
+  /* 负值不能再被过滤掉 —— 现金为负(透支/超支结转)时正是最需要被看见的那一段。
+     有负值时按"零轴"排版: 负段从 0 向左长, 正段从 0 向右长, 中间画一条 0 刻度线;
+     全正时仍走原来的 flex 等分路径(宽度百分比直接可读)。 */
+  const list = (parts||[]).filter(p=>p && isFinite(p.value) && p.value!==0);
+  const posSum = list.filter(p=>p.value>0).reduce((s,p)=>s+p.value, 0);
+  const negSum = -list.filter(p=>p.value<0).reduce((s,p)=>s+p.value, 0);
+  const hasNeg = negSum > 0;
+  const gross = (posSum + negSum) || 1;      // 有负值时为"毛额"(正+负绝对值), 百分比才有意义
+  const net = posSum - negSum;
+  const total = hasNeg ? gross : (net || 1);
+  const wrap = document.createElement("div"); wrap.className = "l stack-wrap";
+  if(opts.title){
+    const top = document.createElement("div"); top.className = "hbar-top";
+    const k = document.createElement("span"); k.className = "hbar-k"; k.textContent = opts.title;
+    top.appendChild(k); wrap.appendChild(top);
+  }
+  const bar = document.createElement("div"); bar.className = "stack" + (hasNeg ? " mixed" : "");
+  if(!list.length){
+    bar.classList.add("empty");
+  } else if(!hasNeg){
+    for(const p of list){
+      const seg = document.createElement("i");
+      seg.style.width = (p.value/total*100).toFixed(2)+"%";
+      seg.style.background = p.color;
+      bar.appendChild(seg);
+    }
+  } else {
+    /* 零轴位置 = 负段占毛额的比例; 负段按原顺序从零轴向左累加, 正段向右累加 */
+    const zeroPct = negSum/gross*100;
+    let left = zeroPct;                                  // 负段游标(向左)
+    for(const p of list){
+      if(p.value >= 0) continue;
+      const w = (-p.value)/gross*100;
+      const seg = document.createElement("i");
+      seg.style.left = Math.max(0, left - w).toFixed(2)+"%";
+      seg.style.width = w.toFixed(2)+"%";
+      seg.style.background = p.color;
+      bar.appendChild(seg);
+      left -= w;
+    }
+    let right = zeroPct;                                 // 正段游标(向右)
+    for(const p of list){
+      if(p.value < 0) continue;
+      const w = p.value/gross*100;
+      const seg = document.createElement("i");
+      seg.style.left = right.toFixed(2)+"%";
+      seg.style.width = w.toFixed(2)+"%";
+      seg.style.background = p.color;
+      bar.appendChild(seg);
+      right += w;
+    }
+    const zl = document.createElement("span"); zl.className = "stack-zero";
+    zl.style.left = zeroPct.toFixed(2)+"%";
+    bar.appendChild(zl);
+  }
+  wrap.appendChild(bar);
+  const leg = document.createElement("div"); leg.className = "stack-legend";
+  for(const p of list){
+    const it = document.createElement("span"); it.className = "stack-li";
+    const sw = document.createElement("span"); sw.className = "chart-swatch"; sw.style.background = p.color;
+    const tx = document.createElement("span"); tx.className = "stack-tx";
+    tx.textContent = p.label+" ¥"+money(p.value)+"  "+(p.value/total*100).toFixed(1)+"%";
+    it.append(sw, tx); leg.appendChild(it);
+  }
+  wrap.appendChild(leg);
+  term.appendChild(wrap);
+  return wrap;
+}
+/* 类别占比行: 名称 + 细条 + 占比 + 金额(四列, 与饼图图例同一套色块/配色),
+   取代原来 "████░░░░ 36.1%" 的字符条 —— 字符条的字宽随字体变, 条长不可比。 */
+function catRows(cats, total){
+  const wrap = document.createElement("div"); wrap.className = "l cat-rows";
+  const maxAmt = Math.max(1, ...cats.map(c=>c[1]));
+  for(const [cat, amt] of cats){
+    const pct = total>0 ? amt/total*100 : 0;
+    const row = document.createElement("div"); row.className = "cat-row";
+    const nm = document.createElement("span"); nm.className = "cat-nm"; nm.textContent = cat;
+    const tr = document.createElement("span"); tr.className = "cat-track";
+    const fi = document.createElement("i");
+    fi.style.width = Math.max(1, Math.round(amt/maxAmt*100))+"%";
+    fi.style.background = catColor(cat);
+    tr.appendChild(fi);
+    const pc = document.createElement("span"); pc.className = "cat-pc"; pc.textContent = pct.toFixed(1)+"%";
+    const am = document.createElement("span"); am.className = "cat-amt"; am.textContent = "¥"+money(amt);
+    row.append(nm, tr, pc, am);
+    wrap.appendChild(row);
+  }
+  term.appendChild(wrap);
+  return wrap;
+}
+/* 绘图区像素高: 以 MINI_PLOT_H / CHART_PLOT_H 为基准, 按视口高度等比缩放(0.8x~1.35x)。
+   1080p 屏 ≈ 0.95x, 2K/4K 屏最多 1.35x; 拿不到布局信息(测试/导出/无窗口)时就用基准值,
+   保证 headless 输出与测试里的柱高仍是确定值。 */
+function plotHeight(kind){
+  const base = (kind==="mini") ? MINI_PLOT_H : CHART_PLOT_H;
+  let vh = 0;
+  try{ vh = (typeof window!=="undefined" && window.innerHeight) || 0; }catch(e){}
+  if(!(vh > 0)) return base;
+  const k = Math.min(1.35, Math.max(0.8, vh/1000));
+  return Math.round(base*k);
+}
+/* 把柱高/柱顶数值/预算参考线/零轴按当前绘图区高度重算一遍。
+   柱高仍是像素(测试与导出一致), 但像素来源是"当前视口"而不是写死的常量 ——
+   这样窗口/分辨率变化后重新调用一次即可对齐 CSS 的 --plot-h。
+   负值处理(v0.0.12 bug 修复): 以前负值算出的高度是负数 → 被夹到 2px, 图形几乎不可见。
+   现在用 [min, max] 值域排版, 0 刻度线落在零轴处, 负柱从零轴向**下**长, 正柱向上长。 */
+function applyPlotHeight(wrap){
+  const kind = wrap.classList.contains("mini") ? "mini" : "chart";
+  const H = plotHeight(kind);
+  const hi = Math.max(0, Number(wrap.dataset.max) || 0);
+  const lo = Math.min(0, Number(wrap.dataset.min) || 0);
+  const span = (hi - lo) || 1;
+  const px = H / span;                       // 每单位值对应的像素
+  const zero = Math.round(-lo * px);          // 零轴距底部像素(全正 = 0, 即贴底)
+  wrap.dataset.plotH = String(H);
+  if(wrap.style && typeof wrap.style.setProperty === "function") wrap.style.setProperty("--plot-h", H+"px");
+  else if(wrap.style) wrap.style["--plot-h"] = H+"px";
+  /* 只用 children 遍历(不依赖 querySelector), headless 导出/测试的 DOM stub 也能跑 */
+  let ln = null, lb = null, zl = null;
+  for(const col of wrap.children){
+    if(col.className === "chart-refline"){ ln = col; continue; }
+    if(col.className === "chart-reflabel"){ lb = col; continue; }
+    if(col.className === "chart-zero"){ zl = col; continue; }
+    if(col.className !== "chart-col") continue;
+    let bar = null, v = null;
+    for(const n of col.children){
+      if(n.className === "chart-bar") bar = n;
+      else if(n.className === "chart-v") v = n;
+    }
+    if(!bar) continue;
+    const val = Number(bar.dataset.value) || 0;
+    const h = Math.max(2, Math.round(Math.abs(val) * px));
+    bar.style.height = h+"px";
+    bar.style.bottom = (val < 0 ? zero - h : zero) + "px";
+    if(v){
+      /* 正柱标签在柱顶上方, 负柱标签在柱底下方 */
+      v.style.bottom = (val < 0 ? Math.max(0, zero - h - 13) : zero + h + 3) + "px";
+    }
+  }
+  if(lo < 0){
+    if(!zl){
+      zl = document.createElement("div"); zl.className = "chart-zero";
+      wrap.appendChild(zl);            // 1px 虚线, CSS 已 pointer-events:none, 不会挡住柱子
+    }
+    zl.style.bottom = zero + "px";
+  } else if(zl && zl.style){ zl.style.display = "none"; }
+  const refQ = Number(wrap.dataset.refQuota) || 0;
+  if(refQ > 0){
+    const refH = Math.min(H, Math.round(refQ * px));
+    if(ln) ln.style.bottom = refH+"px";
+    if(lb) lb.style.bottom = (refH+2)+"px";
+  }
+  return H;
+}
+/* 分辨率/窗口变化 → 所有已渲染的柱状图重新按新高度排版(宽度由 flex 自动重排, 无需干预) */
+if(typeof window!=="undefined" && window.addEventListener){
+  window.addEventListener("resize", ()=>{
+    const nodes = (typeof document!=="undefined" && document.querySelectorAll)
+      ? document.querySelectorAll(".chart-bars") : [];
+    for(const w of nodes) applyPlotHeight(w);
+  });
+}
+/* 迷你柱状图: points=[{label,value,tone?}], 最多 12 根(多的合并到最后根), 复用图表柱样式 */
+const MINI_MAX = 12, MINI_PLOT_H = 128;
+function miniBars(points, opts){
+  opts = opts || {};
+  const pts = (points||[]).filter(p=>p && isFinite(p.value));
+  if(!pts.length) return null;
+  const boxes = pts.length > MINI_MAX ? pts.slice(0, MINI_MAX-1).concat([pts[pts.length-1]]) : pts;
+  /* 值域取 [min, max] 而不是 [1, max]: 全负时(资产为负)旧写法 maxVal=1 会让所有柱压成 2px,
+     等于"图形不显示"。现在正负都按同一值域排版, 零轴自动落在对应位置。 */
+  const hiVal = Math.max(0, ...boxes.map(p=>p.value));
+  const loVal = Math.min(0, ...boxes.map(p=>p.value));
+  const wrap = document.createElement("div");
+  wrap.className = "chart-bars mini";
+  wrap.dataset.kind = opts.kind || "mini";
+  wrap.dataset.count = String(boxes.length);
+  wrap.dataset.max = String(hiVal || (loVal ? 0 : 1));
+  wrap.dataset.min = String(loVal);
+  for(const p of boxes){
+    const col = document.createElement("div"); col.className = "chart-col";
+    const color = p.tone || (p.value < 0 ? COLOR.red : COLOR.green);   // 负值默认红色(与全站语义一致)
+    const bar = document.createElement("div"); bar.className = "chart-bar";
+    bar.style.background = color; bar.style.color = color;
+    bar.dataset.value = String(p.value); bar.dataset.label = p.label;
+    const v = document.createElement("span"); v.className = "chart-v";
+    v.style.color = color; v.textContent = money(p.value);
+    const k = document.createElement("span"); k.className = "chart-k"; k.textContent = p.label;
+    col.append(bar, v, k);
+    wrap.appendChild(col);
+  }
+  term.appendChild(wrap);
+  applyPlotHeight(wrap);      // 统一按视口高度落柱高(测试环境 = MINI_PLOT_H)
+  return wrap;
 }
 
 /* progress bar with level color */
@@ -1250,13 +1615,12 @@ function barLevel(ratio){
   return Math.min(lvl,4);
 }
 const LEVEL_COLOR = [COLOR.green,COLOR.yellow,COLOR.orange,COLOR.red,COLOR.magenta];
-function progressBar(ratio, width){
-  width = width || 26;
+/* 只算"等级色 + 百分比", 不再拼 █░ 字符条 —— v0.0.11 起所有进度条都是 DOM 的 hbarTrack()
+   (方形 + 分色), 顶部栏与终端共用同一份实现。 */
+function progressBar(ratio){
   ratio = Math.max(0, Math.min(1, ratio));
-  const filled = Math.round(ratio*width);
-  const bar = "█".repeat(filled) + "░".repeat(width-filled);
   const lvl = barLevel(ratio);
-  return { bar:bar, color:LEVEL_COLOR[lvl], lvl:lvl, pct:(ratio*100).toFixed(1) };
+  return { color:LEVEL_COLOR[lvl], lvl:lvl, pct:(ratio*100).toFixed(1) };
 }
 function alertWord(ratio){
   const p = ratio*100;
@@ -1314,15 +1678,13 @@ const input = document.getElementById("cmdline");
         sub = true 表示这只是主命令的子用法(只出现在 help, 不参与别名与补全)。 */
 const COMMANDS = [
   { n:["help","?","h"],                            u:"help",                            d:"查看帮助" },
-  { n:["set"],                                     u:"set budget <金额>",               d:"设置每周期固定预算, 如 set budget 1000" },
+  { n:["set"],                                     u:"set <子项> <值>",                  d:"周期/阈值/年化等细项设置(用法见下); 预算与投资比例请用 config set budget|invest" },
   { n:["set"], sub:true,                           u:"set daily <金额>",                d:"手动设置每日可用余额(今日预算红黄绿提示), 如 set daily 100; off=取消" },
   { n:["set"], sub:true,                           u:"set period <N天>",                d:"滚动N天周期结算预算, 如 set period 15;  natural 回到按月" },
   { n:["set"], sub:true,                           u:"set periodstart <日期>",           d:"设滚动周期起点(锚点), 例 set periodstart 2027-08-04" },
   { n:["set"], sub:true,                           u:"set monthstart <1-28>",           d:"(按月模式)起始日; 1=自然月; 15=每月15日起" },
   { n:["set"], sub:true,                           u:"set weekstart <mon|sun>",         d:"周总结起始日(周一/周日)" },
   { n:["set"], sub:true,                           u:"set alert <p1,p2..>",             d:"自定义预警阈值(百分比), 默认 80,100" },
-  { n:["set"], sub:true,                           u:"set invest <投资比例%>",           d:"可调投资比例, 如 set invest 15 (消费占比=1-投资比例); 0~50%" },
-  { n:["set"], sub:true,                           u:"set consume <消费占比%>",          d:"直接设消费占比 N, 如 set consume 85 或 set ratio 0.85; 总花费=消费÷N" },
   { n:["set"], sub:true,                           u:"set rate <money|index> <%>",      d:"设置基金年化(收益模拟用), 例 set rate index 8" },
   { n:["budget"],                                  u:"budget",                          d:"当前周期预算进度(含进度条)" },
   { n:["budget"], sub:true,                        u:"budget set <金额>",                d:"只调整当前周期的预算, 例 budget set 1200" },
@@ -1346,7 +1708,10 @@ const COMMANDS = [
   { n:["assets","asset","networth"],               u:"assets [N年]",                     d:"资产看板: 现金+基金本金+复利预估(默认10年)与增长曲线" },
   { n:["undo","u"],                                u:"undo",                            d:"撤销上一次数据改动 (Ctrl+Z)" },
   { n:["redo"],                                    u:"redo",                            d:"重做上一次被撤销的改动 (Ctrl+Y)" },
-  { n:["config","settings","thresholds","alerts"],  u:"config",                          d:"查看当前配置(阈值/比例/版本号等)" },
+  { n:["config","settings","thresholds","alerts"],  u:"config",                          d:"查看当前配置(阈值/比例/版本号等); 设置入口见下" },
+  { n:["config"], sub:true,                        u:"config set budget <金额>",         d:"设置默认周期预算(各期生效), 例 config set budget 1200" },
+  { n:["config"], sub:true,                        u:"config set budget <金额> now",     d:"只改当前周期的预算, 例 config set budget 1200 now (等价弹窗「应用于当期」)" },
+  { n:["config"], sub:true,                        u:"config set invest <投资比例%>",    d:"设置投资比例(消费占比=1-投资比例), 例 config set invest 15; 范围 0~50%" },
   { n:["cls","clear"],                             u:"cls",                             d:"清屏" },
 ];
 const CMD_ALIAS = {};        // 别名 -> 主名
@@ -1379,7 +1744,7 @@ function printHelp(){
     row += p + "    ";
   }
   if(row.trim()) line([{t:row.replace(/\s+$/,""), c:COLOR.gray}]);
-  line([{t:"  ⚙ 换算: 消费÷N 占用总花费(N=消费占比, 默认85%); 其中(1-N)=投资(默认15%, 货币13/指数2); set invest 15 可调", c:COLOR.gray}]);
+  line([{t:"  ⚙ 换算: 消费÷N 占用总花费(N=消费占比, 默认85%); 其中(1-N)=投资(默认15%, 货币13/指数2); config set invest 15 可调", c:COLOR.gray}]);
   blank();
 }
 
@@ -1467,10 +1832,77 @@ function dispatch(cmd, tokens){
     case "assets":   doAssets(tokens); break;
     case "undo":     undo(); break;
     case "redo":     redo(); break;
-    case "config":   showSettings(); break;
+    case "config":   doConfig(tokens); break;
     default:
       line([{t:"未知命令: "+cmd+"。输入 help 查看用法。", c:COLOR.yellow}]);
   }
+}
+
+
+/* ============================== config =================================
+   v0.0.11: 「配置预算」「配置投资比例」不再是散落的设置入口, 统一收进 config:
+     config                      查看当前配置(原 showSettings 输出)
+     config set budget <金额>     设默认周期预算(各期生效)
+     config set budget <金额> now 只改当前周期(等同「应用于当期」)
+     config set invest <比例%>    投资比例(消费占比 = 1 - 投资比例)
+   设置成功后**直接复用 config 原有的输出**(showSettings), 不再另写一套确认文案。
+   旧的 set budget / set invest 仍然可用(历史脚本/键位习惯), 但 help 只推荐 config 写法。 */
+function setDefaultBudget(n){
+  if(n==null || !(n>0)) return false;
+  state.settings.budget = r2(n);
+  return true;
+}
+function setPeriodBudget(n){
+  const p = currentPeriod();
+  if(n==null || !(n>0)) return false;
+  state.settings.periodBudget = state.settings.periodBudget || {};
+  state.settings.periodBudget[p.start] = r2(n);
+  return true;
+}
+/* 投资比例: pct 允许 0~50; asInvest=false 时按"消费占比"解释(也接受 0.85 小数写法) */
+const INVEST_MAX_PCT = 50;
+function setInvestPct(pct, asInvest){
+  const usage = "用法: config set invest <投资比例%>   例 config set invest 15   (消费占比 = 1 - 投资比例)";
+  if(pct==null || !isFinite(pct)) return {ok:false, msg:usage};
+  let p = pct;
+  if(!asInvest && p>0 && p<=1) p = p*100;
+  const newConsume = asInvest ? (1 - p/100) : (p/100);
+  if(!(newConsume>=0.5 && newConsume<=1)){
+    return {ok:false, msg:"比例超出范围: 消费占比需在 50%~100% 之间 (即投资比例 0%~"+INVEST_MAX_PCT+"%)。\n"+usage};
+  }
+  state.settings.consumeShare = r6(newConsume);
+  recomputeAllInvest();          // 历史记录按新比例重算应投(已投额封顶)
+  return {ok:true};
+}
+function configUsage(){
+  line([{t:"用法: config   查看当前配置", c:COLOR.yellow}]);
+  line([{t:"      config set budget <金额> [now]    设默认预算 / 加 now 只改当前周期", c:COLOR.yellow}]);
+  line([{t:"      config set invest <投资比例%>      如 config set invest 15 (消费占比=85%)", c:COLOR.yellow}]);
+}
+function doConfig(tokens){
+  const sub = (tokens[0]||"").toLowerCase();
+  if(!sub || sub==="show" || sub==="view" || sub==="list"){ showSettings(); return; }
+  if(sub!=="set"){ configUsage(); return; }
+  const what = (tokens[1]||"").toLowerCase();
+  if(what==="budget"){
+    const n = numeric(tokens[2]);
+    const when = (tokens[3]||"").toLowerCase();
+    const onlyNow = (when==="now"||when==="current"||when==="当期"||when==="本期");
+    if(n==null || n<=0){
+      line([{t:"用法: config set budget <金额> [now]   例 config set budget 1200 (now = 只改当前周期)", c:COLOR.yellow}]);
+      return;
+    }
+    if(onlyNow) setPeriodBudget(n); else setDefaultBudget(n);
+    showSettings();
+    return;
+  }
+  if(what==="invest"||what==="investment"||what==="consume"||what==="ratio"||what==="share"){
+    const res = setInvestPct(numeric(tokens[2]), what!=="consume");
+    if(!res.ok){ line([{t:res.msg, c:COLOR.yellow}]); return; }
+    showSettings();
+    return;
+  }
+  configUsage();
 }
 
 
@@ -1536,23 +1968,15 @@ function doSet(tokens){
     else { line([{t:"用法: set rate <money|index> <年化%>",c:COLOR.yellow}]); return; }
     line([{t:"✓ 货币年化 "+(state.settings.rateMoney*100).toFixed(2)+"%  |  指数年化 "+(state.settings.rateIndex*100).toFixed(2)+"%",c:COLOR.green}]);
   } else if(sub==="invest"||sub==="investment"||sub==="consume"||sub==="ratio"||sub==="share"){
-    // set invest <投资占比%>   → 消费占比 N = 1 - 投资占比
-    // set consume <消费占比%>  → 直接设 N (也接受 set ratio 0.85 小数写法)
-    let pct = numeric(tokens[1]);
+    // 旧写法(兼容保留): set invest 15 / set consume 85 / set ratio 0.85
+    // 推荐写法: config set invest 15 —— 两者走同一个 setter, 只是输出不同(旧写法保留简短确认)
     const asInvest = (sub==="invest"||sub==="investment");
-    const usage = "用法: set invest <投资比例%>   例 set invest 15   (消费占比 = 1 - 投资比例)"
-                + "\n      set consume <消费占比%>  例 set consume 85   (或 set ratio 0.85)";
-    if(pct==null){ line([{t:usage,c:COLOR.yellow}]); return; }
-    if(!asInvest && pct>0 && pct<=1) pct = pct*100;            // 允许 0.85 / 0.9 小数写法
-    const newConsume = asInvest ? (1 - pct/100) : (pct/100);
-    // 区间取闭区间: 文档写的是"消费占比 50%~100% (投资 0%~50%)", 50/100 这些端点必须能用
-    if(!(newConsume>=0.5 && newConsume<=1)){
-      line([{t:"比例超出范围: 消费占比需在 50%~100% 之间 (即投资比例 0%~50%)。",c:COLOR.yellow}]);
-      line([{t:usage,c:COLOR.yellow}]); return;
-    }
+    const usage = "用法: config set invest <投资比例%>   例 config set invest 15   (消费占比 = 1 - 投资比例)"
+                + "\n      (兼容旧写法: set invest 15 / set consume 85 / set ratio 0.85)";
+    if(numeric(tokens[1])==null){ line([{t:usage,c:COLOR.yellow}]); return; }
     const oldPct = consumePct();
-    state.settings.consumeShare = r6(newConsume);
-    recomputeAllInvest();                                      // 历史记录按新比例重算应投
+    const res = setInvestPct(numeric(tokens[1]), asInvest);
+    if(!res.ok){ line([{t:res.msg,c:COLOR.yellow}]); return; }
     const sp = rateSplit();
     line([{t:"✓ 投资比例已更新: ",c:COLOR.green},
           {t:"消费占比 "+consumePct()+"%",c:COLOR.pure},
@@ -1578,7 +2002,8 @@ function doSet(tokens){
       line(dotLine("今日预算", ratioDot(ts.ratio)));
     }
   } else {
-    line([{t:"set 支持: budget | daily <每日可用余额> | invest <投资比例%> | consume <消费占比%> | period <N天> | periodstart <日期> | monthstart | weekstart | alert | rate",c:COLOR.yellow}]);
+    line([{t:"set 支持: daily <每日可用余额> | period <N天> | periodstart <日期> | monthstart | weekstart | alert | rate",c:COLOR.yellow}]);
+    line([{t:"预算 / 投资比例请用: config set budget <金额> [now]  或  config set invest <比例%>",c:COLOR.gray}]);
   }
 }
 
@@ -1620,24 +2045,29 @@ function showBudget(){
   const aw = alertWord(st.ratio);
   const carry = r2(st.usedUnits - b);            // >0 透支, <=0 本期可结转(=剩余)
   const bal = availableBalance();
+  const sp = rateSplit();
   blank();
-  line([{t:"▍周期预算  ( ",c:COLOR.cyan},{t:p.label,c:COLOR.pure},{t:" )",c:COLOR.cyan}]);
-  line([
-    {t:"本期发放 ",c:COLOR.white},{t:"¥"+money(b),c:COLOR.green},
-    {t:"   消费 ",c:COLOR.white},{t:"¥"+money(st.consumption),c:COLOR.pure},
-    {t:"   应投合计 ",c:COLOR.white},{t:"¥"+money(st.invest),c:COLOR.cyan},
-  ]);
-  line([
-    {t:"已占用(含应投) ",c:COLOR.gray},{t:"¥"+money(st.usedUnits),c:bar.color,cls:"glow"},
-    {t:"   累计可用余额(含结转) ",c:COLOR.gray},{t:"¥"+money(bal),c:(bal<0?COLOR.red:COLOR.green),cls:"glow"},
-  ]);
-  line([
-    {t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%  ",c:COLOR.white}
-  ]);
+  sectionHead("周期预算", p.label);
+  kvRow("本期发放", "¥"+money(b), 0, COLOR.pure);
+  kvRow("本期消费", "¥"+money(st.consumption)+"   ("+st.rows.length+" 笔)", 0, COLOR.pure);
+  kvRow("应投合计", [
+    {t:"¥"+money(st.invest), c:COLOR.cyan},
+    {t:"   (货币 ¥"+money(st.mm)+" + 指数 ¥"+money(st.idx)+")", c:COLOR.gray}
+  ], 0);
+  kvRow("已占用(含应投)", "¥"+money(st.usedUnits), 0, bar.color, true);
+  kvRow("累计可用余额(含结转)", "¥"+money(bal), 0, bal<0?COLOR.red:COLOR.green, true);
+  kvRow("本期结余/透支", [
+    {t:(carry>0?"透支 -":"可结转 +")+money(Math.abs(carry)), c:carry>0?COLOR.red:COLOR.green},
+    {t:"   (发放 ¥"+money(b)+" − 占用 ¥"+money(st.usedUnits)+")", c:COLOR.gray}
+  ], 0);
+  ratioBar(st.ratio, {
+    label: "本期发放进度",
+    sub: "占用 ÷ 发放; 虚线 = 100% 额度线(越线即透支)"
+  });
   if(carry > 0){
     line([{t:"⚠ 本期已透支 ¥"+money(carry)+" (将自下期发放中扣除)",c:COLOR.red,cls:"glow"}]);
   } else {
-    line([{t:"本期可结转 ¥"+money(-carry),c:COLOR.green}]);
+    line([{t:"✓ 本期可结转 ¥"+money(-carry),c:COLOR.green}]);
   }
   line([{t:aw.t,c:aw.c,cls:"glow"}]);
   // 红黄绿实心圆点: 今日预算(需手动设每日额度) + 周期预算
@@ -1646,9 +2076,7 @@ function showBudget(){
   line(dotLine("周期预算", ratioDot(st.ratio)));
   blank();
   line([{t:"换算口径: 消费 ¥"+money(st.consumption)+" → 占用 ¥"+money(st.usedUnits)
-        +" = 消费÷"+consumePct()+"%; 其中应投 "+invPct()+"% = 应投货币 ",c:COLOR.gray},
-        {t:"¥"+money(st.mm),c:COLOR.cyan},{t:" + 应投指数 ",c:COLOR.gray},
-        {t:"¥"+money(st.idx),c:COLOR.index}]);
+        +" = 消费÷"+consumePct()+"%; 其中应投 "+invPct()+"% (货币 "+r2(sp.mm*100)+"% / 指数 "+r2(sp.idx*100)+"%)", c:COLOR.gray}]);
   if(hasBudgetOverride(p)){
     line([{t:"  ※ 本期为自定义预算 ¥"+money(b)+" (默认 ¥"+money(state.settings.budget)+"); budget reset 可恢复", c:COLOR.yellow}]);
   }
@@ -1928,7 +2356,7 @@ function doList(tokens){
   const sm = winB ? sumRange(rows, winB.start, winB.end)
                   : { total:r2(rows.reduce((s,r)=>s+r.amount,0)), amort:0 };
   blank();
-  line([{t:" 消费记录  ("+rows.length+" 条)",c:COLOR.cyan},{t:descTxt,c:COLOR.yellow}]);
+  sectionHead("消费记录", rows.length+" 条"+descTxt);
   line([{t:" 合计 ¥"+money(sm.total)+"   点每行右侧 [标记已投资] 一键勾选, 再点取消。",c:COLOR.gray}]);
   if(sm.amort>0){
     line([{t:" 其中分摊成本 ¥"+money(sm.amort)
@@ -2040,12 +2468,11 @@ function doPayFull(rest){
 function printSummaryReport(win, windowName, opts){
   opts = opts || {};
   const st = periodSnapshot();                 // 当前(含窗口所在)周期口径
-  const bar = progressBar(st.ratio);
   const aw  = alertWord(st.ratio);
   const carry = r2(st.usedUnits - st.B);       // >0 透支; <=0 本期剩余可结转
   const bal = availableBalance();
   const title = windowName;
-  if(!opts.noTitle) line([{t:"═ "+title+" 总结 ═", c:COLOR.cyan}]);
+  if(!opts.noTitle) sectionHead("预算总结", title);
   const invTotal = r2(win.mmT+win.idxT);
   // stat table rows: [key, value, color, glow?]
   const rows=[
@@ -2079,17 +2506,15 @@ function printSummaryReport(win, windowName, opts){
     kvRow(k, v, 0, color, /透支|超额/.test(k) && (carry>0 || aw.t!=="预算内 ✓"));
   }
   // visual bar for the period
-  line([{t:" 本期发放进度 ",c:COLOR.gray},{t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%",c:COLOR.white}]);
+  ratioBar(st.ratio, {
+    label: "本期发放进度",
+    sub: "已占用 ¥"+money(st.usedUnits)+" / 发放 ¥"+money(st.B)
+  });
   line([{t:" 换算口径: 消费÷"+consumePct()+"%=占用; 占用×"+invPct()+"% 应投(货币"+mmPct()+"%/指数"+idxPct()+"%)", c:COLOR.gray}]);
-  // category mini-bars（compact 时类别交给饼图图例，避免同一份数据出现两次）
+  // category bars（compact 时类别交给饼图图例，避免同一份数据出现两次）
   if(!opts.compact && win.cats.length && win.total>0){
     line([{t:" 类别占比(按消费):",c:COLOR.gray}]);
-    for(const [cat,amt] of win.cats){
-      const ratioC = amt/win.total;
-      const w = Math.round(ratioC*20);
-      const col = catColor(cat);
-      line([{t:"   "+cat,c:col},{t:"  "+"█".repeat(w)+"░".repeat(20-w)+"  ",c:col},{t:(ratioC*100).toFixed(1)+"%",c:COLOR.white}]);
-    }
+    catRows(win.cats, win.total);
   }
   // investment payment status recap (未投部分 != 0)
   const unpaid = win.rows.filter(r=> !(recFullyMoney(r) && recFullyIndex(r)));
@@ -2277,6 +2702,11 @@ function chartFrame(){
   term.appendChild(box);
   return box;
 }
+/* 图表章节标题 = 全站统一的章节标题(v0.0.11 起 chartHead 只是 sectionHead 的别名,
+   保证图表与 budget/forecast/assets 的标题永远同一套规格, 不出现两份实现)。 */
+function chartHead(text, color){
+  return sectionHead(text, "", color);
+}
 function renderBarChart(box, data){
   const {buckets, perDaySpend, maxVal, mode} = data;
   const wrap = document.createElement("div");
@@ -2284,31 +2714,34 @@ function renderBarChart(box, data){
   wrap.dataset.chart = "bars";
   wrap.dataset.kind = mode;
   wrap.dataset.count = String(buckets.length);
+  wrap.dataset.max = String(maxVal);      // 重排柱高时的分母(resize 后不用重算数据)
+  wrap.dataset.min = "0";                 // 消费口径恒 >= 0, 零轴贴底
   const typicalDays = buckets.length ? buckets[0].days : 1;
   const refQuota = r2(perDaySpend * typicalDays);
-  const refH = Math.min(CHART_PLOT_H, Math.round(CHART_PLOT_H * refQuota / maxVal));
   for(const b of buckets){
     const col = document.createElement("div"); col.className = "chart-col";
-    const h = Math.max(2, Math.round(CHART_PLOT_H * b.total / maxVal));
     const bar = document.createElement("div"); bar.className = "chart-bar";
-    bar.style.height = h+"px";
-    bar.style.background = LEVEL_COLOR[barLevel(b.quota>0 ? b.total/b.quota : 0)];
+    const barColor = LEVEL_COLOR[barLevel(b.quota>0 ? b.total/b.quota : 0)];
+    bar.style.background = barColor;
+    bar.style.color = barColor;            // 让 box-shadow 的 currentColor 跟着柱色发光
     bar.dataset.value = String(b.total);
     bar.dataset.label = b.name;
     const v = document.createElement("span"); v.className = "chart-v";
-    v.style.bottom = (h+3)+"px"; v.textContent = money(b.total);
+    v.style.color = barColor;              // 柱顶数值与柱同色(超支红/橙、正常绿), 一眼看出哪根越线
+    v.textContent = money(b.total);
     const k = document.createElement("span"); k.className = "chart-k"; k.textContent = b.label;
     col.append(bar, v, k);
     wrap.appendChild(col);
   }
   if(refQuota > 0){
-    const ln = document.createElement("div"); ln.className = "chart-refline"; ln.style.bottom = refH+"px";
-    const lb = document.createElement("div"); lb.className = "chart-reflabel"; lb.style.bottom = (refH+2)+"px";
+    const ln = document.createElement("div"); ln.className = "chart-refline";
+    const lb = document.createElement("div"); lb.className = "chart-reflabel";
     lb.textContent = "预算 ¥"+money(refQuota);
     wrap.append(ln, lb);
     wrap.dataset.refQuota = String(refQuota);
   }
   box.appendChild(wrap);
+  applyPlotHeight(wrap);   // 柱高/参考线按当前视口高度落地(基准 = CHART_PLOT_H)
   return {refQuota};
 }
 function renderPieChart(box, win){
@@ -2323,30 +2756,47 @@ function renderPieChart(box, win){
     li.appendChild(nm); legend.appendChild(li);
   } else {
     let acc = 0; const segs = [];
+    const last = win.cats.length-1;
     win.cats.forEach(([cat,amt], i)=>{
       const pct = amt/win.total*100;
-      const from = acc, to = (i===win.cats.length-1) ? 100 : acc+pct;
+      const from = acc, to = (i===last) ? 100 : acc+pct;
       acc = to;
       const col = catColor(cat);
+      /* 切片必须严格首尾相接 —— 这里**不允许**再插 transparent 段。
+         旧实现用 0.5% 的透明段冒充"分隔线", 等于在饼图上挖了一个 1.8° 的缺口:
+         相邻两片同色时(如两个自定义类别共用 catColor 兜底色)看起来就是"少了一块",
+         也就是"饼图没闭合"。分隔交给相邻色差; 需要缝线就画在切片上, 不要挖洞。 */
       segs.push(col+" "+from.toFixed(2)+"% "+to.toFixed(2)+"%");
       const li = document.createElement("div"); li.className = "li";
       const sw = document.createElement("span"); sw.className = "chart-swatch"; sw.style.background = col;
       const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = cat;
+      /* 金额与占比拆成两段: 金额用白色、占比用绿色并右对齐成列(参考图的四列图例) */
       const vl = document.createElement("span"); vl.className = "vl";
-      vl.textContent = "¥"+money(amt)+"  "+pct.toFixed(1)+"%";
+      const amtEl = document.createElement("span"); amtEl.className = "amt";
+      amtEl.textContent = "¥"+money(amt)+" ";     // 末尾留空格: 复制成纯文本时金额与占比不会粘在一起
+      const pctEl = document.createElement("span"); pctEl.className = "pc";
+      pctEl.textContent = pct.toFixed(1)+"%";
+      vl.append(amtEl, pctEl);
       li.append(sw, nm, vl); legend.appendChild(li);
     });
-    pie.style.background = "conic-gradient("+segs.join(",")+")";
+    /* from -90deg: 从 12 点方向顺时针起画(与参考图一致) */
+    pie.style.background = "conic-gradient(from -90deg,"+segs.join(",")+")";
     pie.dataset.slices = String(win.cats.length);
   }
   box.append(pie, legend);
 }
 function printChartTable(data){
-  line([{t:"  ▓ 数据明细（消费口径，与柱状图一一对应）", c:COLOR.cyan}]);
+  chartHead("数据明细（消费口径，与柱状图一一对应）");
   for(const b of data.buckets){
     const pct = b.quota>0 ? (b.total/b.quota*100).toFixed(1)+"%" : "—";
-    kvRow(b.name, "¥"+money(b.total)+"   / 参考 ¥"+money(b.quota)+"   ("+pct+")", 0,
-          b.total>b.quota ? COLOR.red : COLOR.white);
+    /* 一行三段配色: 金额与括号里的占比同色(超参考额度=红, 未超=绿), "参考"保持灰,
+       这样扫一眼就能定位越线的时段 —— 参考图的明细表就是这个形态。 */
+    const tone = (b.quota>0 && b.total>b.quota) ? COLOR.red : COLOR.green;
+    kvRow(b.name, [
+      {t:"¥"+money(b.total), c:tone, cls:"glow"},
+      {t:"   / 参考 ¥"+money(b.quota), c:COLOR.gray},
+      {t:"   ("+pct+")", c:tone}
+    ], 0);
   }
 }
 function printChartAnalysis(win, data, meta){
@@ -2374,7 +2824,7 @@ function printChartAnalysis(win, data, meta){
   /* skipCore = 合并入口 report 专用: 总消费 / 日均 / 分摊占比已经在「预算总结」里出现过,
      这里不再重复同一行; chart 单命令没有总结表, 仍完整输出。 */
   const skipCore = !!(meta && meta.skipCore);
-  line([{t:"  ▓ 自动分析", c:COLOR.cyan}]);
+  chartHead("自动分析");
   if(!skipCore){
     kvRow("窗口总消费", "¥"+money(win.total), 0, COLOR.pure);
     kvRow("平均每日消费", "¥"+money(avg)+"   (÷"+usedDays+" 天)", 0, COLOR.white);
@@ -2397,7 +2847,7 @@ function printChartAnalysis(win, data, meta){
     kvRow("前后半段趋势", word+"  "+Math.abs(delta).toFixed(1)+"%   (前 ¥"+money(a)+" → 后 ¥"+money(c)+")", 0,
           delta>5 ? COLOR.red : (delta<-5 ? COLOR.green : COLOR.gray));
   }
-  line([{t:"  ▓ 总结与建议", c:COLOR.cyan}]);
+  chartHead("总结与建议");
   let concl;
   if(win.total<=0){
     concl = meta.name+" 内没有消费记录，图表与指标均按 0 显示；记一笔后再来看趋势。";
@@ -2438,14 +2888,14 @@ function renderChartBody(win, name, isDay, cat, type, opts){
   }
   const data = chartBuckets(win, isDay, cat);
   if(type==="bar" || type==="both"){
-    line([{t:"  ▓ 柱状图 · "+(data.mode==="date"?"按时间段":"按类别")+"（虚线 = 日均预算参考）", c:COLOR.cyan}]);
+    chartHead("柱状图 · "+(data.mode==="date"?"按时间段":"按类别")+"（虚线 = 日均预算参考）");
     renderBarChart(chartFrame(), data);
     line([{t:"  "+(data.mode==="date"
         ? "每柱 "+data.buckets[0].days+" 天（长窗口自动合并，最多 "+CHART_MAX_BUCKETS+" 柱）"
         : "单日没有时间维度，按类别对比；参考线为当日消费额度"), c:COLOR.gray}]);
   }
   if(type==="pie" || type==="both"){
-    line([{t:"  ▓ 饼图 · 类别消费占比", c:COLOR.cyan}]);
+    chartHead("饼图 · 类别消费占比");
     renderPieChart(chartFrame(), win);
     line([{t:"  共 "+win.cats.length+" 个类别；占比按窗口内实际计入的金额计算。", c:COLOR.gray}]);
   }
@@ -2463,7 +2913,7 @@ function doChart(tokens){
   }
   const {win, name, isDay} = resolveWindow(p.kind, p.ref, p.cat);
   const tag = p.cat ? "  [类别: "+p.cat+"]" : "";
-  line([{t:"═ 图表总结 · "+name+tag+" ═", c:COLOR.cyan}]);
+  sectionHead("图表总结 ·", name+tag);
   if(p.cat && win.count===0) noCategoryHint(p.cat);
   renderChartBody(win, name, isDay, p.cat, p.type);
 }
@@ -2481,8 +2931,8 @@ function doReport(tokens){
   if(p.cat && win.count===0) noCategoryHint(p.cat);
   /* 输出顺序(去重后): 预算总结 → 柱状图 → 饼图 → 数据明细 → 自动分析 → 结论。
      类别只在饼图图例里出现一次; 总消费/日均/分摊占比也不在分析里重复。 */
-  line([{t:"═ 总结与图表 · "+label+" ═", c:COLOR.cyan}]);
-  line([{t:"  ▓ 预算总结", c:COLOR.cyan}]);
+  sectionHead("总结与图表 ·", label);
+  chartHead("预算总结");
   printSummaryReport(win, label, {isDay, catFilter:p.cat, noTitle:true, compact:true});
   line([{t:" ── 图表 · 柱状图 + 饼图（消费口径）──", c:COLOR.gray}]);
   renderChartBody(win, name, isDay, p.cat, "both", {hideMeta:true, skipCore:true});
@@ -2570,7 +3020,7 @@ function showSettings(){
     : (s.monthStart===1?"自然月(每月1日)":"每月 "+s.monthStart+" 日起");
   const kv = (k,v)=>kvRow(k,v,0,COLOR.pure);      // 统一渲染器: 配置页不再手写空格对齐
   blank();
-  line([{t:" 当前配置",c:COLOR.cyan},{t:"   "+APP_VERSION,c:COLOR.gray}]);
+  sectionHead("当前配置", APP_VERSION);
   kv("默认周期预算", "¥"+money(s.budget));
   const cp = currentPeriod();
   kv("当期预算", hasBudgetOverride(cp) ? ("¥"+money(effectiveBudget(cp))+"  (自定义, 默认 ¥"+money(s.budget)+")")
@@ -2583,7 +3033,7 @@ function showSettings(){
   kv("年化(货币/指数)", (s.rateMoney*100).toFixed(2)+"% / "+(s.rateIndex*100).toFixed(2)+"%");
   const sp = rateSplit();
   kv("消费/投资比例", "消费 "+consumePct()+"%  |  投资 "+invPct()+"%  (货币 "+r2(sp.mm*100)+"% + 指数 "+r2(sp.idx*100)+"%)");
-  kv("换算(占用)", "占用 = 消费 ÷ "+consumePct()+"%   (set invest 15 / set consume 85 可调)");
+  kv("换算(占用)", "占用 = 消费 ÷ "+consumePct()+"%   (config set invest 15 / config set consume 85 可调)");
   blank();
 }
 
@@ -2623,10 +3073,9 @@ function showForecastLine(){
 }
 function doForecast(){
   const f = forecastData();
-  const bar = progressBar(f.projRatio);
   const over = f.projLeft < 0;
   blank();
-  line([{t:"▍燃尽预测  ( ",c:COLOR.cyan},{t:f.p.label,c:COLOR.pure},{t:" )",c:COLOR.cyan}]);
+  sectionHead("燃尽预测", f.p.label+"   ("+f.elapsed+"/"+f.total+" 天已过)");
   const row=(k,v,c)=>kvRow(k,v,0,c);      // 统一渲染器(列宽按窗口自适应)
   row("周期天数", f.total+" 天");
   row("已过 / 剩余", f.elapsed+" 天 / "+f.remaining+" 天");
@@ -2641,23 +3090,23 @@ function doForecast(){
   row("期末预测消费", "¥"+money(f.projConsumption), COLOR.pure);
   row("期末预测占用", "¥"+money(f.projUsed)+" / 发放 ¥"+money(f.B), f.projRatio>1?COLOR.red:COLOR.white);
   row(over?"预计超支":"预计结余", (over?"-":"+")+"¥"+money(Math.abs(f.projLeft)), over?COLOR.red:COLOR.green);
-  line([{t:"  预测占用进度 ",c:COLOR.gray},{t:bar.bar,c:bar.color},{t:"  "+bar.pct+"%",c:COLOR.white}]);
+  /* 消费额度拆分: 已消费 / 剩余可用 —— 与资产构成同一套堆叠条, 看的是"额度还剩多少" */
+  stackBar([
+    {label:"已消费", value:Math.max(0,f.spent), color:COLOR.yellow},
+    {label:"剩余可用", value:Math.max(0,f.leftConsume), color:COLOR.green}
+  ], {title:"本期消费额度拆分(额度 ¥"+money(f.allow)+")"});
+  ratioBar(f.projRatio, {
+    label: "预测占用进度(期末)",
+    sub: "按当前日均 ¥"+money(f.dailyAvg)+" 外推到 "+f.total+" 天; 虚线 = 100% 发放线"
+  });
   line([{t:"  提示: 保持当前节奏, "+(over?("本期将透支 ¥"+money(Math.abs(f.projLeft))+" (会从下期发放扣回)"):("本期可结转 ¥"+money(f.projLeft))), c: over?COLOR.yellow:COLOR.gray}]);
   blank();
 }
 
 /* ======================= 资产看板 & 收益模拟 ======================= */
 function fv(P, rate, years){ return P * Math.pow(1 + rate, years); }
-function sparkline(vals){
-  const blocks = "▁▂▃▄▅▆▇█";
-  if(!vals.length) return "";
-  const mn = Math.min(...vals), mx = Math.max(...vals);
-  if(mx - mn < 1e-9) return blocks[3].repeat(vals.length);
-  return vals.map(v=>{
-    const i = Math.round((v-mn)/(mx-mn)*7);
-    return blocks[Math.max(0, Math.min(7, i))];
-  }).join("");
-}
+/* 注: 原来的 sparkline()(▁▂▃▄▅▆▇█ 字符曲线)在 v0.0.11 已被 miniBars() 取代 —— 字符曲线
+   的高度取决于字体, 与柱状图不是同一套颜色/比例语义, 且窄屏会折行。留着就是死代码, 已删除。 */
 function doAssets(tokens){
   const rawYears = numeric(tokens[0]);
   const horizon = (rawYears!=null && rawYears>0 && rawYears<=60) ? Math.round(rawYears) : 10;
@@ -2671,7 +3120,7 @@ function doAssets(tokens){
   const totalNow = r2(cash + pm + pi);
   const totalFut = r2(cash + mvM + mvI);
   blank();
-  line([{t:"▍资产看板",c:COLOR.cyan},{t:"   (年化 货币 "+(rm*100).toFixed(2)+"% / 指数 "+(ri*100).toFixed(2)+"%; set rate 可改)",c:COLOR.gray}]);
+  sectionHead("资产看板", "年化 货币 "+(rm*100).toFixed(2)+"% / 指数 "+(ri*100).toFixed(2)+"%   (set rate 可改)");
   // 逐行
   const row=(k,v,c)=>kvRow(k,v,0,c);      // 统一渲染器(列宽按窗口自适应)
   row("现金余额(含结转)", "¥"+money(cash), cash<0?COLOR.red:COLOR.green);
@@ -2683,15 +3132,25 @@ function doAssets(tokens){
   row("总资产(现金+本金)", "¥"+money(totalNow), COLOR.pure);
   row("总资产("+horizon+"年后预估)", "¥"+money(totalFut), COLOR.green);
   const gain = r2(totalFut - totalNow);
-  row("预估增值", (gain>=0?"+":"")+"¥"+money(gain), gain>=0?COLOR.green:COLOR.red);
-  // ASCII 增长曲线(现金不增长, 仅基金复利)
+  row("预估增值", (gain>=0?"+":"")+"¥"+money(gain)+"   ("+(totalNow>0?((gain/totalNow)*100).toFixed(1)+"%":"—")+")",
+      gain>=0?COLOR.green:COLOR.red);
+  /* 资产构成: 现金 / 货币本金 / 指数本金 —— 一张堆叠条看清"钱在哪儿" */
+  stackBar([
+    {label:"现金", value:cash, color:cash<0?COLOR.red:COLOR.green},   // 现金为负(透支)必须看得见, 用红色段
+    {label:"货币基金", value:pm, color:COLOR.cyan},
+    {label:"指数基金", value:pi, color:COLOR.index}
+  ], {title:"资产构成(现金 + 基金本金)"});
+  /* 增长曲线改成真的柱状图(复用图表柱样式), 不再是 ▁▂▃ 字符曲线:
+     0 年 → horizon 年每年一根, 超过 12 年只画 11 根 + 末年, 避免糊成一片。 */
   const vals = [];
-  for(let t=0;t<=horizon;t++){ vals.push(cash + fv(pm,rm,t) + fv(pi,ri,t)); }
-  line([{t:"  增长曲线(0→"+horizon+"年): ",c:COLOR.gray},{t:sparkline(vals),c:COLOR.green,cls:"glow"}]);
-  const step = Math.max(1, Math.round(horizon/5));
-  const labels = [];
-  for(let t=0;t<=horizon;t+=step){ labels.push("第"+t+"年"); }
-  line([{t:"  "+labels.join("        "),c:COLOR.gray}]);
+  const stepY = Math.max(1, Math.ceil(horizon/5));        // 最多 6 根: 数值标签才不会互相压住
+  for(let t=0;t<=horizon;t+=stepY){ vals.push({label:(t===0?"现在":"第"+t+"年"), value:r2(cash + fv(pm,rm,t) + fv(pi,ri,t))}); }
+  if(vals[vals.length-1].label !== ("第"+horizon+"年")){
+    vals.push({label:"第"+horizon+"年", value:totalFut});
+  }
+  line([{t:"  增长曲线(现金不增值, 仅基金复利)   现值 ¥"+money(totalNow)+" → 第"+horizon+"年 ¥"+money(totalFut)
+        +"   累计 "+(totalNow>0?((gain/totalNow)*100).toFixed(1)+"%":"—"), c:COLOR.gray}]);
+  miniBars(vals, {kind:"assets"});
   blank();
 }
 
@@ -2707,7 +3166,7 @@ function refreshHeader(){
   const st = periodSnapshot();
   const p = st.p;
   const bal = availableBalance();
-  const pb=progressBar(st.ratio,18);
+  const pb=progressBar(st.ratio);
   const iMoney = moneyInvestedTotal(), iIndex = indexInvestedTotal();
   bar.innerHTML="";
   const modeLabel = p.mode==="rolling" ? ("每"+state.settings.lengthDays+"天周期") : (state.settings.monthStart===1?"自然月":("月"+state.settings.monthStart+"日起"));
@@ -2738,10 +3197,16 @@ function refreshHeader(){
   al.appendChild(dotPair("今日预算", ratioDot(ts.ratio)));
   al.appendChild(dotPair("周期预算", ratioDot(st.ratio)));
   bar.appendChild(al);
+  /* 右上角「发放进度」: 与终端里的进度条同一套方形分色条(hbarTrack), 不再用 █░ 字符条。
+     一行显示"方形条 + 百分比", 高度与其它 stat 单元格一致, 不撑高顶部栏。 */
   const pbb=document.createElement("div"); pbb.className="stat";
   const lb=document.createElement("span"); lb.className="k"; lb.textContent="发放进度";
   const tr=document.createElement("span"); tr.className="v";
-  tr.style.color=pb.color; tr.textContent=pb.bar;
+  tr.style.color=pb.color;
+  tr.appendChild(hbarTrack(st.ratio, pb.color, {mini:true}));
+  const pct=document.createElement("span");
+  pct.className="hbar-pct"; pct.style.color=pb.color; pct.textContent=pb.pct+"%";
+  tr.appendChild(pct);
   pbb.append(lb,tr); bar.appendChild(pbb);
   renderInvestBar();
 }
@@ -2907,6 +3372,43 @@ function openBudgetModal(){
   document.getElementById("b_amt").focus();
 }
 function closeBudgetModal(){ document.getElementById("budgetWrap").classList.remove("open"); }
+/* ---- 配置投资比例弹窗(鼠标) ----
+   与「配置预算」并列在工具栏「配置 ▾」下拉里; 保存时回灌 `config set invest <pct>`,
+   输出即 config 的当前配置表(不另写确认文案)。 */
+function openInvestModal(){
+  const inv = invPct();
+  document.getElementById("i_pct").value = inv;
+  updateInvestHint();
+  document.getElementById("investWrap").classList.add("open");
+  document.getElementById("i_pct").focus();
+}
+function closeInvestModal(){ document.getElementById("investWrap").classList.remove("open"); }
+/* 输入即预览: 消费占比 / 换算 / 会重算历史记录(与 setInvestPct 同一套规则, 用临时计算, 不落盘) */
+function updateInvestHint(){
+  const el = document.getElementById("i_hint");
+  if(!el) return;
+  const inp = document.getElementById("i_pct");
+  const typed = input2num(inp && inp.value);
+  const inv = (typed==null || typed<0 || typed>INVEST_MAX_PCT) ? invPct() : typed;
+  const consume = r6(1 - inv/100);
+  const okRange = (consume>=0.5 && consume<=1);
+  const sp = rateSplit();
+  el.textContent =
+    "消费占比 " + r2(consume*100) + "%   投资占比 " + r2(inv) + "%  (货币 " + r2(sp.mm*100) + "% + 指数 " + r2(sp.idx*100) + "%)\n"+
+    "换算: 占用 = 消费 ÷ " + r2(consume*100) + "%   消费¥100 ⇒ 占用¥" + money(100/consume) +
+      " (消费¥100 + 应投¥" + money(100/consume*(1-consume)) + ")\n"+
+    (okRange ? "范围 0~"+INVEST_MAX_PCT+"%; 保存后按新比例重算全部历史记录的应投额(已投额封顶)。"
+             : "超出范围: 投资比例需在 0~"+INVEST_MAX_PCT+"% 之间 (消费占比 50%~100%)。");
+}
+function saveInvest(){
+  const v = input2num(document.getElementById("i_pct").value);
+  if(v==null || v<0 || v>INVEST_MAX_PCT){
+    document.getElementById("i_hint").textContent = "请输入 0~"+INVEST_MAX_PCT+" 之间的投资比例 (如 15 表示 15%)。";
+    return;
+  }
+  closeInvestModal();
+  runCommand("config set invest "+v);
+}
 /* 每日可用余额提示(带红黄绿圆点预览)。
    修复: 以前只读已保存的 dailyBudget, 输入框里改了数字提示不跟着变;
    现在优先按"输入框里当前的值"预览, 与 README 说的"实时预览"一致。 */
@@ -2941,7 +3443,8 @@ function applyBudget(kind){
   const v = input2num(document.getElementById("b_amt").value);
   if(v==null || v<=0){ document.getElementById("b_hint").textContent="请输入大于 0 的金额。"; return; }
   closeBudgetModal();
-  runCommand(kind==="default" ? ("budget default "+v) : ("budget set "+v));
+  /* 统一走 config 设置通道: now = 只改当期; 不带 now = 改默认(各期) */
+  runCommand(kind==="default" ? ("config set budget "+v) : ("config set budget "+v+" now"));
 }
 function closeModal(){ document.getElementById("modalWrap").classList.remove("open"); }
 function submitModal(){
@@ -2992,13 +3495,21 @@ function bindToolbar(){
     b.addEventListener("click",(ev)=>{
       // 范围下拉: 「消费列表」与「总结与图表」共用同一套 data-range + 菜单处理
       if(b.dataset && b.dataset.range!==undefined){ onRangeMenuItem(b.dataset.range, b.dataset.rangeTarget); return; }
+      // 「配置 ▾」下拉的两个子项: 各自开自己的弹窗(弹窗提交再回灌 config 命令)
+      if(b.dataset && b.dataset.config!==undefined){
+        closeDd("configDd");
+        if(b.dataset.config==="invest") openInvestModal(); else openBudgetModal();
+        return;
+      }
       if(b.id==="btnListDd"){ toggleDd("listDd", ev); return; }
       if(b.id==="btnReportDd"){ toggleDd("reportDd", ev); return; }
+      if(b.id==="btnConfigDd"){ toggleDd("configDd", ev); return; }
       const c=b.dataset.cmd;
       if(!c) return;
-      closeDd("listDd"); closeDd("reportDd");
+      closeDd("listDd"); closeDd("reportDd"); closeDd("configDd");
       if(c==="open-add"){ openAdd(); return; }
       if(c==="open-budget"){ openBudgetModal(); return; }
+      if(c==="open-invest"){ openInvestModal(); return; }
       if(c==="backup-download"){ doBackupDownload(); return; }
       if(c==="restore-file"){ document.getElementById("fileImport").click(); return; }
       if(c==="autosave-dir"){ doAutosaveToggle(); return; }
@@ -3016,7 +3527,7 @@ function bindToolbar(){
   });
   // 点空白处收起下拉
   document.addEventListener("click",(ev)=>{
-    for(const id of ["listDd","reportDd"]){
+    for(const id of ["listDd","reportDd","configDd"]){
       const dd=document.getElementById(id);
       if(dd && ev.target && dd.contains && !dd.contains(ev.target)) dd.classList.remove("open");
     }
@@ -3157,6 +3668,12 @@ function bindModal(){
   document.getElementById("b_daily_off").addEventListener("click",clearDailyBudget);
   document.getElementById("b_daily").addEventListener("input",updateDailyHint);   // 输入即预览红黄绿圆点
   document.getElementById("b_daily").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveDailyBudget(); });
+  // 投资比例弹窗(「配置 ▾ → 配置投资比例」)
+  document.getElementById("i_cancel").addEventListener("click",closeInvestModal);
+  document.getElementById("i_save").addEventListener("click",saveInvest);
+  document.getElementById("investWrap").addEventListener("click",(e)=>{ if(e.target.id==="investWrap") closeInvestModal(); });
+  document.getElementById("i_pct").addEventListener("input",updateInvestHint);   // 输入即预览消费/投资占比
+  document.getElementById("i_pct").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveInvest(); });
   // 按日期/月份查看弹窗(日期/月份统一为 ISO 文本 + 原生选择器)
   document.getElementById("d_cancel").addEventListener("click",closeDateModal);
   document.getElementById("d_ok").addEventListener("click",applyDateModal);
@@ -3378,9 +3895,9 @@ function boot(){
   if(dropped) line([{t:"⚠ 本地数据里有 "+dropped+" 条记录金额/日期损坏, 已跳过(其余记录照常加载)。", c:COLOR.yellow}]);
   // banner
   const t=todayYMD();
-  line([{t:"╔══════════════════════════════════════════════════════╗",c:COLOR.green}]);
+  line([{t:"╔═══════════════════════════════════════════════════╗",c:COLOR.green}]);
   line([{t:"║  ",c:COLOR.green},{t:"BUDGET :: TERM",c:COLOR.cyan,cls:"glow"},{t:"  "+APP_VERSION+"   个人记账 · 自动理财规划",c:COLOR.pure},{t:"  ║",c:COLOR.green}]);
-  line([{t:"╚══════════════════════════════════════════════════════╝",c:COLOR.green}]);
+  line([{t:"╚═══════════════════════════════════════════════════╝",c:COLOR.green}]);
   line([
     {t:"今日 ",c:COLOR.gray},{t:t,c:COLOR.white},
     {t:"   模型: 消费÷"+consumePct()+"%=占用预算; 占用×"+invPct()+"% 应投 ",c:COLOR.gray},

@@ -188,6 +188,48 @@ function eq(name, a, b){ ok(name, JSON.stringify(a)===JSON.stringify(b), "got " 
   ok("H5.43 doInvestFull 之后结果已落盘(非命令入口也走 commit)", invested > 0, String(invested));
 }
 
+/* ---------- 16. 「配置 ▾」下拉: 配置预算 / 配置投资比例 两个 UI 通道 ---------- */
+{
+  ok("H5.44 工具栏有「配置 ▾」下拉容器", /id="configDd"/.test(html), "");
+  ok("H5.45 下拉里有「配置预算」", /data-config="budget"[^>]*>配置预算/.test(html), "");
+  ok("H5.46 下拉里有「配置投资比例」", /data-config="invest"[^>]*>配置投资比例/.test(html), "");
+  ok("H5.47 投资比例弹窗存在", /id="investModal"/.test(html) && /id="i_pct"/.test(html), "");
+
+  const S = loadApp(); S.boot();
+  /* 预算弹窗: 默认 / 当期 都回灌 config 命令(输出即配置表) */
+  S.__doc.getElementById("b_amt").value = "1500";
+  S.clearTerm(); S.applyBudget("default");
+  eq("H5.48 「设为默认」回灌 config set budget", S.state.settings.budget, 1500);
+  ok("H5.49 保存后输出的是 config 表格", /当前配置/.test(S.lines().join("\n")), S.lines().join("|"));
+
+  S.__doc.getElementById("b_amt").value = "880";
+  S.clearTerm(); S.applyBudget("current");
+  eq("H5.50 「应用于当期」写进 periodBudget",
+     Number(S.state.settings.periodBudget[S.currentPeriod().start]), 880);
+  eq("H5.51 「应用于当期」不动默认预算", S.state.settings.budget, 1500);
+
+  /* 投资比例弹窗: 打开预填当前值, 保存回灌 config set invest */
+  S.clearTerm(); S.openInvestModal();
+  ok("H5.52 打开投资弹窗", S.__doc.getElementById("investWrap").classList.contains("open"), "");
+  eq("H5.53 预填当前投资比例", S.__doc.getElementById("i_pct").value, S.invPct());
+  S.__doc.getElementById("i_pct").value = "10";
+  S.updateInvestHint();
+  ok("H5.54 输入即预览消费占比", /消费占比 90%/.test(S.__doc.getElementById("i_hint").textContent),
+     S.__doc.getElementById("i_hint").textContent);
+  S.clearTerm(); S.saveInvest();
+  eq("H5.55 保存后投资比例 = 10%", Math.round(S.invPct()), 10);
+  ok("H5.56 保存后输出 config 表格", /当前配置/.test(S.lines().join("\n")), S.lines().join("|"));
+  ok("H5.57 保存后弹窗关闭", !S.__doc.getElementById("investWrap").classList.contains("open"), "");
+
+  /* 越界输入不得落盘 */
+  S.openInvestModal();
+  S.__doc.getElementById("i_pct").value = "80";
+  S.clearTerm(); S.saveInvest();
+  eq("H5.58 越界投资比例被拒绝", Math.round(S.invPct()), 10);
+  ok("H5.59 越界时有提示", /投资比例/.test(S.__doc.getElementById("i_hint").textContent),
+     S.__doc.getElementById("i_hint").textContent);
+}
+
 console.log("PASS " + pass + " / FAIL " + fails.length);
 for(const f of fails) console.log("  ✗ " + f);
 process.exit(fails.length? 1 : 0);

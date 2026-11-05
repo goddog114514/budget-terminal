@@ -1,4 +1,4 @@
-// 生成 v0.0.10 图表总结的浏览器探针页: 冻结时钟 + 真实按键/点击 → 检查图形 DOM 是否真的渲染。
+// 生成图表总结/统一视觉的浏览器探针页(v0.0.11): 冻结时钟 + 真实按键/点击 → 检查图形 DOM 是否真的渲染。
 //   用法: node tests/gen-chart.mjs [输出路径]
 //   配套: Edge --dump-dom 读 PROBE::…::END，或 --screenshot 看图形。
 // 注意: 应用以 todayYMD() 为基准, 不冻结时钟就会"换一天结果变"(F4)。
@@ -46,7 +46,7 @@ window.addEventListener("load",()=>{
 
   /* ---- 通道 1: 命令行 day + both ---- */
   run("chart day both");
-  out.push("version=" + document.getElementById("statusbar").textContent.includes("v0.0.10"));
+  out.push("version=" + document.getElementById("statusbar").textContent.includes("v0.0.11"));
   out.push("day_title=" + /今日 2027-08-30/.test(term.textContent));
   out.push("day_bar_kind=" + (q(".chart-bars") ? q(".chart-bars").dataset.kind : "none"));
   out.push("day_pie_slices=" + (q(".chart-pie") ? q(".chart-pie").dataset.slices : "none"));

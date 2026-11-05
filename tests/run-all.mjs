@@ -12,11 +12,11 @@ const DIR = path.dirname(fileURLToPath(import.meta.url));
 const SUITES = [
   { file:"test.mjs",  expect:138, what:"账本/周期/结转/投资池/导入导出/持久化/撤销重做 + 分摊成本(amort) + 分摊窗口口径" },
   { file:"test2.mjs", expect:55,  what:"端到端命令流/弹窗/备份数据冒烟/阈值与圆点" },
-  { file:"test3.mjs", expect:85,  what:"P1 护栏: 颜色令牌/kvRow/自适应列宽/死代码/响应式" },
-  { file:"test4.mjs", expect:90,  what:"M1 护栏: 登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表" },
+  { file:"test3.mjs", expect:114,  what:"P1 护栏: 颜色令牌/kvRow/自适应列宽/死代码/响应式 + v0.0.11 统一视觉组件(标题/比例条/堆叠条/类别行/迷你柱)" },
+  { file:"test4.mjs", expect:101,  what:"M1 护栏: 登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表" },
   { file:"test5.mjs", expect:92,  what:"M2 护栏: 语义槽位/@日期位置无关/ghost 预览 + amort 补全与双选项卡(含起始日精确到日)" },
-  { file:"test6.mjs", expect:43,  what:"H5 护栏: 双通道对称(pay full 命令/按钮同通道、config 按钮、弹窗 edit 分支可达) + 程序化入口统一提交" },
-  { file:"test7.mjs", expect:196, what:"v0.0.10 图表总结 + 合并入口 report: 四窗口/三图型/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/输出去重与排序/规范自检" },
+  { file:"test6.mjs", expect:59,  what:"H5 护栏: 双通道对称(pay full 命令/按钮同通道、config 按钮、弹窗 edit 分支可达) + 程序化入口统一提交" },
+  { file:"test7.mjs", expect:197, what:"v0.0.10/0.11 图表总结 + 合并入口 report: 四窗口/三图型/饼图闭合/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/输出去重与排序/规范自检" },
 ];
 
 const indent = (s)=> (s||"").trim().split("\n").map(l=>"      "+l).join("\n");

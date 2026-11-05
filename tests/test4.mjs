@@ -128,6 +128,50 @@ const S = loadApp(); S.boot();
   eq("M1.33 undo 与 u 行为一致", [B.state.records.length, B.undoDepth, B.redoDepth], [A.state.records.length - 1, 0, 1]);
 }
 
+/* ---------- 6.5 config set budget / invest(v0.0.11: 设置入口统一收进 config) ---------- */
+{
+  const A = loadApp(); A.boot();
+  A.clearTerm(); A.runCommand("config set budget 1234");
+  const out = A.lines().slice(1).join("\n");
+  ok("M1.42 config set budget 改的是默认预算", A.state.settings.budget === 1234, String(A.state.settings.budget));
+  ok("M1.43 config set budget 直接输出 config 原表格(不另写确认文案)",
+     /当前配置/.test(out) && /默认周期预算/.test(out) && /¥1234\.00/.test(out), out.slice(0, 160));
+
+  A.clearTerm(); A.runCommand("config set budget 999 now");
+  const outNow = A.lines().slice(1).join("\n");
+  ok("M1.44 config set budget … now 只覆盖当期, 默认不变",
+     A.state.settings.budget === 1234
+     && Number(A.state.settings.periodBudget[A.currentPeriod().start]) === 999,
+     JSON.stringify([A.state.settings.budget, A.state.settings.periodBudget]));
+  ok("M1.45 当期覆盖后 config 输出标注「自定义」", /自定义/.test(outNow), outNow.slice(0, 200));
+
+  A.clearTerm(); A.runCommand("config set invest 15");
+  const outInv = A.lines().slice(1).join("\n");
+  ok("M1.46 config set invest 15 → 消费占比 85%", Math.abs(A.state.settings.consumeShare - 0.85) < 1e-9,
+     String(A.state.settings.consumeShare));
+  ok("M1.47 config set invest 输出 config 原表格", /当前配置/.test(outInv) && /消费\/投资比例/.test(outInv), outInv.slice(0, 160));
+
+  A.clearTerm(); A.runCommand("config set invest 80");
+  ok("M1.48 超范围的比例被拒绝且不改状态",
+     /比例超出范围/.test(A.lines().join("\n")) && Math.abs(A.state.settings.consumeShare - 0.85) < 1e-9,
+     A.lines().join("|"));
+
+  A.clearTerm(); A.runCommand("config set budget");
+  ok("M1.49 缺金额给用法提示(不静默成功)", /用法: config set budget/.test(A.lines().join("\n")), A.lines().join("|"));
+
+  A.clearTerm(); A.runCommand("config set nothing");
+  ok("M1.50 未知配置项给用法提示", /用法: config/.test(A.lines().join("\n")), A.lines().join("|"));
+
+  /* 旧写法仍兼容(不写进 help, 但历史脚本/键位习惯不能断) */
+  const B = loadApp(); B.boot();
+  B.runCommand("set invest 20");
+  ok("M1.51 旧写法 set invest 仍可用(20% → 消费 80%)", Math.abs(B.state.settings.consumeShare - 0.8) < 1e-9,
+     String(B.state.settings.consumeShare));
+  ok("M1.52 help 不再推荐 set budget / set invest 写法",
+     !/(^|\n)\s*set (budget|invest) <金额>/.test((()=>{ const H = loadApp(); H.boot(); H.clearTerm(); H.runCommand("help"); return H.lines().join("\n"); })()),
+     "");
+}
+
 /* ---------- 7. README 与登记表同步 ---------- */
 {
   for(const n of S.COMMAND_NAMES){
@@ -166,7 +210,7 @@ const S = loadApp(); S.boot();
   // 反向: 块里的命令名不得是"已删除的命令"(白名单 = 登记表 + set 子命令关键字)
   const subs = ["budget","daily","invest","consume","ratio","period","periodstart","monthstart",
                 "weekstart","alert","rate","natural","off","mon","sun","money","index","md","txt",
-                "day","week","month","cat","today"];
+                "day","week","month","cat","today","now"];
   const known = new Set([...S.COMMAND_NAMES, ...Object.keys(S.CMD_ALIAS), "?", "set", ...subs]);
   const inBlock = new Set();
   for (const raw of block.split(/\r?\n/)) {

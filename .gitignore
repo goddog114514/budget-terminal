@@ -19,3 +19,6 @@ desktop.ini
 _chk.js
 _t_*.js
 _combined.js
+
+# ── 交接文档（含本机路径与隐私细节，按约定只留本地、不入库）────
+HANDOVER.md
