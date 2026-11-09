@@ -172,6 +172,67 @@ const S = loadApp(); S.boot();
      "");
 }
 
+/* ---------- 6.6 P0 修复: config/set 比例同口径 + 金额边界统一 ---------- */
+{
+  const A = loadApp(); A.boot(); A.clearTerm();
+  A.runCommand("config set ratio 0.85");
+  const cfg = A.state.settings.consumeShare;
+  const B = loadApp(); B.boot(); B.clearTerm();
+  B.runCommand("set ratio 0.85");
+  ok("M1.53 config set ratio 0.85 与 set ratio 0.85 同口径(不是 99.15%)",
+     Math.abs(cfg-0.85)<1e-9 && Math.abs(cfg-B.state.settings.consumeShare)<1e-9,
+     JSON.stringify([cfg, B.state.settings.consumeShare]));
+
+  const C = loadApp(); C.boot(); C.clearTerm();
+  C.runCommand("config set ratio 1");
+  const D2 = loadApp(); D2.boot(); D2.clearTerm();
+  D2.runCommand("set ratio 1");
+  ok("M1.54 config/set ratio 端点 1 一致", Math.abs(C.state.settings.consumeShare-D2.state.settings.consumeShare)<1e-9
+     && Math.abs(C.state.settings.consumeShare-1)<1e-9, JSON.stringify([C.state.settings.consumeShare,D2.state.settings.consumeShare]));
+
+  const E = loadApp(); E.boot(); E.clearTerm();
+  E.runCommand("config set share 15");
+  ok("M1.55 config set share 15 与 set share 15 一样被拒(非 50%~100%)",
+     /比例超出范围/.test(E.lines().join("\n")) && Math.abs(E.state.settings.consumeShare-0.85)<1e-9,
+     E.lines().join("|"));
+
+  const F = loadApp(); F.boot(); F.clearTerm();
+  F.runCommand("config set budget 0.001");
+  ok("M1.56 budget 0.001 被拒(r2 后会变成 0), 默认预算不变",
+     /用法: config set budget/.test(F.lines().join("\n")) && F.state.settings.budget===1000,
+     JSON.stringify([F.state.settings.budget, F.lines().join("|")]));
+
+  const G = loadApp(); G.boot(); G.clearTerm();
+  G.runCommand("config set budget 0.001 now");
+  ok("M1.57 budget 0.001 now 被拒, 不写 ¥0 的当期覆盖",
+     /用法: config set budget/.test(G.lines().join("\n"))
+     && !Object.keys(G.state.settings.periodBudget||{}).length,
+     JSON.stringify(G.state.settings.periodBudget));
+
+  const H = loadApp(); H.boot(); H.clearTerm();
+  H.runCommand("config set budget " + "9".repeat(310));
+  ok("M1.58 超长金额被拒(Infinity 会落盘成 null)",
+     H.state.settings.budget===1000 && JSON.parse(H.serializeState()).settings.budget===1000
+     && !/Infinity/.test(H.lines().join("\n")), String(H.state.settings.budget));
+
+  const I = loadApp(); I.boot(); I.clearTerm();
+  I.runCommand("set budget 0.001"); I.runCommand("budget default 0.001");
+  I.runCommand("budget set 0.001"); I.runCommand("set daily 0.001");
+  ok("M1.59 四个旧入口同样拒绝 0.001(金额唯一入口生效)",
+     I.state.settings.budget===1000 && I.state.settings.dailyBudget==null
+     && !Object.keys(I.state.settings.periodBudget||{}).length,
+     JSON.stringify([I.state.settings.budget,I.state.settings.dailyBudget,I.state.settings.periodBudget]));
+
+  const J = loadApp(); J.boot(); J.clearTerm();
+  J.restoreFromText(JSON.stringify({ app:"budget_term", version:2,
+    settings:{ budget:0.001, dailyBudget:0.001, periodBudget:{"2027-08-01":0.001} },
+    seq:0, records:[] }));
+  ok("M1.60 备份归一化也拒绝 r2 后为 0 的预算/日额/当期覆盖",
+     J.state.settings.budget===1000 && J.state.settings.dailyBudget===null
+     && !Object.keys(J.state.settings.periodBudget).length,
+     JSON.stringify([J.state.settings.budget,J.state.settings.dailyBudget,J.state.settings.periodBudget]));
+}
+
 /* ---------- 7. README 与登记表同步 ---------- */
 {
   for(const n of S.COMMAND_NAMES){
@@ -210,7 +271,9 @@ const S = loadApp(); S.boot();
   // 反向: 块里的命令名不得是"已删除的命令"(白名单 = 登记表 + set 子命令关键字)
   const subs = ["budget","daily","invest","consume","ratio","period","periodstart","monthstart",
                 "weekstart","alert","rate","natural","off","mon","sun","money","index","md","txt",
-                "day","week","month","cat","today","now"];
+                "day","week","month","cat","today","now",
+                /* v0.0.12 地点: §1.4 新增两行里的子命令关键字 */
+                "geo","geokey","auto","manual","key","set"];
   const known = new Set([...S.COMMAND_NAMES, ...Object.keys(S.CMD_ALIAS), "?", "set", ...subs]);
   const inBlock = new Set();
   for (const raw of block.split(/\r?\n/)) {
@@ -222,6 +285,36 @@ const S = loadApp(); S.boot();
   }
   const extra = [...inBlock].filter(n => !known.has(n));
   eq("M1.41 架构文件 §1.4 没有已不存在的命令名", extra, []);
+}
+
+/* ============ P2 修复护栏(v0.0.12 同版): config 第四 token / help 与补全暴露 ============ */
+{
+  const S = loadApp(); S.boot(); S.clearTerm();
+  S.runCommand("config set budget 1200 nwo");
+  ok("P2.15 非法第四 token 被拒绝", /第四个参数只接受/.test(S.lines().join("\n")), S.lines().join("|"));
+  ok("P2.16 拼错 now 不再误改全局默认预算", S.state.settings.budget===1000, S.state.settings.budget);
+  ok("P2.17 拼错 now 也不会写入周期覆盖", Object.keys(S.state.settings.periodBudget).length===0,
+     JSON.stringify(S.state.settings.periodBudget));
+  S.clearTerm(); S.runCommand("config set budget 1200 now");
+  ok("P2.18 合法 now 仍只改当前周期",
+     Object.values(S.state.settings.periodBudget).includes(1200) && S.state.settings.budget===1000,
+     JSON.stringify([S.state.settings.periodBudget, S.state.settings.budget]));
+  S.clearTerm(); S.runCommand("config set budget 1300 now extra");
+  ok("P2.19 多余 token 同样被拒绝", /第四个参数只接受/.test(S.lines().join("\n")) && S.state.settings.budget===1000);
+}
+{
+  const S = loadApp(); S.boot(); S.clearTerm();
+  eq("P2.20 config 首槽给 set", S.argCandidates("config",1,["config",""],""), ["set"]);
+  ok("P2.21 config 子名候选齐全", (()=>{
+    const c = S.argCandidates("config",2,["config","set",""],"");
+    return ["budget","invest","consume","ratio","share","geo","geokey"].every(x=>c.includes(x));
+  })(), JSON.stringify(S.argCandidates("config",2,["config","set",""],"")));
+  ok("P2.22 geo 子值候选", S.argCandidates("config",3,["config","set","geo",""],"").includes("auto"));
+  ok("P2.23 budget 第三槽给 now", S.argCandidates("config",4,["config","set","budget","1200",""],"").includes("now"));
+  S.clearTerm(); S.runCommand("config xyz");
+  ok("P2.24 configUsage 列出 consume/ratio/share 与 geokey",
+     /consume\|ratio\|share/.test(S.lines().join("\n")) && /geokey <你的Key>\|off/.test(S.lines().join("\n")),
+     S.lines().join("|"));
 }
 
 console.log("PASS " + pass + " / FAIL " + fails.length);

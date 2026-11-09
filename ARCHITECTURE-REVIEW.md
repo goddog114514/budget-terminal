@@ -87,7 +87,7 @@ localStorage[budget_term_v1]  ⇄  budget_term_backup.json（FSA，带 {app,vers
 **设计基准（判断"统一"的标尺）**：单文件、零依赖、命令行 + 按钮双通道、单一可变 `state` + 纯派生计算、
 所有用户数据走 `textContent`（无注入）、中文注释 + 英文标识符。
 
-### 1.4 命令表（41 个名字 = 19 主名 + 22 别名；设置入口在 config 下）
+### 1.4 命令表（43 个名字 = 20 主名 + 23 别名；设置入口在 config 下）
 
 由代码里的 `COMMANDS` 登记表派生 —— 改命令请改登记表，别在别处抄（M1）。
 
@@ -96,7 +96,9 @@ help(?) (h)      查看帮助                     set            周期/投资/�
 budget           当期预算进度                  forecast(burn)(predict)  燃尽预测
 add(a)           记一笔                        amort(amortize) 分摊成本(总价/天数/类别)
 list(ls)         消费列表(类别/@日期/@period)   del(rm)(delete)  删除
-update(edit)     修改                          pay(invest)    标记已投
+update(edit)     修改/改地点(#-)               pay(invest)    标记已投
+place(where)     手动设置/清除地点            config set geo auto|manual  地点模式
+config set geokey <Key>  腾讯地图 Key        config set invest <比例%>  配置投资比例
 summary(sum)     总结(day/week/month/cat/类别)  chart(charts)(viz)  图表总结(柱状图/饼图 + 分析)
 report(overview) 总结与图表(合并入口)          export         导出 md|txt
 assets(asset)(networth)  资产看板              undo(u)        撤销
@@ -193,7 +195,7 @@ set 子命令: daily | period | periodstart | monthstart | weekstart | alert | r
 | 修复 | 统一 `kvRow(key, value, width, color, glow)`（L1035），4 条路径全部改走它；列宽不再写死，改为**按终端宽度自适应**（`kvColWidth()`/`termCols()`，≈列数×26%，夹在 14~24，`resize` 失效重算） |
 | 现状 | summary/forecast/assets/config **列宽完全一致**；560px 窄窗列宽自动收到 16，1400px 用满 24 |
 
-### H3 · "分类(category)"有 3 个真相来源 —— ⬜ 未修
+### H3 · "分类(category)"有 3 个真相来源 —— ✅ 已修（v0.0.12 · P1）
 
 | 项 | 内容 |
 | --- | --- |
@@ -201,6 +203,7 @@ set 子命令: daily | period | periodstart | monthstart | weekstart | alert | r
 | 证据 | `validateCategory`(L1455) 写入 `PREDEFINED.set(c,"#8be9fd")`；`catColor` 兜底同为 `#8be9fd`；`refreshCatlist`(L2158) 只遍历 `PREDEFINED.keys()`；`allCategories`(L2397) 是并集；`restoreFromText`(L586) 只调 `refreshHeader` |
 | 影响 | 用户自定义类别在**刷新页面后不再出现在表单下拉里**（Tab 补全却仍能补出来）；类别配色无意义 |
 | 建议 | 收敛成 `knownCategories()` 单一入口（`PREDEFINED ∪ 记录`），弹窗/补全/提示共用；类别底色改为按名称哈希取 `CAT_PALETTE`；`restoreFromText` 里补 `refreshCatlist()` |
+| ✅ **修复（v0.0.12 P1）** | `knownCategories()` 成为**单一真相来源**：`refreshCatlist()`、三处 `argCandidates()` 类别位、`list`/`summary`/`chart`/`report` 提示与 `customCatColor()` 全部复用；`validateCategory()` 不再写全局 `PREDEFINED`（消除命令失败时的副作用）；新增 `CUSTOM_CAT_PALETTE` 8 色（与默认色板不重叠），按已知自定义类别的**排序索引**分配 → 相邻类别必异色、跨会话稳定（比"按名称哈希"更彻底地解决相邻同色）。`restoreFromText()` 走 `commit() → refreshAll() → refreshCatlist()`，导入备份后不再丢。护栏：`test8` P1.28–P1.33、`test3` C9/C10 系列与 4 组变异 |
 | 风险 | 低（纯 UI 数据源收敛，不涉及账本计算） |
 
 ### H4 · "改数据 → 落盘 → 刷新"缺统一提交点 —— ✅ 已修（v0.09-rev.2 · P0）
@@ -321,7 +324,7 @@ set 子命令: daily | period | periodstart | monthstart | weekstart | alert | r
 | **P0** | ~~**H4** 收口"改数据 → commit（save + refresh）"~~ | 根除"改了没刷新"一整类缺陷 | ✅ **已完成（v0.09-rev.2）** |
 | **P1** | ~~H1 颜色令牌~~ / ~~H2 统一表格~~ | 主题单点可改、列宽统一 | 已完成 |
 | **P2** | ~~M1 命令登记表~~ / ~~M2 语义槽位~~ | 消除命令清单与补全漂移 | 已完成 |
-| **P3** | **H3** 分类真相来源收敛 + **L6** 仓库规范 | 自定义类别行为可预期 | 低 |
+| **P3** | ~~**H3** 分类真相来源收敛~~（✅ v0.0.12 P1）+ **L6** 仓库规范 | 自定义类别行为可预期 | 低（H3 已完成，L6 仍待办） |
 | **P4** | **M3** 解析入口收敛 + **M4** 弹窗 ID 规范 | 输入校验一致、新弹窗不再漏色 | 低 |
 | **P5** | **M5/M6/M7/M8** + ~~H5~~（已完成 v0.09-rev.1）+ 剩余低项 | 边界清晰、错误策略统一、~~通道对称~~ | 低-中 |
 
@@ -343,19 +346,21 @@ v0.0.5 已把它整体移入仓库并相对化：
 
 ```
 tests/
-  run-all.mjs        全量入口：顺序跑 7 个套件 + 按 §7.2 基线校验断言数（护栏被删/改期望值也会红）
+  run-all.mjs        全量入口：顺序跑 8 个套件 + 按 §7.2 基线校验断言数（护栏被删/改期望值也会红）
   env.mjs            路径解析单一入口（仓库根 / index.html / README / 夹具）
   dom.mjs            极简 DOM stub（元素/classList/style/事件/localStorage）
-  app.mjs            加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now})
-  test.mjs   138 条  账本/周期/结转/投资池/导入导出/持久化/撤销重做 + **分摊成本 amort**(T28) + **分摊窗口口径**(T29)
+  app.mjs            加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now, navigator, TMap})
+                     （v0.0.12 起可注入浏览器定位与腾讯地图 SDK 桩, 测试全程不发网络请求）
+  test.mjs   152 条  账本/周期/结转/投资池/导入导出/持久化/撤销重做 + **分摊成本 amort**(T28) + **分摊窗口口径**(T29) + **P2 导入提示/持久化诊断/导出转义**
   test2.mjs   55 条  端到端命令流/弹窗/备份数据冒烟/阈值与红绿黄圆点
-  test3.mjs   85 条  P1 护栏（颜色令牌一致、kvRow、自适应列宽、死代码已删、响应式 CSS 在）
-  test4.mjs   85 条  M1 护栏（COMMANDS ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 双向校验）
-  test5.mjs   92 条  M2 护栏（语义槽位、@日期 位置无关、ghost 预览）+ amort 补全与双选项卡
-  test6.mjs   43 条  **H5 护栏**（pay full 命令 / config 按钮 / 弹窗 edit 分支可达；双通道等价）
-  test7.mjs  196 条  **v0.0.10 图表总结 + 合并入口护栏**（四窗口/三图型/桶金额恒等式/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/规范自检）
-  mutate-amort.mjs   **变异测试**: 33 组"把缺陷改回去" → 期望对应断言变红
-                     （amort 9 组 + H5 6 组 + H4 4 组 + 图表 4 组 + 合并入口 4 组 + 去重 1 组）
+  test3.mjs  123 条  P1 护栏（颜色令牌一致、kvRow、自适应列宽、死代码已删、响应式 CSS）+ v0.0.11 统一视觉组件 + v0.0.12 自定义类别独立色板
+  test4.mjs  121 条  M1 护栏（COMMANDS ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 双向校验 + P0 比例/金额边界 + P2 config 第四 token/help 与补全暴露）
+  test5.mjs   92 条  M2 护栏（语义槽位、@日期位置无关、ghost 预览）+ amort 补全与双选项卡（含 P0 分摊预览口径；`config` 不再整体返回空）
+  test6.mjs   59 条  **H5 护栏**（pay full 命令 / config 按钮 / 弹窗 edit 分支可达；双通道等价；程序化入口统一提交）
+  test7.mjs  206 条  **v0.0.10 图表总结 + 合并入口护栏**（四窗口/三图型/桶金额恒等式/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/规范自检 + 同版浮层互斥 CH10）
+  test8.mjs  163 条  **v0.0.12 地点护栏**（字段归一化往返/place 命令/#地点/弹窗双通道/启动预热一次/记账同步写入/左上角 Canvas 准星/GCJ-02/缓存与撤销/合规源码断言/Key 打码 + 同版 P0 备注转义 + P1 Key/SDK/诊断/类别/place）
+  mutate-amort.mjs   **变异测试**: 77 组"把缺陷改回去" → 期望对应断言变红
+                     （amort 9 + H5 6 + H4 4 + 图表 5 + 合并入口 5 + 视觉 4 + 地点 13 + P0 6 + 浮层互斥 2 + P1 14 + P2 8）
   gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window/gen-h5/gen-chart.mjs   浏览器验证用页面生成器（默认输出到系统临时目录；
                                                     gen-window / gen-chart 自带 Date 桩把时钟钉在 2027-08-30，见 §7.3）
   fixtures/user_backup.json                  **全合成**账本夹具（不含任何真实账目）
@@ -374,9 +379,9 @@ tests/
 ### 7.2 跑法与验证闸门（两档）
 
 ```powershell
-# 全量（发版 / 跨模块改动）：顺序跑 7 个套件 + 基线校验，任一项失败/断言数不符即非 0 退出
+# 全量（发版 / 跨模块改动）：顺序跑 8 个套件 + 基线校验，任一项失败/断言数不符即非 0 退出
 node tests/run-all.mjs
-#   ✓ 138 / 55 / 103 / 90 / 92 / 43 / 197 → 合计 718
+#   ✓ 152 / 55 / 123 / 121 / 92 / 59 / 206 / 163 → 合计 971
 
 # 日常小更新：只跑本次改动涉及的套件 —— 这已经满足低档闸门
 node tests/test5.mjs
@@ -400,7 +405,7 @@ $env:BT_FIXTURE="C:\...\budget_term_backup.json"; node tests/run-all.mjs
 **高档 · 发版，或改动落在共享抽象上（跨模块）**
 
 ```
-[ ] node tests/run-all.mjs  → 合计 718 PASS / 0 FAIL（138/55/103/90/92/43/197，且与基线一致）
+[ ] node tests/run-all.mjs  → 合计 971 PASS / 0 FAIL（152/55/123/121/92/59/206/163，且与基线一致）
 [ ] 改动涉及 UI/视觉 → 浏览器确认改的那块对；**发版或专门动样式**时顺带量 1400 / 900 / 520 三档，
     scrollWidth === clientWidth（适配性是发版检查项，不是每次小更新的检查项）
 [ ] 改动涉及颜色/主题 → 探针确认 COLOR.* 与 CSS 令牌（js_* vs css_*）逐项相等
@@ -493,7 +498,7 @@ $env:BT_HTML="C:\temp\mut.html"; node tests/test5.mjs      # 必须 FAIL，且�
 v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 组、自动校验"命中恰好一次"），
 新增功能时**照它加一段 `MUTANTS` 就行**，别再手搓命令。
 
-已实测 40 组（脚本 `mutate-amort.mjs` 33 组 + 早期手工 7 组），覆盖全部 **7** 个套件：
+已实测 84 组（脚本 `mutate-amort.mjs` 77 组 + 早期手工 7 组；其中 v0.0.12 P1 新增 14 组、P2 新增 8 组），覆盖全部 **8** 个套件：
 
 | 变异体 | 套件 | 还原的缺陷 | 应变红 |
 | --- | --- | --- | --- |
@@ -531,6 +536,24 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 
 | `m_report_both` | test7 | 合并入口退化成只画柱状图（要求同时出两图） | 8 条红 |
 | `m_report_date_modal` | test7 | 手动输日期弹窗又拼回 `list`（选了总结却跳去消费列表） | 2 条红 |
 | `m_report_date_window` | test7 | 填了具体日期却按整月统计（指定日期窗口失效） | 2 条红 |
+
+**v0.0.12 新增 9 组地点变异**（全部命中 `test8.mjs`，实测全被抓住）：
+`m_geo_normalize`（归一化丢 `place`）、`m_geo_dispatch`（抹掉 `place` 分支）、
+`m_geo_commit`（回填只 `save()` 不走统一提交点）、
+`m_geo_undo`（**同版 P0 修复后反转**：回填绕开 `mutate` → 地点又不可撤销、被无关 undo 清掉）、
+`m_geo_amort`（分摊也自动定位）、`m_geo_coords`（坐标写进记录）、
+`m_geo_fetch`（绕过官方 Geocoder 手写外部请求）、`m_geo_key`（前端硬编码 Key）、
+`m_geo_toolbar`（主页切换绕过命令直改 state）。另修正了 `m_config_btn` 漂移的锚点（按钮文案早已改成「当前配置」）。
+
+**v0.0.12 同版 P0 修复新增 7 组**（脚本共 **51 组**，全部被抓住）：`m_p0_note_escape`（弹窗备注不转义）、
+`m_p0_unescape`（不还原转义备注）、`m_p0_date_last`（`@日期` 又取最后一个 token）、
+`m_p0_geo_identity`（去掉记录对象引用校验 → undo 后 id 复用串记录）、
+`m_p0_ratio`（`config set ratio` 又按投资比例解释）、`m_p0_amount`（去掉 `r2` 后 >0 校验）、
+`m_p0_amort_preview`（分摊预览应投又按逐日累计算）。
+`m_geo_undo` / `m_geo_coords` / `m_geo_amort` 的锚点随 `applyAutoPlace()` 改动同步更新。
+
+**同版「浮层互斥」修复新增 2 组**（脚本共 **51 组**，全部被抓住）：`m_dd_exclusive`（`toggleDd()` 打开前不关其它浮层 → 多个下拉又叠在一起）、
+`m_modal_exclusive`（`openOverlay()` 不关其它浮层 → 弹窗/下拉又同时打开）；对应 `test7.mjs` CH10.1–CH10.9。
 
 > 后两组是 v0.0.7 新增：它们**打的是同一个缺陷的两个不同点**（金额求和 / 行筛选），
 > 所以必须各自变红 —— 只改金额时列表里连行都看不到，只改筛选时行在但金额不对（F14 的做法）。
@@ -590,18 +613,23 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 
 | 断言总数 | 353 | **415** | **455** | **455** | **498** | **718** | v0.0.11 相对 v0.0.10 +19：`test3.mjs` §8 统一视觉（标题/比例条/堆叠条/类别行/迷你柱）；v0.0.10 曾相对 v0.0.9 +201（`test7.mjs` 196 条 + `test4.mjs` 5 条） |
 | 变异测试组数 | 7 | 13 | **16** | **16** | **26** | **35** | v0.0.10 新增 9 组（图表 4 组 + 合并入口 4 组：`m_report_summary` / `m_report_both` / `m_report_date_modal` / `m_report_date_window`），全部被抓住 |
 
+> **v0.0.12 当前权威基线（含同版 P0 / 启动预热 / P1 / P2 四轮修复）**：`run-all.mjs` 的 `SUITES` = **971 条全绿**（152/55/123/121/92/59/206/163），
+> `mutate-amort.mjs` **77 组变异全部被抓住**（13 组地点 + 6 组 P0 + 2 组浮层互斥 + **14 组 P1 + 8 组 P2**）。上表是各版历史快照，
+> 历史时点：840/42 → 871/51 → 896/55 → 948/69 → **971/77**；一切数字以 `run-all.mjs` / `mutate-amort.mjs` 的实际输出为准。
+
 ### 8.1 测试装置自身的量化（增删护栏时同步这里与 `run-all.mjs` 的基线表）
 
-| 套件 | v0.0.5 | v0.0.6 | v0.0.8 | v0.0.9 | **v0.0.10** | 责任范围 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `test.mjs` | 78 | 110 | **138** | 138 | 138 | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + `amort`(T28) + 分摊窗口口径(T29) |
-| `test2.mjs` | 55 | 55 | 55 | 55 | 55 | 端到端命令流/弹窗/备份冒烟/阈值与圆点 |
-| `test3.mjs` | 84 | 84 | **85** | 85 | 85 | P1 护栏：颜色令牌/`kvRow`/自适应列宽/死代码/响应式 CSS 规则 |
-| `test4.mjs` | 79 | 85 | 85 | 85 | **90** | M1 护栏：登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 |
-| `test5.mjs` | 57 | 81 | **92** | 92 | 92 | M2 护栏：语义槽位/`@日期`/ghost + `amort` 补全与双选项卡 + 起始日精确到日 |
-| `test6.mjs` | — | — | — | **43** | 43 | **H5 护栏**：双通道对称（`pay full` 命令/按钮同通道、`config` 按钮、弹窗 edit 分支可达） |
-| `test7.mjs` | — | — | — | — | **196** | **v0.0.10 图表总结 + 合并入口**：四窗口/三图型/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用 |
-| **合计** | 353 | 415 | **455** | **498** | **718** | 增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
+| 套件 | v0.0.5 | v0.0.6 | v0.0.8 | v0.0.9 | v0.0.10 | **v0.0.12** | 责任范围 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `test.mjs` | 78 | 110 | **138** | 138 | 138 | **152** | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + `amort`(T28) + 分摊窗口口径(T29) + P2 导入/持久化/导出（+14） |
+| `test2.mjs` | 55 | 55 | 55 | 55 | 55 | **55** | 端到端命令流/弹窗/备份冒烟/阈值与圆点 |
+| `test3.mjs` | 84 | 84 | **85** | 85 | 114 | **123** | P1 护栏：颜色令牌/`kvRow`/自适应列宽/死代码/响应式 + 统一视觉组件 + v0.0.12 自定义类别色板（+9） |
+| `test4.mjs` | 79 | 85 | 85 | 85 | 101 | **121** | M1 护栏：登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表（+2 = `place`/`where`；同版 P0 +8 = 金额/比例口径；P2 +10 = config 第四 token/help/补全） |
+| `test5.mjs` | 57 | 81 | **92** | 92 | 92 | **92** | M2 护栏：语义槽位/`@日期`/ghost + `amort` 补全与双选项卡 + 起始日精确到日（同版 P0 +1 = 预览口径；P2 断言改写至 92） |
+| `test6.mjs` | — | — | — | **43** | 59 | **59** | **H5 护栏**：双通道对称 + 程序化入口统一提交 |
+| `test7.mjs` | — | — | — | — | 197 | **206** | **v0.0.10 图表总结 + 合并入口**：四窗口/三图型/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用（同版浮层互斥 +9 = CH10） |
+| `test8.mjs` | — | — | — | — | — | **163** | **v0.0.12 地点**：字段/命令/弹窗/mock 定位/GCJ-02/统一提交点/合规断言（P0 +13 = 备注转义/异步回填；预热重构 +25；**P1 +43 = Key/SDK/诊断/类别/place**） |
+| **合计** | 353 | 415 | **455** | **498** | 756 | **971** | v0.0.12 列为 P2 修复后的**当前值**；增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
 
 ---
 
@@ -633,6 +661,70 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 
 ---
 
 ## 10. 各版变更对既有结论的影响
+
+### v0.0.12：地点（自动定位 / 手动）—— 新增可选字段 + 首个外部服务
+
+新增记录字段 `place`（行政区地名字符串），新增 `place` 命令、`#地点` 参数、`config set geo|geokey` 与主页「地点 ▾」入口。
+**金额口径、`amount` 语义、`LS_KEY`、备份头（`app` / `version:2`）、精度与 13:2 投资比例全部未动**；
+旧备份没有 `place` 时由 `normalizeRecords()` 回落空串，零迁移。
+
+| 既有结论 | 影响 |
+| --- | --- |
+| H4（统一提交点） | **本版重点**：定位是异步的，命令 `mutate → commitIfDirty()` 出口之后结果才回来。回填不在回调里直改 state，而是 `applyAutoPlace()` 走统一提交点 **`commit()`**（落盘 + `refreshAll()`）；首次交付时不经 `mutate`、只压一步撤销。**同版 P0 修复后改为经 `mutate` 压一步撤销**（地点可单独 undo/redo），见本节末尾；`test8` GEO.34/48 + `m_geo_commit` / `m_geo_undo`（已反转）双向守住 |
+| H5（双通道对称） | 保持：弹窗两个选项卡的地点输入、`✎ 编辑` 预填/清空、主页模式切换、按 id 补填，全部拼命令回灌 `runCommand`；`GEO_COMMANDS` 与 `submitGeoPlace()` 是同一条命令路径，`m_geo_toolbar` 防止绕过 |
+| M1（命令清单单一数据源） | 扩展：新增主名 `place` / 别名 `where` 只登记在 `COMMANDS`，help / 别名 / 补全 / README / §1.4 由测试双向校验；`test4` 因两个新名字从 101 → 103 |
+| M2（补全语义槽位） | `#地点` 与 `@日期` 一样位置无关、不占槽位；`tokenize()` 保留引号前的 `#` 前缀（`#"..."` 与 `"#..."` 两种写法都合法），纯引号开头的旧行为不变 |
+| F1 / F12（横向重复 / 死代码） | 地名归一只有 `normalizePlace()` 一份，五处对称保留（`makeRecord` / `normalizeRecords` / `doUpdate` / `renderRecordRow` / `buildReportText`）；参数拆分收口到 `splitRecordArgs()` |
+| 安全 / XSS | 外部 API 返回的地名只用 `line()` / `addSeg()` 的 `textContent` 渲染；`innerHTML` 仍恰好 4 处且都是清空；地名先清洗控制字符并截断 60 字 |
+| 新增结论：合规与隐私 | 只接**腾讯地图 JSAPI GL**（`TMap.service.Geocoder`），不手写 `fetch`、不接非合规地图源；SDK 按需加载且 URL 只带用户自填 Key，代码仅有显式占位符；`echoCommand()` / `config` 对 Key 打码。**坐标只在内存里，不写记录/备份/导出**，落盘的只有省/市/区字符串；`m_geo_coords` / `m_geo_fetch` / `m_geo_key` 是对应的变异护栏 |
+| 新增结论：失败降级 | 无 `navigator.geolocation`（含离线测试环境）、拒绝授权、超时、无 Key、SDK 加载失败、空地址、记录已删/已手填 —— 一律静默跳过，不阻断记账；只有 `add` 触发，`amort` 永不自动定位（`m_geo_amort` 守着） |
+| 首个外部依赖 | 应用从"零网络请求"变成"可选的一次 SDK 加载 + 一次逆地理编码"；默认 `geoMode:"auto"` 但 `geoKey:""`，未配置时不会发起任何网络请求，离线单文件定位不变 |
+
+**同版 P0 修复（2026-11-09，未升版本号）**：按 `HANDOVER.md` §6A 的审查结论修掉 8 条 P0，
+**数据结构 / `LS_KEY` / 备份头 / 精度 / 13:2 全部未动**，老备份零迁移。
+
+| 既有结论 | 影响 |
+| --- | --- |
+| M2 / `splitRecordArgs()` | 备注首字符为 `#`/`@` 时由 `quoteNote()` 前置 `\` 转义，拆分后由 `unescapeArg()` 统一还原；`findDateToken()` 只取**第一个** `@日期`，其余 `@…` 保留为备注。地点与备注不再互换、备注不再被吞 |
+| H4 / 异步回填 | `startAutoPlace()` 改传**记录对象**，`applyAutoPlace()` 用 `state.records.includes(rec)` 做身份校验（undo/导入/删除都会换掉对象引用），并复查 `geoMode`/`geoKey`；回填经 `mutate` 再 `commit()`。**自动填地点现在是独立可撤销的一步**，不受无关 undo 静默清掉 |
+| M3（数字解析多入口） | 金额类设置新增唯一入口 `parseAmount()`（有限、>0、`r2` 后仍 >0），覆盖 `config set budget` / `set budget` / `budget set` / `budget default` / `set daily` 与 `normalizeSettings()` 的备份归一化；M3 其余部分仍未修 |
+| 分摊口径（§2.5 / F13） | 预览与 `makeRecord()` 共用「记录总价 `r2(total)`」算应投；逐日累计 `r2(daily×days)` 单独标为消费口径。恒等式不变，但预览不再把两者混成一个「合计」 |
+| `config set` 与 `set` 一致性 | `ratio`/`share`/`consume` 统一按消费占比解释（只有 `invest`/`investment` 按投资比例），消除 `config set ratio 0.85 → 99.15%` 的重算历史应投缺陷 |
+| 护栏 | 共新增 31 条断言（`test4` +8 / `test5` +1 / `test7` +9 浮层互斥 / `test8` +13），全量 **871 PASS / 0 FAIL**；变异脚本 42 → **51 组**（7 组 P0 + 2 组浮层互斥；"m_geo_undo" 反转、3 组锚点同步），**全部被抓住** |
+| 浮层互斥（用户反馈） | 新增 `DD_IDS`/`MODAL_IDS` 单一清单 + `closeAllOverlays()` / `openOverlay()` / `closeAllDd()`；`toggleDd()` 打开前先关其它浮层，六个弹窗入口统一走 `openOverlay()` → 全局同时最多一个 `open`；二次点击仍能关自己、点空白仍收起下拉 |
+
+**同版迭代 · 启动预热重构 + 左上角 Canvas 定位（2026-11-09，用户反馈）**：用户实测「定位晚于数据落盘」，
+要求「每次打开后自动申请一次定位」并在左上角显示区名。这次是**整条链路重排**，不是给异步回填打补丁：
+
+| 既有结论 | 影响 |
+| --- | --- |
+| H4（统一提交点） | `applyAutoPlace()` / `startAutoPlace()` **整体删除**。`boot()` 调 `primeGeoLocation()` 只申请一次；结果只写内存 `geoCache` + 独立键 `budget_term_geo_v1` + 左上角 badge，**异步链路不再触碰 `state.records`、不再调 `commit()`**。`doAdd` 同步 `rec.place = currentGeoPlace()`，随命令 `mutate → commitIfDirty()` 一次落盘。一次记账仍只压一步撤销 |
+| 根因消除 | 原 P0「对象引用校验 / 地点独立一步撤销 / 迟到结果丢弃」防的缺陷不再可能发生：没有延迟写入就没有串号、被 undo 吞掉、期间切模式污染。相关断言改写为预热模型下的撤销 / 配置变更 / 导入行为 |
+| H5（双通道） | 不变；新增「点左上角图标重定位」`primeGeoLocation(true)`，切模式 / 填 Key 也各补一次，记账时零定位请求 |
+| 新增结论：左上角 badge | `renderGeoBadge()` 由 `refreshHeader()` 清空后第一个 append（不占 `#statusbar .stat` 索引）；`drawGeoIcon()` 用 **Canvas 2D** 画准星（圆环 + 四向直角刻线 + 方形中心点，16×16 @2x，状态色取 `COLOR.*`），**不用 Emoji / 外部图片**；文字只显示 `district`（`districtFromAddressComponent()` / `districtOf()` 兜底）。`getContext` 不可用静默降级 |
+| 新增结论：跨会话缓存 | 地名（非坐标）存独立 localStorage 键，不进账本 / 备份 / 撤销栈；下次打开瞬间显示，首笔即可同步带地名。`config set geo manual` / `geokey off` 清缓存 |
+| 护栏 | `test8.mjs` 95 → **120 条**，`app.mjs` 支持 `seedStorage` 注入 Key 让 boot 预热真实跑起来；`mutate-amort.mjs` 51 → **55 组**（13 组地点护栏随模型重写，4 组漂移锚点修复）。全量 **896 全绿**，变异全被抓住 |
+
+**同版修复 · P1（2026-11-09，按 `HANDOVER.md` §6A.2）**：6 条 P1 全修；**领域模型、存储字段、精度与 13:2 全部未动**。
+
+| 既有结论 | 影响 |
+| --- | --- |
+| A2 / F1（横向重复） | 三处"同一个语义写两遍"被收口：Key 校验 → `normalizeGeoKey()`（命令写入 / 备份重启共用）；类别来源 → `knownCategories()`（datalist / 补全 / 提示 / 配色共用）；`place` 参数 → 复用 `splitRecordArgs()`（与 `add`/`amort`/`update` 同口径） |
+| **H3（分类三个真相来源）** | ✅ **已修**（从 P3 债务清单移出）：`validateCategory()` 不再写全局 `PREDEFINED`，消除命令失败时不受 `undo`/落盘约束的副作用；`restoreFromText → commit → refreshAll → refreshCatlist` 让导入备份后自定义类别不再丢；`customCatColor()` 按已知自定义类别排序索引从独立色板取色，解决 B-15「相邻同色无分界」 |
+| B6 / B7（静默忽略输入 / 假成功） | 定位/SDK/逆地理编码失败不再 `.catch(()=>{})` 全吞：`geoErrorText()`/`geoWarnOnce()` 按原因一次性提示 + `console.warn` + badge `title`；SDK `onload` 缺 Geocoder / `onerror` / 超时 / 宿主缺失都清缓存可重试；脏 Key 当场拒绝而非静默存下 |
+| A8 / F7（两条路径不一致） | `config set geokey` 与 `normalizeSettings()` 同规则；弹窗回灌 `quote()` / `quoteNote()` 与命令行同通道；换 Key 调 `resetTMapSDK()` 使 UI 状态与 SDK 实例一致（旧实现改 Key 仍复用旧 Key 的 SDK） |
+| H1（颜色双轨） | 新增 `CUSTOM_CAT_PALETTE` 8 个 hex **只出现在色板常量里**（`test3` C6 计数 15→23），`catColor()` 仍只从调色板取色；图表区没有散落的颜色字面量 |
+| 护栏 | `test3` 114→**123**、`test8` 120→**163**；`run-all.mjs` 基线 896→**948**；`mutate-amort.mjs` 55→**69**（P1 新增 14 组，全部被抓住）。顺带同步 4 条随「行内 Canvas 图标 / 导出 `地点:` 文字降级」漂移的旧断言（GEO.58/62b/79/80） |
+
+**同版修复 · P2（2026-11-09，按 `HANDOVER.md` §6A.3）**：5 条 P2 全修（B-16～B-20）；**领域模型、存储字段、精度与 13:2 全部未动**。
+
+| 既有结论 | 影响 |
+| --- | --- |
+| F9（静默失败路径） | 全面可观测：`save()` 每次失败都 `console.warn`；`restoreFromText()` 重复导入不再误提示「可 undo」；`config set budget` 非法第四 token 报错；自动写盘失败回落 `autosaveOn` 并同步 UI |
+| A3 / §3.11（持久化） | `commit()` 感知 `save()` 失败并返回 false，持久化成败有明确契约；自动写盘由永不报错改为可降级且留痕 |
+| M2（输入转义） | 新增 `escapeMd()`（`\\`、`` ` ``、`**`、`#`、`|` 等 11 个字符），`buildReportText()` 逐笔行补 `created` 字段，与记录字段对齐；`normalizeRecords()` 对 `note` 与 `place` 同一清洗纪律 |
+| M1（help/补全） | `configUsage()` 补 `consume|ratio|share` 子名行；`argCandidates()` 为 `config` 各子命令的合法值提供候选，与 `doConfig` 的真实语义同口径 |
+| 护栏 | `test.mjs` 138→**152**、`test4.mjs` 111→**121**、`test5.mjs` 93→**92**（断言改写）、`app.mjs` 暴露 `save()` 与 `autosaveOn`；`run-all.mjs` 基线 948→**971**；`mutate-amort.mjs` 69→**77**（P2 新增 8 组，全部被抓住） |
 
 ### v0.0.11：输出层视觉统一 —— 只动渲染，不动口径
 

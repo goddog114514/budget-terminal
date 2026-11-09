@@ -37,12 +37,42 @@ function eq(name, a, b){ ok(name, JSON.stringify(a)===JSON.stringify(b), "got " 
   ok("C5 未登记类别兜底色一致", S.PREDEFINED.get("不存在的类别") === undefined);
 }
 
-/* ---------- 2. JS 里不再有散落的颜色字面量(只允许 COLOR 定义块 + 调色板 2 个扩展色) ---------- */
+/* ---------- 2. JS 里不再有散落的颜色字面量(只允许 COLOR 定义块 + 两组调色板) ---------- */
 {
   const quoted = js.match(/"#[0-9a-fA-F]{6}"/g) || [];
-  eq("C6 JS 内引号 hex 只剩 15 个(13 个 COLOR 默认值 + 2 个调色板扩展色)", quoted.length, 15);
+  eq("C6 JS 内引号 hex 只剩 23 个(13 COLOR + 2 默认扩展 + 8 自定义类别色)", quoted.length, 23);
   ok("C7 终端输出里没有 c:\"#...\" 形式", !/c:\s*"#/.test(js));
   ok("C8 style.color 不再直接赋 hex", !/style\.color\s*=\s*"#/.test(js));
+  const S = loadApp(); S.boot();
+  const C = S.COLOR;
+  eq("C9 自定义类别色板 8 色", S.CUSTOM_CAT_PALETTE.length, 8);
+  ok("C9b 自定义色板与默认色板/兜底色完全不重叠",
+     new Set(S.CUSTOM_CAT_PALETTE).size===8 &&
+     S.CUSTOM_CAT_PALETTE.every(c=>!S.CAT_PALETTE.includes(c) && c!==C.catFallback));
+  ok("C9c 默认类别仍取默认色板, 未知类别回落兜底色",
+     S.catColor("餐饮")===C.green && S.catColor("不存在的类别")===C.catFallback);
+}
+
+/* ---------- 2b. P1 B-15: 自定义类别不再共用兜底色 ---------- */
+{
+  const S = loadApp(); S.boot();
+  S.runCommand("add 50 我的自定义类别");
+  S.runCommand("add 60 另一个自定义类别");
+  const a = S.catColor("我的自定义类别"), b = S.catColor("另一个自定义类别");
+  ok("C10 两个自定义类别不同色", a!==b, JSON.stringify([a,b]));
+  ok("C10b 自定义类别不再共用兜底色", a!==S.COLOR.catFallback && b!==S.COLOR.catFallback);
+  ok("C10c 自定义类别色与默认类别色都不冲突", !S.CAT_PALETTE.includes(a) && !S.CAT_PALETTE.includes(b));
+  S.runCommand("add 30 餐饮");
+  ok("C10d 记账顺序变化后颜色仍稳定",
+     S.catColor("我的自定义类别")===a && S.catColor("另一个自定义类别")===b);
+  ok("C10e 排序相邻的自定义类别必异色", (()=>{
+    const xs = S.knownCategories().filter(c=>!S.PREDEFINED.has(c)).sort();
+    return xs.length>=2 && xs.every((c,i)=> i===0 || S.catColor(c)!==S.catColor(xs[i-1]));
+  })());
+  const text = S.serializeState();
+  const S2 = loadApp(); S2.boot(); S2.restoreFromText(text);
+  ok("C10f 备份导入后颜色不漂移(跨会话稳定)",
+     S2.catColor("我的自定义类别")===a && S2.catColor("另一个自定义类别")===b);
 }
 
 /* ---------- 3. kvRow: 唯一渲染器 + 列宽行为 ---------- */

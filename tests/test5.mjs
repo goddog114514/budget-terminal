@@ -74,7 +74,8 @@ const IDS = ["1","2"];
 
 /* ---------- 7. 无参命令与其它命令不误提示 ---------- */
 {
-  for(const c of ["help ","config ","cls ","undo ","redo ","assets ","forecast ","assets 10 ","nosuchcmd "]){
+  /* P2 B-20: config 现在给子命令候选(不再整体返回空), 从"无候选"清单移到下面专门断言 */
+  for(const c of ["help ","cls ","undo ","redo ","assets ","forecast ","assets 10 ","nosuchcmd "]){
     eq("M2.34 " + c.trim() + " 无参数候选", cand(c), []);
   }
   eq("M2.35 budget 子命令", cand("budget "), ["set","default","reset"]);
@@ -142,12 +143,21 @@ const IDS = ["1","2"];
   doc.getElementById("fa_days").value = "365";
   doc.getElementById("fa_date").value = "2027-08-17";     // 精确到日(type="date" 的 ISO 值)
   S.updateAmortHint();
-  const shownTotal = S.r2(S.r2(3000/365)*365);
-  ok("M2.62 预览显示每天金额 + 应投 + 起始日(与终端同口径)",
+  const recTotal = S.r2(3000);                       // P0: 应投按"记录总价", 不是逐日累计
+  const accrued  = S.r2(S.r2(3000/365)*365);        // 消费口径(逐日累计), 允许与总价不等
+  ok("M2.62 预览显示每天金额 + 应投(按记录总价) + 起始日",
      hint.textContent.includes("每天 ¥"+S.money(S.r2(3000/365)))
-     && hint.textContent.includes("¥"+S.money(S.investOf(shownTotal).mm))
-     && hint.textContent.includes("从 2027-08-17 起"),
+     && hint.textContent.includes("¥"+S.money(S.investOf(recTotal).mm))
+     && hint.textContent.includes("从 2027-08-17 起")
+     && hint.textContent.includes("记录总价 ¥"+S.money(recTotal))
+     && hint.textContent.includes("逐日累计 ¥"+S.money(accrued)),
      hint.textContent);
+  const C = loadApp(); C.boot(); C.clearTerm(); C.runCommand("amort 3000 365 房租");
+  ok("M2.62f 预览应投 == 实际记账应投(都按 r2(总价), 不是逐日累计)",
+     C.state.records.length===1
+     && C.state.records[0].mm === C.investOf(recTotal).mm
+     && Math.abs(C.state.records[0].mm - C.investOf(accrued).mm) > 0.001,
+     JSON.stringify([C.state.records[0] && C.state.records[0].mm, C.investOf(recTotal).mm, C.investOf(accrued).mm]));
   ok("M2.62b 预览给出精确到日的生效区间(含首尾)",
      hint.textContent.includes("2027-08-17 ~ 2028-08-15"), hint.textContent);
   ok("M2.62c 起始日期带日, 不再被吸到 1 号",

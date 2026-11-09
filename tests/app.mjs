@@ -59,6 +59,7 @@ export function loadApp(opts = {}){
     parseChartArgs, resolveWindow, chartBuckets, renderBarChart, renderPieChart,
     printChartAnalysis, renderChartBody, doChart, doReport, CHART_MAX_BUCKETS, CHART_PLOT_H,
     toggleDd, closeDd, onRangeMenuItem, RANGE_COMMANDS,
+    DD_IDS, MODAL_IDS, closeAllOverlays, openOverlay, closeAllDd,
     openDateModal, closeDateModal, applyDateModal, updateDatePreview, dateModalCmd,
     get dateModalTarget(){ return dateModalTarget; },
     doConfig, openBudgetModal, closeBudgetModal, applyBudget,
@@ -67,11 +68,29 @@ export function loadApp(opts = {}){
     doInvestFull, undo, redo, applyState,
     consumeShare, investShare, rateSplit, consumePct, invPct, mmPct, idxPct,
     ratioDot, todaySnapshot, normalizeSettings, normalizeRecords, repairDate, barLevel, alertWord,
-    COLOR, CAT_PALETTE, kvRow, kvColWidth, termCols, KV_MIN, KV_MAX,
+    COLOR, CAT_PALETTE, CUSTOM_CAT_PALETTE, catColor, customCatColor, knownCategories,
+    kvRow, kvColWidth, termCols, KV_MIN, KV_MAX,
     sectionHead, chartHead, ratioBar, hbarTrack, stackBar, catRows, miniBars, withAlpha,
+    escapeMd, configUsage, scheduleFileWrite, refreshAutosaveUI,
+    get autosaveOn(){ return autosaveOn; },
+    set autosaveOn(v){ autosaveOn = !!v; },
     MINI_MAX, MINI_PLOT_H,
     COMMANDS, CMD_ALIAS, COMMAND_NAMES, CMD_WORDS, canonicalCmd, argCandidates, printHelp,
     completionCandidates, currentGhostSuffix,
+    /* v0.0.12 地点专项: 允许注入 navigator.geolocation 与 TMap 来驱动「启动预热」链路 */
+    normalizePlace, normalizeGeoKey, findPlaceToken, splitRecordArgs, quotePlace, quote, quoteNote, doPlace, maskGeoKey, geoModeLabel,
+    wgs84ToGcj02, placeFromAddressComponent, districtFromAddressComponent, districtOf,
+    loadTMapSDK, resetTMapSDK, geoLocate, geoReverse, geoErrorText, geoWarnOnce,
+    GEO_SDK_TIMEOUT_MS, GEO_TIMEOUT_MS,
+    get tmapLoadedKey(){ return tmapLoadedKey; },
+    get tmapScriptEl(){ return tmapScriptEl; },
+    loadGeoCache, saveGeoCache, clearGeoCache, setGeoStatus, renderGeoBadge, primeGeoLocation,
+    paintGeoIcon, drawGeoIcon, makeGeoIcon, geoPlaceSegs,
+    currentGeoPlace, geoHintOnce, refreshGeoUI, openGeoModal, closeGeoModal, updateGeoHint, setGeoMode,
+    saveGeoKey, submitGeoPlace, GEO_COMMANDS, GEO_CACHE_KEY, GEO_SDK_BASE, GEO_SDK_URL_TEMPLATE, GEO_KEY_PLACEHOLDER,
+    get geoCache(){ return geoCache; },
+    get geoStatus(){ return geoStatus; },
+    get geoPrimed(){ return geoPrimed; },
     money, r2, r6, daysBetween, addDaysYMD, addMonths, lastDay, parseYMD, todayYMD, mkYMD,
     get term(){ return term; },
     get undoDepth(){ return undoStack.length; },
@@ -85,11 +104,15 @@ export function loadApp(opts = {}){
                      INVEST_SHARE: typeof INVEST_SHARE, inRange: typeof inRange })
   };`;
 
+  /* opts.navigator 可注入 geolocation (测试自动定位链路); opts.TMap 可注入腾讯地图 SDK 桩。
+     两者都不传时, 应用会走"无定位能力 → 静默降级"路径, 与既有 7 个套件完全一致。 */
   const factory = new Function(
-    "window","document","localStorage","console","setTimeout","URL","Blob","getComputedStyle","indexedDB","navigator","Date",
+    "window","document","localStorage","console","setTimeout","clearTimeout","URL","Blob","getComputedStyle","indexedDB","navigator","Date","TMap",
     code + expose
   );
-  const api = factory(window, doc, localStorage, consoleStub, setTimeout, URLStub, Blob, getComputedStyle, undefined, {userAgent:"node"}, FakeDate);
+  const nav = Object.assign({userAgent:"node"}, opts.navigator || {});
+  const api = factory(window, doc, localStorage, consoleStub, setTimeout, clearTimeout, URLStub, Blob, getComputedStyle,
+                      undefined, nav, FakeDate, opts.TMap);
   api.__doc = doc;
   api.__storage = localStorage;
   api.__window = window;

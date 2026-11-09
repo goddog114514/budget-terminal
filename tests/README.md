@@ -12,17 +12,17 @@
 发版、或改动落在共享抽象/存储/领域口径上时才跑全量。
 
 ```powershell
-# 全量（发版 / 跨模块改动）: 顺序跑全部 7 个套件, 汇总断言数并对照交付闸门基线
+# 全量（发版 / 跨模块改动）: 顺序跑全部 8 个套件, 汇总断言数并对照交付闸门基线
 node tests/run-all.mjs
 
 # 日常小更新: 只跑相关的那一个（同样满足低档闸门）
 node tests/test5.mjs
 
-# 变异测试: 只在你新增/改动护栏后重跑（33 组: 9 组分摊成本 + 6 组 H5 + 4 组 H4 + 5 组图表 + 5 组合并入口 + 4 组统一视觉, 必须全部被抓住）
+# 变异测试: 只在你新增/改动护栏后重跑（77 组: 分摊成本 / H5 / H4 / 图表 / 合并入口 / 统一视觉 / 地点 13 / P0 / 浮层互斥 / P1 14 / P2 8, 明细见 mutate-amort.mjs 的 MUTANTS, 必须全部被抓住）
 node tests/mutate-amort.mjs
 ```
 
-`run-all.mjs` 会在任一套件失败、**或断言数与 `HANDOVER.md` §5.3 的基线不符**时以非 0 退出 ——
+`run-all.mjs` 会在任一套件失败、**或断言数与 `run-all.mjs` 顶部 `SUITES` 基线不符**时以非 0 退出 ——
 后者用来抓"护栏被悄悄删掉/改期望值"（失败模式 F4/B10）。增删断言后请同步更新 `run-all.mjs` 顶部的基线表。
 
 > **`gen-window.mjs` 为什么要自己冻结时钟**：浏览器里 `todayYMD()` 取的是**真实当天**，
@@ -35,14 +35,15 @@ node tests/mutate-amort.mjs
 
 | 套件 | 断言 | 覆盖 |
 | --- | --- | --- |
-| `test.mjs` | 138 | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + **分摊成本 `amort`（T28）** + **分摊窗口口径（T29）** |
+| `test.mjs` | 152 | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + **分摊成本 `amort`（T28）** + **分摊窗口口径（T29）** + **P2**（导入提示 / 持久化诊断 / 导出转义） |
 | `test2.mjs` | 55 | 端到端命令流/弹窗/备份数据冒烟/阈值与红黄绿圆点 |
-| `test3.mjs` | 85 | P1 护栏：颜色令牌一致、`kvRow`、自适应列宽、死代码已删、响应式 CSS |
-| `test4.mjs` | 90 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 |
-| `test5.mjs` | 92 | M2 护栏：语义槽位、`@日期` 位置无关、ghost 预览 + `amort` 补全与双选项卡（含起始日精确到日） |
-| `test6.mjs` | 43 | **H5 护栏**：双通道对称（`pay full` 命令 / `config` 按钮 / 弹窗 edit 分支可达、提交走 `update`、失效行不可编辑） |
-| `test7.mjs` | 196 | **v0.0.10 图表总结 + 合并入口 `report`**：四窗口 / 三图型 / 桶金额恒等式 / 分摊口径 / 预算口径 / 分析与结论 / 空数据 / 双通道 / 日期弹窗复用 / 规范自检 |
-| **合计** | **699** | |
+| `test3.mjs` | 123 | P1 护栏：颜色令牌一致、`kvRow`、自适应列宽、死代码已删、响应式 CSS + v0.0.11 统一视觉组件 + v0.0.12 自定义类别独立色板（C9/C10） |
+| `test4.mjs` | 121 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 + P0 `config`/`set` 比例与金额边界（M1.53–60） + **P2** `config` 第四 token/help 与补全暴露 |
+| `test5.mjs` | 92 | M2 护栏：语义槽位、`@日期` 位置无关、ghost 预览 + `amort` 补全与双选项卡（含起始日精确到日）+ P0 分摊预览口径（`config` 不再整体返回空） |
+| `test6.mjs` | 59 | **H5 护栏**：双通道对称（`pay full` 命令 / `config` 按钮 / 弹窗 edit 分支可达、提交走 `update`、失效行不可编辑）+ 程序化入口统一提交 |
+| `test7.mjs` | 206 | **v0.0.10 图表总结 + 合并入口 `report`**：四窗口 / 三图型 / 桶金额恒等式 / 分摊口径 / 预算口径 / 分析与结论 / 空数据 / 双通道 / 日期弹窗复用 / 规范自检 + 同版浮层互斥（CH10.1–10.9） |
+| `test8.mjs` | 163 | **v0.0.12 地点**：字段归一化与备份往返 / `place` 命令与 `#地点` / 弹窗双通道 / 启动预热一次 / 记账同步写入 / 左上角 Canvas 准星 / 缓存与撤销 / GCJ-02 / 合规源码断言 / Key 打码 + P0 备注转义 + **P1**（Key 归一化 / SDK 运行时分支与重试 / 失败诊断 / 类别真相来源 / place 参数，P1.1–P1.43） |
+| **合计** | **971** | 权威值见 `run-all.mjs` 顶部 `SUITES` |
 
 ## 环境变量（都有默认值，通常不用设）
 
@@ -132,9 +133,9 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 
 ## 变异测试（证明护栏真的有效）
 
-把已知缺陷改回去，确认对应断言会红。装置已用此法验证 **40 组**（脚本 33 组 + 早期手工 7 组），覆盖全部 **7** 个套件。
+把已知缺陷改回去，确认对应断言会红。装置已用此法验证 **84 组**（脚本 77 组 + 早期手工 7 组），覆盖全部 **8** 个套件。
 
-**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 33 组、
+**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 77 组、
 自动校验"变异点恰好命中一次"、并汇总哪些没被抓住。
 
 | 变异体 | 套件 | 还原的缺陷 | 结果 |
@@ -184,12 +185,12 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 
 ```
 tests/
-├─ run-all.mjs            单一入口(7 套件 + 基线校验)
-├─ mutate-amort.mjs       变异测试(33 组: 分摊成本 9 + H5 6 + H4 4 + 图表 5 + 合并入口 5 + 统一视觉 4)
+├─ run-all.mjs            单一入口(8 套件 + 基线校验, 合计 971)
+├─ mutate-amort.mjs       变异测试(77 组: 分摊成本 9 + H5 6 + H4 4 + 图表 5 + 合并入口 5 + 统一视觉 4 + 地点 13 + P0 6 + 浮层互斥 2 + P1 14 + P2 8)
 ├─ env.mjs                路径解析单一入口(仓库根 / HTML / README / 夹具)
 ├─ dom.mjs                极简 DOM stub(元素/classList/style/事件/localStorage)
-├─ app.mjs                加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now})
-├─ test.mjs test2..test7  7 个套件(含 test6 H5 专项 / test7 图表专项)
+├─ app.mjs                加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now, navigator, TMap})
+├─ test.mjs test2..test8  8 个套件(含 test6 H5 专项 / test7 图表专项 / test8 地点专项)
 ├─ gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window/gen-h5/gen-chart.mjs   浏览器验证用页面生成器
 └─ fixtures/user_backup.json                            合成账本夹具(无真实数据)
 ```

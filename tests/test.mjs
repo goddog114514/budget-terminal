@@ -461,6 +461,61 @@ function near(name, a, b, eps=1e-6){ ok(name, Math.abs(a-b)<=eps, "got "+a+" wan
   ok("T29.25 导出报告无 NaN", !/NaN/.test(rep));
 }
 
+/* ============ P2 修复护栏(v0.0.12 同版): 导入提示 / 持久化失败 / 导出转义 ============ */
+{
+  /* B-16: 重复导入同一份备份不压栈, 且不再提示"可 undo" */
+  const S = loadApp(); S.boot(); S.clearTerm();
+  const backup = JSON.stringify({app:"budget_term", version:2, settings:{}, seq:0,
+    records:[{id:1, amount:50, category:"餐饮", date:"2027-08-30", note:"午餐"}]});
+  S.restoreFromText(backup);
+  ok("P2.1 首次导入压撤销栈并提示可 undo",
+     S.undoDepth===1 && /可 undo 撤销/.test(S.lines().join("\n")), JSON.stringify([S.undoDepth, S.lines().join("|")]));
+  S.clearTerm();
+  S.restoreFromText(backup);
+  ok("P2.2 重复导入不新增撤销步", S.undoDepth===1, S.undoDepth);
+  ok("P2.3 重复导入提示内容一致, 不再误导去 undo",
+     /内容与当前账本一致/.test(S.lines().join("\n")) && !/可 undo 撤销/.test(S.lines().join("\n")), S.lines().join("|"));
+}
+{
+  /* B-18: localStorage 写失败可诊断、恢复有提示 */
+  const S = loadApp(); S.boot(); S.clearTerm();
+  const orig = S.__storage.setItem;
+  S.__storage.setItem = ()=>{ throw new Error("quota exceeded"); };
+  S.runCommand("add 50 餐饮");
+  S.runCommand("add 30 交通");
+  ok("P2.4 localStorage 写失败终端提示", /不允许写入本地存储/.test(S.lines().join("\n")), S.lines().join("|"));
+  ok("P2.5 console.warn 每次留痕(两次保存两条)", S.__logs.filter(l=>/\[save\]/.test(l)).length>=2, JSON.stringify(S.__logs));
+  S.clearTerm();
+  S.__storage.setItem = orig;
+  S.runCommand("add 20 会员");
+  ok("P2.6 恢复写入有提示且重新落盘",
+     /本地存储写入已恢复/.test(S.lines().join("\n")) &&
+     JSON.parse(S.__storage.getItem("budget_term_v1")).records.some(r=>r.category==="会员"), S.lines().join("|"));
+}
+{
+  /* B-18: 自动写盘失败回落 autosaveOn 并提示(UI 不再显示"开") */
+  const S = loadApp(); S.boot(); S.clearTerm();
+  S.autosaveOn = true;
+  await S.scheduleFileWrite();   // DOM stub 没有 showDirectoryPicker → writeToFolder 必然抛错
+  ok("P2.7 自动写盘失败回落 autosaveOn", S.autosaveOn===false, S.autosaveOn);
+  ok("P2.8 自动写盘失败留痕并提示",
+     /自动写盘失败/.test(S.lines().join("\n")) && S.__logs.some(l=>/\[autosave\]/.test(l)), S.lines().join("|"));
+}
+{
+  /* B-19: 导出 md 转义用户输入 + 补 created 字段 + note 归一化与 place 同纪律 */
+  const S = loadApp(); S.boot(); S.clearTerm();
+  S.runCommand('add 50 餐饮 "**加粗** 与 #标题" #"地点|管道"');
+  const r = S.state.records[0] || {};
+  ok("P2.9 备注与地点按原意入库", r.note==="**加粗** 与 #标题" && r.place==="地点|管道", JSON.stringify(r));
+  const md = S.buildReportText(true);
+  ok("P2.10 md 导出转义 **(不再产生强调)", md.includes("\\*\\*加粗\\*\\*") && !/\*\*加粗\*\*/.test(md), md.split("\n").filter(l=>/加粗/.test(l))[0]);
+  ok("P2.11 md 导出转义 # 与 |(不再产生标题/表格)", md.includes("\\#标题") && md.includes("地点\\|管道"));
+  ok("P2.12 txt 导出保持原文", S.buildReportText(false).includes("**加粗** 与 #标题"));
+  ok("P2.13 md 导出逐笔行含 created", /创建:2027-08-30/.test(md), md.split("\n").filter(l=>/#1/.test(l))[0]);
+  ok("P2.14 note 控制字符被归一化清洗(与 place 同纪律)",
+     S.normalizeRecords([{amount:10, date:"2027-08-30", note:"a\u0001b"}]).records[0].note==="a b");
+}
+
 console.log("PASS " + pass + " / FAIL " + fails.length);
 for(const f of fails) console.log("  ✗ " + f);
 process.exit(fails.length? 1 : 0);

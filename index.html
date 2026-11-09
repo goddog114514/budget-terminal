@@ -77,6 +77,22 @@
   .stat .v.ok{color:var(--green);}
   .stat .v.warn{color:var(--yellow);}
   .spacer{flex:1;}
+  /* v0.0.12 同版迭代 · 左上角定位状态: 图标 + 区名。由 refreshHeader() 每次重建并放在第一个子项,
+     不占 .stat 索引(浏览器探针按 #statusbar .stat 取列), 点击可手动重定位。 */
+  .geo-badge{
+    display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;cursor:pointer;
+    border:1px solid var(--border);border-radius:3px;padding:3px 9px;
+    background:var(--panel-2);font-size:12px;white-space:nowrap;color:var(--gray);
+  }
+  .geo-badge:hover{border-color:var(--green);}
+  .geo-badge .geo-cv{width:16px;height:16px;display:block;flex:0 0 auto;}
+  .geo-badge .geo-txt{color:var(--cyan);}
+  .geo-badge.ok .geo-txt,.geo-badge.cached .geo-txt{color:var(--cyan);}
+  .geo-badge.locating .geo-txt{color:var(--yellow);}
+  .geo-badge.nokey .geo-txt,.geo-badge.failed .geo-txt{color:var(--yellow);}
+  .geo-badge.off .geo-txt,.geo-badge.unsupported .geo-txt,.geo-badge.idle .geo-txt{color:var(--gray);}
+  /* 行内地点图标: 与左上角 badge 共用同一套 Canvas 准星绘制(makeGeoIcon 用, 不是 Emoji) */
+  .geo-ic{width:16px;height:16px;display:inline-block;vertical-align:-3px;flex:0 0 auto;}
   /* 右上角 今日/周期 预算指示: 红黄绿"实心圆点", 不闪烁 */
   .mini-alert{
     font-size:12px;border:1px solid var(--border);padding:2px 8px;border-radius:3px;
@@ -275,20 +291,24 @@
   #ghost.show{opacity:1;}
 
   /* ---- modal forms (auxiliary) ---- */
-  #modalWrap,#budgetWrap,#investWrap,#dateWrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:20;}
-  #modalWrap.open,#budgetWrap.open,#investWrap.open,#dateWrap.open{display:flex;}
-  #modal,#budgetModal,#investModal,#dateModal{
+  #modalWrap,#budgetWrap,#investWrap,#dateWrap,#geoWrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:20;}
+  #modalWrap.open,#budgetWrap.open,#investWrap.open,#dateWrap.open,#geoWrap.open{display:flex;}
+  #modal,#budgetModal,#investModal,#dateModal,#geoModal{
     width:min(560px,94vw);max-height:90vh;overflow:auto;
     background:var(--panel-2);border:1px solid var(--green);border-radius:6px;padding:18px 20px;
     box-shadow:0 0 30px rgba(61,255,122,.15);
   }
-  #modal h3,#budgetModal h3,#investModal h3,#dateModal h3{color:var(--cyan);font-size:15px;letter-spacing:1px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;}
-  #modal label,#budgetModal label,#investModal label,#dateModal label{display:block;color:var(--gray);font-size:12px;margin:10px 0 4px;}
-  #modal input,#modal select,#budgetModal input,#investModal input,#dateModal input{
+  #modal h3,#budgetModal h3,#investModal h3,#dateModal h3,#geoModal h3{color:var(--cyan);font-size:15px;letter-spacing:1px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;}
+  #modal label,#budgetModal label,#investModal label,#dateModal label,#geoModal label{display:block;color:var(--gray);font-size:12px;margin:10px 0 4px;}
+  #modal input,#modal select,#budgetModal input,#investModal input,#dateModal input,#geoModal input{
     width:100%;background:var(--field);border:1px solid var(--border);color:var(--white);
     font-family:inherit;font-size:14px;padding:6px 8px;border-radius:3px;outline:none;
   }
-  #modal input:focus,#modal select:focus,#budgetModal input:focus,#investModal input:focus,#dateModal input:focus{border-color:var(--green);}
+  #modal input:focus,#modal select:focus,#budgetModal input:focus,#investModal input:focus,#dateModal input:focus,#geoModal input:focus{border-color:var(--green);}
+  #geoModal .seg{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  #geoModal .seg button.on{color:var(--green);border-color:var(--green);background:rgba(61,255,122,.1);}
+  #geoModal hr{border:none;border-top:1px solid var(--border);margin:18px 0 4px;}
+  #geoModal .hint{color:var(--gray);font-size:12px;margin-top:10px;line-height:1.6;white-space:pre-wrap;}
   .mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap;}
   /* 兜底: 弹窗按钮默认用主题绿字, 避免落到浏览器默认的黑色 ButtonText(在近黑底上完全看不清) */
   .mbtns button{font-family:inherit;padding:6px 16px;cursor:pointer;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--green);}
@@ -310,8 +330,10 @@
   #d_cancel{color:var(--red);border-color:var(--red);}
   #d_cancel:hover{background:rgba(255,77,94,.1);}
   /* 输入框的日历/微调图标在暗色下也需要提亮 */
-  #modal input,#budgetModal input,#investModal input,#dateModal input{color-scheme:dark;}
+  #modal input,#budgetModal input,#investModal input,#dateModal input,#geoModal input{color-scheme:dark;}
   #budgetModal .hint,#investModal .hint{color:var(--gray);font-size:12px;margin-top:12px;line-height:1.6;}
+  #g_save,#g_place_save{color:var(--green);border-color:var(--green);}
+  #g_cancel{color:var(--red);border-color:var(--red);}
 
   /* ---- 「记一笔」的双选项卡: 单笔消费 / 分摊成本 ---- */
   #modal .mtabs{display:flex;gap:8px;margin:0 0 4px;flex-wrap:wrap;}
@@ -360,6 +382,16 @@
   </span>
   <button data-cmd="forecast">燃尽预测</button>
   <button data-cmd="open-add" class="accent">+ 记一笔</button>
+  <!-- v0.0.12: 主页上直接切「自动填充地址 / 全手动」; 两个模式项都回灌 config 命令(H5 双通道对称) -->
+  <span class="dd" id="geoDd">
+    <button id="btnGeoDd" class="accent" type="button">地点: 自动 ▾</button>
+    <div class="dd-menu" id="geoDdMenu">
+      <span class="dd-hint" id="geoDdHint">记账时的地点模式</span>
+      <button type="button" data-geo="auto">自动填充地址</button>
+      <button type="button" data-geo="manual">全手动（不填则空）</button>
+      <button type="button" data-geo="settings">地点设置 / 手动补填…</button>
+    </div>
+  </span>
   <span class="dd" id="listDd">
     <button id="btnListDd" class="accent" type="button">消费列表 ▾</button>
     <div class="dd-menu" id="listDdMenu">
@@ -419,6 +451,8 @@
       <input id="f_cat" list="catlist" placeholder="如 餐饮 / 交通 / 购物 ..."><datalist id="catlist"></datalist>
       <label>日期</label><input id="f_date" type="date">
       <label>备注</label><input id="f_note" placeholder="可选，如 午餐">
+      <label>地点 (选填) — 自动模式会填行政区名；手填可覆盖，留空则不记</label>
+      <input id="f_place" placeholder="如 广东省深圳市南山区">
     </div>
     <!-- 分摊成本: 总价 ÷ 分摊天数 → 每天; 投资只按总价记一次 -->
     <div class="mpanel hide" id="mp_amort">
@@ -430,6 +464,8 @@
       <input id="fa_cat" list="catlist" placeholder="如 房租 / 会员 / 保险 ...">
       <label>起始日期 — 精确到日（YYYY-MM-DD，留空 = 今天）</label><input id="fa_date" type="date">
       <label>备注</label><input id="fa_note" placeholder="可选，如 年付房租">
+      <label>地点 (选填) — 分摊成本不会自动定位，需要就手填</label>
+      <input id="fa_place" placeholder="如 广东省深圳市南山区">
       <div class="mhint" id="fa_hint"></div>
     </div>
     <div class="mbtns">
@@ -473,6 +509,32 @@
   </div>
 </div>
 
+<div id="geoWrap">
+  <div id="geoModal">
+    <h3>地点设置</h3>
+    <label>记账时的地点模式</label>
+    <div class="seg">
+      <button type="button" id="g_auto">自动填充地址</button>
+      <button type="button" id="g_manual">全手动（不填则空）</button>
+    </div>
+    <div class="hint" id="g_hint"></div>
+    <hr>
+    <label>腾讯地图 Key（本地双击运行时必填；代码不预置任何 key）</label>
+    <input id="g_key" type="text" autocomplete="off" spellcheck="false" placeholder="请在腾讯位置服务开放平台申请自己的 key 并填入">
+    <div class="hint" id="g_key_hint"></div>
+    <div class="mbtns"><button id="g_save">保存 Key</button></div>
+    <hr>
+    <label>手动补填地点 — 记录 id（见 list）</label>
+    <input id="g_id" type="text" inputmode="numeric" placeholder="如 3">
+    <label>地点（填 - 可清除）</label>
+    <input id="g_place" type="text" placeholder="如 广东省深圳市南山区">
+    <div class="mbtns">
+      <button id="g_place_save">补填地点</button>
+      <button id="g_cancel">关闭</button>
+    </div>
+  </div>
+</div>
+
 <div id="dateWrap">
   <div id="dateModal">
     <h3 id="d_title">按日期 / 月份查看消费</h3>
@@ -506,8 +568,22 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.11";         // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.0.12";         // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
+/* ---- 地点 (v0.0.12) · 合规边界 ----
+   只用腾讯地图 JSAPI GL + service 库。本应用是"本地双击"的单文件应用, 属非默认场景:
+   SDK URL 需要用户自己的 key, 代码里只保留下面这条**显式占位符模板**:
+     https://map.qq.com/api/gljs?v=1.exp&libraries=service&key="请在腾讯位置服务开放平台申请自己的key并替换此占位符"
+   真实 key 只能由 `config set geokey <key>` 写进本地 settings; 代码不预置任何有效 key。
+   逆地理编码一律走 TMap.service.Geocoder (SDK 内部鉴权), 不手写 fetch 调 WebService。
+   坐标仅在内存里用于换地名, 不写进记录/备份; 落盘的只有省/市/区地名字符串。 */
+const GEO_KEY_PLACEHOLDER = "请在腾讯位置服务开放平台申请自己的key并替换此占位符";
+const GEO_SDK_BASE = "https://map.qq.com/api/gljs?v=1.exp&libraries=service";
+const GEO_SDK_URL_TEMPLATE = GEO_SDK_BASE + "&key=\"" + GEO_KEY_PLACEHOLDER + "\"";
+const GEO_TIMEOUT_MS = 10000;         // 浏览器定位超时
+const GEO_SDK_TIMEOUT_MS = 8000;      // SDK <script> 加载超时(P1: 失败后不永久缓存)
+const GEO_MAX_PLACE_LEN = 60;         // 地名最大长度(外部返回值一律截断)
+const GEO_CACHE_KEY = "budget_term_geo_v1";  // 上次定位的地名缓存(独立键, 不进账本/备份/撤销栈)
 /* --- 分摊成本(amort)的字段与口径 ---
    一笔"分摊成本"= 一次性付出的**总价**(如年费/房租/保险费), 按 **分摊天数** 平均分到每一天。
    记录里各字段的口径(务必与其它命令一致):
@@ -572,6 +648,10 @@ const COLOR = (function(){
 const CAT_PALETTE = [COLOR.green, COLOR.cyan, COLOR.yellow, COLOR.orange, COLOR.magenta,
                      COLOR.red, "#2dcc9f", "#c58bff", COLOR.catFallback, COLOR.index];
 const PREDEFINED = new Map(DEFAULT_CATEGORIES.map((c,i)=>[c, CAT_PALETTE[i % CAT_PALETTE.length]]));
+/* P1 B-15: 自定义类别专用色板, 与默认 10 类的 CAT_PALETTE 完全不重叠。
+   旧行为把所有自定义类别都塞进 COLOR.catFallback → 饼图/图例相邻切片同色、看不出分界。 */
+const CUSTOM_CAT_PALETTE = ["#7aa2ff", "#ff8ac4", "#5ce1b9", "#ffc46b",
+                            "#b39cff", "#71d8ff", "#ff8f8f", "#a8e063"];
 
 /* ---------- 可调投资比例: 运行时读取的消费/投资比率 ---------- */
 function r6(x){ return Math.round(x*1e6)/1e6; }
@@ -602,7 +682,8 @@ function defaultSettings(){
   return { budget: DEFAULT_BUDGET, monthStart:1, weekStart:"mon", thresholds:[80,100],
            periodMode:"month", lengthDays:15, anchor:null, epoch:null,
            consumeShare:CONSUME_SHARE, rateMoney:0.02, rateIndex:0.08, periodBudget:{},
-           dailyBudget:null };   // 手动设置的"每日可用余额"(null = 未设置)
+           dailyBudget:null,                 // 手动设置的"每日可用余额"(null = 未设置)
+           geoMode:"auto", geoKey:"" };    // 地点: auto=add 时自动定位 / manual=全手动; key 只存本机
 }
 function loadState(){
   let parsed = null;
@@ -623,7 +704,8 @@ function loadState(){
 function normalizeSettings(raw){
   const def = defaultSettings();
   const s = Object.assign({}, def, (raw && typeof raw==="object") ? raw : {});
-  if(!(typeof s.budget==="number" && isFinite(s.budget) && s.budget>0)) s.budget = def.budget;
+  /* P0: r2 后仍 >0 —— 否则备份里的 0.001 会显示 ¥0.00 / 被 effectiveBudget 判为无覆盖 */
+  if(!(typeof s.budget==="number" && isFinite(s.budget) && s.budget>0 && r2(s.budget)>0)) s.budget = def.budget;
   if(!(Number.isInteger(s.monthStart) && s.monthStart>=1 && s.monthStart<=28)) s.monthStart = def.monthStart;
   if(s.weekStart!=="mon" && s.weekStart!=="sun") s.weekStart = def.weekStart;
   const th = Array.isArray(s.thresholds) ? s.thresholds.map(Number).filter(x=>isFinite(x)&&x>0&&x<=100) : [];
@@ -640,11 +722,15 @@ function normalizeSettings(raw){
   if(s.periodBudget && typeof s.periodBudget==="object"){
     for(const k in s.periodBudget){
       const v = Number(s.periodBudget[k]);
-      if(/^\d{4}-\d{2}-\d{2}$/.test(k) && isFinite(v) && v>0) pb[k] = r2(v);
+      if(/^\d{4}-\d{2}-\d{2}$/.test(k) && isFinite(v) && v>0 && r2(v)>0) pb[k] = r2(v);
     }
   }
   s.periodBudget = pb;
-  if(!(typeof s.dailyBudget==="number" && isFinite(s.dailyBudget) && s.dailyBudget>0)) s.dailyBudget = null;
+  if(!(typeof s.dailyBudget==="number" && isFinite(s.dailyBudget) && s.dailyBudget>0 && r2(s.dailyBudget)>0)) s.dailyBudget = null;
+  if(s.geoMode!=="auto" && s.geoMode!=="manual") s.geoMode = def.geoMode;
+  /* P1 B-12: 与 config set geokey 共用 normalizeGeoKey() 唯一入口 ——
+     以前写入只做 slice(0,128), 重启加载会额外清占位符/提示文案/空白, 出现"本次生效、重启失效"。 */
+  s.geoKey = normalizeGeoKey(s.geoKey);
   return s;
 }
 function isYMDish(v){ return typeof v==="string" && /^\d{4}-\d{2}-\d{2}$/.test(v); }
@@ -682,13 +768,14 @@ function normalizeRecords(raw){
     const total = (isFinite(totalRaw) && totalRaw>0) ? r2(totalRaw) : (days>1 ? r2(amount*days) : amount);
     const inv = investOf(total);        // 投资只按总价记一次(不分摊; days=1 时 total 就是 amount)
     const cat = String(src.category==null ? "" : src.category).trim() || "其他";
-    const note = src.note==null ? "" : String(src.note);
+    const note = src.note==null ? "" : String(src.note).replace(/[\u0000-\u001f\u007f]/g," ");   // P2 B-19: 与 place 同一清洗纪律(只去控制字符, 不改变可见内容)
+    const place = normalizePlace(src.place);   // 旧备份没有该字段 → 空串, 零迁移
     const created = repairDate(src.created) || date;
     // 旧数据里已标记"已投足"的, 重算后要吸附到新的应投额, 避免因精度变化退回"部分/未投"
     const wasFullM = oldMm>0 && mInv0 >= oldMm - 0.005;
     const wasFullI = oldIdx>0 && iInv0 >= oldIdx - 0.005;
     const cl = (x, cap)=> r6(Math.max(0, Math.min(cap, isFinite(x) ? x : 0)));
-    out.push({ id, amount, category:cat, note, date, created,
+    out.push({ id, amount, category:cat, note, place, date, created,
                amortDays:days, amortTotal:total,
                mm:inv.mm, idx:inv.idx,
                moneyInv: wasFullM ? inv.mm : cl(mInv0, inv.mm),
@@ -697,15 +784,25 @@ function normalizeRecords(raw){
   return { records: out, dropped };
 }
 function save(){
+  let ok = true;
   try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
   catch(e){
     // 隐私模式/禁用存储/某些 data: 打开方式下 setItem 会抛错; 不能让保存失败把整个应用打挂
-    if(!save.silentWarned){
-      save.silentWarned = true;
-      if(typeof line==="function") line([{t:"⚠ 浏览器不允许写入本地存储(localStorage)，本次数据仅存在于内存中。请用 [备份 .json] 保存。", c:COLOR.red}]);
+    ok = false;
+    /* P2 B-18: 失败不再"只提示一次后长期静默" —— 控制台每次留痕, 终端在状态翻转时提示 */
+    try{ console.warn("[save] localStorage 写入失败: "+(e&&e.message||e)); }catch(_e){}
+    const wasFailed = !!save.failed;
+    save.failed = true;
+    if(!wasFailed && typeof line==="function"){
+      line([{t:"⚠ 浏览器不允许写入本地存储(localStorage)，本次数据仅存在于内存中。请用 [备份 .json] 保存。", c:COLOR.red}]);
     }
   }
+  if(ok && save.failed){
+    save.failed = false;
+    if(typeof line==="function") line([{t:"✓ 本地存储写入已恢复。", c:COLOR.green}]);
+  }
   scheduleFileWrite();
+  return ok;
 }
 
 /* ======================= 撤销 / 重做 (undo / redo) ======================= */
@@ -725,13 +822,15 @@ let pendingCommit = false;
 function refreshAll(){
   refreshHeader();       // 顶栏统计 + 理财条(renderInvestBar 在 refreshHeader 末尾统一调用)
   refreshHistoryUI();    // 撤销/重做按钮可用态
-  refreshCatlist();      // 类别下拉(自定义类别、导入备份后不再丢)
+  refreshCatlist();      // 类别下拉: 单一真相来源 knownCategories()(含记录里的自定义类别)
+  refreshGeoUI();        // v0.0.12: 主页「地点 ▾」按钮随 geoMode / Key 状态同步
 }
 function commit(){
   if(!state) return;     // boot 之前(loadState)还没有完整 state, 不落盘
-  save();
+  const ok = save();     // P2 B-18: commit 感知持久化成败(save 内部负责提示/留痕)
   refreshAll();
   pendingCommit = false;
+  return ok;
 }
 function commitIfDirty(){ if(pendingCommit) commit(); }
 /* 包住一次可能修改数据的操作: 若数据确实变了, 把"改前"快照压入撤销栈, 并交给出口 commit */
@@ -794,6 +893,7 @@ function restoreFromText(text){
   if(!data || typeof data!=="object" || !Array.isArray(data.records)) throw new Error("不是有效的备份文件");
   if(data.app && data.app!=="budget_term") throw new Error("备份文件不匹配本应用");
   let dropped = 0;
+  const before = snapshotState();     // P2 B-16: 用于判断这次导入是否真的产生了变化
   mutate(()=>{
     // 备份里的设置整体生效(备份中缺失的项回落默认值, 不再残留上一份数据里的旧设置),
     // 记录走与 loadState 相同的归一化: 旧版布尔已投字段会转成金额, 脏记录被丢弃。
@@ -807,7 +907,12 @@ function restoreFromText(text){
     ensureEpoch();
   });
   commit();     // 导入也是一个提交点: 落盘 + 全量刷新(含类别下拉, H4)
-  fsLog("✓ 已从备份恢复 "+state.records.length+" 条记录、预算与设置已更新 (可 undo 撤销)。", COLOR.green);
+  /* P2 B-16: 重复导入同一份备份时 mutate 不压栈(内容没变), 此时提示"可 undo"会把人引去
+     回退更早的操作 —— 现在按"是否真的变化"分两种文案。 */
+  const unchanged = snapshotState() === before;
+  fsLog(unchanged
+    ? "✓ 已从备份恢复 "+state.records.length+" 条记录、预算与设置已更新 (内容与当前账本一致, 没有产生变化)。"
+    : "✓ 已从备份恢复 "+state.records.length+" 条记录、预算与设置已更新 (可 undo 撤销)。", COLOR.green);
   if(dropped) fsLog("⚠ 其中 "+dropped+" 条记录金额或日期无效, 已跳过(其余记录正常导入)。", COLOR.yellow);
 }
 function doBackupDownload(){
@@ -851,7 +956,13 @@ async function scheduleFileWrite(){
   try{
     do{ fileWriteDirty = false; await writeToFolder(); }while(fileWriteDirty);
   }
-  catch(e){ /* 目录被移除等: 保持 localStorage 兜底 */ }
+  catch(e){
+    /* P2 B-18: 自动写盘失败不再被吞 —— 留痕、回落 autosaveOn、UI 同步; localStorage 仍兜底 */
+    autosaveOn = false;
+    refreshAutosaveUI();
+    try{ console.warn("[autosave] 本地写盘失败, 自动写盘已暂停(localStorage 仍在保存): "+(e&&e.message||e)); }catch(_e){}
+    fsLog("⚠ 自动写盘失败, 已暂停(localStorage 仍在保存): "+(e&&e.message||e), COLOR.yellow);
+  }
   finally{ fileWritePending = false; }
 }
 function refreshAutosaveUI(){
@@ -873,7 +984,7 @@ function idbOpen(){
 async function persistDirHandle(h){
   try{ const db=await idbOpen();
     return new Promise((res,rej)=>{ const tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(h,"dir"); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); });
-  }catch(e){ return Promise.resolve(); }
+  }catch(e){ try{ console.warn("[autosave] 记住目录句柄失败(IndexedDB), 刷新后需手动重连: "+(e&&e.message||e)); }catch(_e){} return Promise.resolve(); }
 }
 async function restoreLocalHandleQuiet(){
   if(!supportsFSA()) return;
@@ -885,10 +996,10 @@ async function restoreLocalHandleQuiet(){
     try{ perm = await h.queryPermission({mode:"readwrite"}); }catch(e){}
     if(perm!=="granted"){ dirHandle=null; return; }   // 未授权: 交给首次交互时自动申请
     dirHandle = h;
-    try{ autosaveOn=true; await writeToFolder(); }catch(e){ autosaveOn=false; }
+    try{ autosaveOn=true; await writeToFolder(); }catch(e){ autosaveOn=false; try{ console.warn("[autosave] 自动重连后写盘失败: "+(e&&e.message||e)); }catch(_e){} }
     refreshAutosaveUI();
     fsLog("已自动重连本地文件夹 “"+(h.name||"")+"”，改动将自动写盘。",COLOR.green);
-  }catch(e){ /* 忽略 */ }
+  }catch(e){ try{ console.warn("[autosave] 自动重连本地文件夹失败: "+(e&&e.message||e)); }catch(_e){} }
 }
 /* 每次打开: 若上次授权因新会话过期, 在第一次用户交互时自动重新申请(无需再点专门按钮) */
 let _reconnectArmed=false, _reconnectDone=false;
@@ -908,10 +1019,10 @@ function armAutoReconnect(){
       }
       if(perm!=="granted") return;
       dirHandle = h;
-      try{ autosaveOn=true; await writeToFolder(); }catch(e){ autosaveOn=false; }
+      try{ autosaveOn=true; await writeToFolder(); }catch(e){ autosaveOn=false; try{ console.warn("[autosave] 首次交互重连后写盘失败: "+(e&&e.message||e)); }catch(_e){} }
       refreshAutosaveUI();
       fsLog("已重新连接本地文件夹 “"+(h.name||"")+"”，自动写盘已开启。",COLOR.green);
-    }catch(e){}
+    }catch(e){ try{ console.warn("[autosave] 首次交互重连失败: "+(e&&e.message||e)); }catch(_e){} }
   };
   const guard = ()=>{ once(); window.removeEventListener("pointerdown",guard); window.removeEventListener("keydown",guard); };
   window.addEventListener("pointerdown",guard,{once:false});
@@ -1042,7 +1153,14 @@ function weekBounds(dateStr){
 /* 注: 原先这里有个 inRange(dateStr,start,end)。v0.0.7 把"按日期统计/筛选"统一收口到
    recInWindow()/recAmountInRange() 之后它就没有调用点了 —— 删掉, 避免"死代码漂移"(HANDOVER F12)。
    判断"某天是否落在区间内"请直接用 YYYY-MM-DD 字符串比较(ISO 格式可直接比大小)。 */
-function catColor(cat){ return PREDEFINED.get(cat) || COLOR.catFallback; }
+/* P1 B-15: 自定义类别按「已知自定义类别」的排序索引取独立色板 —— 同一类别跨会话稳定,
+   排序相邻的类别必然异色(饼图/图例不会再出现相邻同色无分界); 尚未记账的未知类别仍回落兜底色。 */
+function customCatColor(cat){
+  const custom = knownCategories().filter(c=>!PREDEFINED.has(c)).sort();
+  const i = custom.indexOf(cat);
+  return i<0 ? COLOR.catFallback : CUSTOM_CAT_PALETTE[i % CUSTOM_CAT_PALETTE.length];
+}
+function catColor(cat){ return PREDEFINED.get(cat) || customCatColor(cat); }
 
 /* --------------------------- investment calc ---------------------------- */
 /* 分摊成本记录的读取入口(旧记录没有这两个字段 → 相当于"不分摊"):
@@ -1284,11 +1402,12 @@ function periodSnapshot(){
 const term = document.getElementById("term");
 const catlistEl = document.getElementById("catlist");
 
-function line(segs){ // segs: string | [{t,c,cls}]
+function line(segs){ // segs: string | [{t,c,cls,node}]
   const el = document.createElement("div");
   el.className = "l";
   if(typeof segs === "string"){ segs = [{t:segs}]; }
   for(const s of segs){
+    if(s.node){ el.appendChild(s.node); continue; }   // Canvas 图标段(地点准星)
     const sp = document.createElement("span");
     if(s.c) sp.style.color = s.c;
     if(s.cls) sp.className = s.cls;
@@ -1690,11 +1809,12 @@ const COMMANDS = [
   { n:["budget"], sub:true,                        u:"budget set <金额>",                d:"只调整当前周期的预算, 例 budget set 1200" },
   { n:["budget"], sub:true,                        u:"budget default <金额>",            d:"调整默认预算(以后各期), budget reset 取消当期覆盖" },
   { n:["forecast","burn","predict"],               u:"forecast",                        d:"燃尽预测: 按日均消费预测期末结余/超支与每日可花" },
-  { n:["add","a"],                                 u:"add <金额> <类别> [备注..] [@日期]", d:"add 50 餐饮 午餐  或  add @2025-03-05 300 购物 外套" },
-  { n:["amort","amortize"],                        u:"amort <总价> <天数> <类别> [备注..] [@开始日期]", d:"分摊成本: 总价按天数摊到每天, 投资只按总价记一次, 如 amort 3000 365 房租 年付 (天数可写 12月)" },
+  { n:["add","a"],                                 u:"add <金额> <类别> [备注..] [@日期] [#地点]", d:"add 50 餐饮 午餐  或  add @2025-03-05 300 购物 外套; 自动模式会填行政区地名" },
+  { n:["amort","amortize"],                        u:"amort <总价> <天数> <类别> [备注..] [@开始日期] [#地点]", d:"分摊成本: 总价按天数摊到每天, 投资只按总价记一次, 如 amort 3000 365 房租 年付 (天数可写 12月); 不自动定位" },
   { n:["list","ls"],                               u:"list [类别X] [@日期/月份]",         d:"消费列表: list 餐饮 / list @2027-08-18 / list @2027-08 / list @today|@period|@month" },
   { n:["del","rm","delete"],                       u:"del <id>",                        d:"删除指定记录(id 见 list)" },
-  { n:["update","edit"],                           u:"update <id> <金额> <类别> [..]",    d:"修改某条记录并自动重算投资额" },
+  { n:["update","edit"],                           u:"update <id> <金额> <类别> [备注..] [@日期] [#地点]", d:"修改某条记录并自动重算投资额; #- 可清除地点" },
+  { n:["place","where"],                           u:"place <id> <地点..> | -",          d:"手动设置地点(行政区名即可), 如 place 3 广东省深圳市南山区; - 清除; 不填则空着" },
   { n:["pay","invest"],                            u:"pay <id> [mm|idx|all|none]",      d:"标记投资已投状态 (货币基金 mm / 指数基金 idx)" },
   { n:["pay"], sub:true,                           u:"pay full [mm|idx]",               d:"全额投资: 一次把未投池投掉(等同界面「全额投资」按钮); 默认货币+指数都投, 别名 invest full" },
   { n:["summary","sum"],                           u:"summary [day|week|month] [类别]",  d:"总结: 无参数=当前记账周期; month=自然月; 可加类别筛选, 如 summary week 餐饮" },
@@ -1712,6 +1832,8 @@ const COMMANDS = [
   { n:["config"], sub:true,                        u:"config set budget <金额>",         d:"设置默认周期预算(各期生效), 例 config set budget 1200" },
   { n:["config"], sub:true,                        u:"config set budget <金额> now",     d:"只改当前周期的预算, 例 config set budget 1200 now (等价弹窗「应用于当期」)" },
   { n:["config"], sub:true,                        u:"config set invest <投资比例%>",    d:"设置投资比例(消费占比=1-投资比例), 例 config set invest 15; 范围 0~50%" },
+  { n:["config"], sub:true,                        u:"config set geo auto|manual",       d:"地点模式: auto=add 时自动定位(仅行政区名); manual=全手动(不填则空)" },
+  { n:["config"], sub:true,                        u:"config set geokey <你的Key>",      d:"填入自己的腾讯地图 Key(本地双击运行必填); off 清空; 代码不预置任何 key" },
   { n:["cls","clear"],                             u:"cls",                             d:"清屏" },
 ];
 const CMD_ALIAS = {};        // 别名 -> 主名
@@ -1762,7 +1884,9 @@ function tokenize(str){
       if(ch===quote){ out.push(cur); cur=null; quote=null; continue; }
       cur += ch; continue;
     }
-    if(ch==='"' || ch==="'"){ quote = ch; cur = ""; continue; }
+    /* 引号出现在 token 中途时保留已有前缀(如 #"北京市 海淀区" 要留下 #),
+       纯引号开头仍是(cur===null → "")，旧行为不变。 */
+    if(ch==='"' || ch==="'"){ quote = ch; if(cur===null) cur = ""; continue; }
     if(/\s/.test(ch)){ if(cur!==null){ out.push(cur); cur=null; } continue; }
     if(cur===null) cur = "";
     cur += ch;                                   // 引号外: 反斜杠原样保留
@@ -1776,11 +1900,29 @@ function parseCmd(raw){
   return { cmd, tokens:toks.slice(1) };
 }
 function numeric(t){ if(!/^-?\d+(\.\d+)?$/.test(String(t))) return null; return parseFloat(t); }
+/* 金额唯一入口(P0): 严格数字 + 有限 + >0 + r2 后仍 >0。
+   防两类真实事故: 0.001 被 r2 抹成 0(设置静默无效/重启回落默认)、超长数字 parseFloat→Infinity(落盘成 null)。 */
+function parseAmount(t){
+  const n = numeric(t);
+  if(n==null || !isFinite(n) || !(n>0)) return null;
+  const v = r2(n);
+  return (isFinite(v) && v>0) ? v : null;
+}
+/* 备注转义(P0): 备注首字符为 # / @ 时会被当成 #地点 / @日期, 造成地点与备注互换、备注被吞。
+   UI 回灌一律走 quoteNote() 前置 \; 命令行也可写 "\#标签" / "\@朋友"。
+   转义 token 在参数拆分阶段原样透传, 由 splitRecordArgs 最后统一还原(避免被二次解释)。 */
+function escapedArg(tk){ return typeof tk==="string" && tk[0]==="\\" && tk.length>1; }
+function unescapeArg(tk){ return escapedArg(tk) ? tk.slice(1) : tk; }
+function quoteNote(s){
+  const v = String(s==null?"":s);
+  return quote((v[0]==="#"||v[0]==="@") ? "\\"+v : v);
+}
 function findDateToken(tokens){
-  // returns {tokens without @date, dateStr|null}
+  // returns {tokens without 第一个 @date, dateStr|null}; 其余 @token 保留为备注
   const out=[]; let date=null;
   for(const tk of tokens){
-    if(tk[0]==="@"){ date = tk.slice(1); }
+    if(escapedArg(tk)){ out.push(tk); continue; }
+    if(tk[0]==="@" && date===null){ date = tk.slice(1); }
     else out.push(tk);
   }
   return { tokens:out, date };
@@ -1790,6 +1932,25 @@ function cleanDateStr(d){ // accept YYYY-M-D variants, default today
   if(!p) return null;
   return mkYMD(p.y,p.m,p.d);
 }
+/* v0.0.12 · 地点参数: `#地点` 与 `@日期` 一样位置无关, 只认第一个 #token。
+   含空格写成 #"北京市 海淀区" (tokenize 会把引号内空格并进同一个 token); `#-`/`#off` = 清除。
+   转义过的备注 token (\#… / \@…) 不参与参数识别, 原样透传。
+   拆成一次调用, 让 add / amort / update 三条命令共用同一套参数口径。 */
+function findPlaceToken(tokens){
+  const out=[]; let place=null;
+  for(const tk of tokens){
+    if(escapedArg(tk)){ out.push(tk); continue; }
+    if(tk[0]==="#" && tk.length>1 && place===null){ place = tk.slice(1); }
+    else out.push(tk);
+  }
+  return { tokens:out, place };
+}
+function splitRecordArgs(tokens){
+  const a = findDateToken(tokens), b = findPlaceToken(a.tokens);
+  return { tokens:b.tokens.map(unescapeArg), date:a.date, place:b.place };
+}
+/* 注意 tokenize 遇到引号会重置当前 token, 所以 # 必须放在引号**里面**: "#北京市 海淀区" */
+function quotePlace(p){ return quote("#"+p); }
 
 function runCommand(raw){
   raw = raw.trim();
@@ -1824,6 +1985,7 @@ function dispatch(cmd, tokens){
     case "list":     doList(tokens); break;
     case "del":      doDelete(tokens); break;
     case "update":   doUpdate(tokens); break;
+    case "place":    doPlace(tokens); break;
     case "pay":      doPay(tokens); break;
     case "summary":  doSummary(tokens); break;
     case "chart":    doChart(tokens); break;
@@ -1848,15 +2010,17 @@ function dispatch(cmd, tokens){
    设置成功后**直接复用 config 原有的输出**(showSettings), 不再另写一套确认文案。
    旧的 set budget / set invest 仍然可用(历史脚本/键位习惯), 但 help 只推荐 config 写法。 */
 function setDefaultBudget(n){
-  if(n==null || !(n>0)) return false;
-  state.settings.budget = r2(n);
+  const v = parseAmount(n);
+  if(v==null) return false;
+  state.settings.budget = v;
   return true;
 }
 function setPeriodBudget(n){
+  const v = parseAmount(n);
+  if(v==null) return false;
   const p = currentPeriod();
-  if(n==null || !(n>0)) return false;
   state.settings.periodBudget = state.settings.periodBudget || {};
-  state.settings.periodBudget[p.start] = r2(n);
+  state.settings.periodBudget[p.start] = v;
   return true;
 }
 /* 投资比例: pct 允许 0~50; asInvest=false 时按"消费占比"解释(也接受 0.85 小数写法) */
@@ -1878,6 +2042,9 @@ function configUsage(){
   line([{t:"用法: config   查看当前配置", c:COLOR.yellow}]);
   line([{t:"      config set budget <金额> [now]    设默认预算 / 加 now 只改当前周期", c:COLOR.yellow}]);
   line([{t:"      config set invest <投资比例%>      如 config set invest 15 (消费占比=85%)", c:COLOR.yellow}]);
+  line([{t:"      config set consume|ratio|share <消费占比>   如 config set ratio 0.85 (与 set ratio 同解释)", c:COLOR.yellow}]);
+  line([{t:"      config set geo auto|manual        地点: 自动填充地址 / 全手动(不填则空)", c:COLOR.yellow}]);
+  line([{t:"      config set geokey <你的Key>|off   腾讯地图 Key; off 清空(代码不预置 key)", c:COLOR.yellow}]);
 }
 function doConfig(tokens){
   const sub = (tokens[0]||"").toLowerCase();
@@ -1885,11 +2052,18 @@ function doConfig(tokens){
   if(sub!=="set"){ configUsage(); return; }
   const what = (tokens[1]||"").toLowerCase();
   if(what==="budget"){
-    const n = numeric(tokens[2]);
+    const n = parseAmount(tokens[2]);
     const when = (tokens[3]||"").toLowerCase();
     const onlyNow = (when==="now"||when==="current"||when==="当期"||when==="本期");
-    if(n==null || n<=0){
+    /* P2 B-17: 第四个 token 存在但不合法(如把 now 拼成 nwo)时, 旧代码静默退化成"改全局默认预算";
+       现在多给 / 拼错一律拒绝 —— "只改当期"不会悄悄变成"改所有周期"。 */
+    if(tokens.length>4 || (tokens[3] && !onlyNow)){
+      line([{t:"用法: config set budget <金额> [now]   第四个参数只接受 now / current / 当期 / 本期", c:COLOR.yellow}]);
+      return;
+    }
+    if(n==null){
       line([{t:"用法: config set budget <金额> [now]   例 config set budget 1200 (now = 只改当前周期)", c:COLOR.yellow}]);
+      line([{t:"      金额需为有限正数且 ≥ ¥0.01 (0.001 会被舍成 0, 超大数会溢出)", c:COLOR.gray}]);
       return;
     }
     if(onlyNow) setPeriodBudget(n); else setDefaultBudget(n);
@@ -1897,8 +2071,44 @@ function doConfig(tokens){
     return;
   }
   if(what==="invest"||what==="investment"||what==="consume"||what==="ratio"||what==="share"){
-    const res = setInvestPct(numeric(tokens[2]), what!=="consume");
+    /* P0: 与 set 同口径 —— 只有 invest/investment 按"投资比例"解释, 其余按"消费占比"。
+       旧写法把 ratio/share 当投资比例, config set ratio 0.85 会算出 99.15% 并重算历史应投。 */
+    const asInvest = (what==="invest"||what==="investment");
+    const res = setInvestPct(numeric(tokens[2]), asInvest);
     if(!res.ok){ line([{t:res.msg, c:COLOR.yellow}]); return; }
+    showSettings();
+    return;
+  }
+  if(what==="geo"||what==="geolocation"||what==="location"||what==="place"){
+    const v = (tokens[2]||"").toLowerCase();
+    const isAuto = ["auto","on","自动","自动填充","自动填充地址"].includes(v);
+    const isManual = ["manual","off","手动","全手动"].includes(v);
+    if(!isAuto && !isManual){
+      line([{t:"用法: config set geo auto|manual   auto=add 时自动定位; manual=全手动(不填则空)", c:COLOR.yellow}]);
+      return;
+    }
+    state.settings.geoMode = isAuto ? "auto" : "manual";
+    if(isAuto) primeGeoLocation(true);                       // 切回自动 → 立即补一次定位
+    else { clearGeoCache(); setGeoStatus("off","全手动"); }  // 全手动 → 清掉缓存, badge 同步
+    showSettings();
+    return;
+  }
+  if(what==="geokey"||what==="mapkey"||what==="key"){
+    const raw = tokens.slice(2).join(" ").trim();
+    if(!raw){ line([{t:"用法: config set geokey <你的腾讯地图Key>   (off 清空)", c:COLOR.yellow}]); return; }
+    const low = raw.toLowerCase();
+    const clearing = (low==="off"||low==="clear"||raw==="清除"||raw===GEO_KEY_PLACEHOLDER);
+    /* P1 B-12: 写入与 normalizeSettings() 共用 normalizeGeoKey() —— 占位符/提示文案/带空白的
+       脏值当场拒绝, 不再出现"本次会话存住并发请求、重启被清空"。 */
+    const key = clearing ? "" : normalizeGeoKey(raw);
+    if(!clearing && !key){
+      line([{t:"Key 无效: 请填不带空格/引号的腾讯地图 Key(占位符与提示文案不会被写入)。", c:COLOR.yellow}]);
+      return;
+    }
+    state.settings.geoKey = key;
+    resetTMapSDK();                                    // P1 B-09: 换 Key / 清 Key 后旧 SDK 不再复用
+    if(key) primeGeoLocation(true);                    // 填 Key 后立即定位, 无需重开页面
+    else { clearGeoCache(); setGeoStatus("nokey","未配置 Key"); }
     showSettings();
     return;
   }
@@ -1910,11 +2120,10 @@ function doConfig(tokens){
 function doSet(tokens){
   const sub = (tokens[0]||"").toLowerCase();
   if(sub==="budget"){
-    const v = tokens[1];
-    const n = numeric(v);
-    if(n==null || n<=0){ line([{t:"用法: set budget <金额>  例 set budget 1000",c:COLOR.yellow}]); return; }
-    state.settings.budget = r2(n);
-    line([{t:"✓ 默认预算已设为 ",c:COLOR.green},{t:"¥"+money(r2(n)),c:COLOR.pure,cls:"hl"},
+    const n = parseAmount(tokens[1]);
+    if(n==null){ line([{t:"用法: set budget <金额>  例 set budget 1000 (金额需 ≥ ¥0.01 且为有限数)",c:COLOR.yellow}]); return; }
+    state.settings.budget = n;
+    line([{t:"✓ 默认预算已设为 ",c:COLOR.green},{t:"¥"+money(n),c:COLOR.pure,cls:"hl"},
           {t:"  (各期生效; 只想改本期可用 budget set <金额>)",c:COLOR.gray}]);
     showForecastLine();
   } else if(sub==="monthstart"){
@@ -1993,11 +2202,11 @@ function doSet(tokens){
       state.settings.dailyBudget=null;
       line([{t:"✓ 已清除每日可用余额 (右上角「今日预算」转为灰点未设置)",c:COLOR.green}]);
     } else {
-      const n=numeric(tokens[1]);
-      if(n==null||n<=0){ line([{t:"用法: set daily <金额>  例 set daily 100  (每日可用余额;  set daily off 取消)",c:COLOR.yellow}]); return; }
-      state.settings.dailyBudget=r2(n);
+      const n=parseAmount(tokens[1]);
+      if(n==null){ line([{t:"用法: set daily <金额>  例 set daily 100  (每日可用余额;  set daily off 取消)",c:COLOR.yellow}]); return; }
+      state.settings.dailyBudget=n;
       const ts=todaySnapshot();
-      line([{t:"✓ 每日可用余额已设为 ",c:COLOR.green},{t:"¥"+money(r2(n)),c:COLOR.pure,cls:"hl"},
+      line([{t:"✓ 每日可用余额已设为 ",c:COLOR.green},{t:"¥"+money(n),c:COLOR.pure,cls:"hl"},
             {t:"  今日已消费 ¥"+money(ts.consumption),c:COLOR.gray}]);
       line(dotLine("今日预算", ratioDot(ts.ratio)));
     }
@@ -2013,20 +2222,20 @@ function doBudget(tokens){
   const sub = (tokens[0]||"").toLowerCase();
   const p = currentPeriod();
   if(sub==="set" || sub==="now" || sub==="current"){
-    const n = numeric(tokens[1]);
-    if(n==null || n<=0){ line([{t:"用法: budget set <金额>   例 budget set 1200 (仅调整当前周期)",c:COLOR.yellow}]); return; }
+    const n = parseAmount(tokens[1]);
+    if(n==null){ line([{t:"用法: budget set <金额>   例 budget set 1200 (仅调整当前周期; 金额需 ≥ ¥0.01)",c:COLOR.yellow}]); return; }
     state.settings.periodBudget = state.settings.periodBudget || {};
-    state.settings.periodBudget[p.start] = r2(n);
-    line([{t:"✓ 当期预算已设为 ",c:COLOR.green},{t:"¥"+money(r2(n)),c:COLOR.pure,cls:"hl"},
+    state.settings.periodBudget[p.start] = n;
+    line([{t:"✓ 当期预算已设为 ",c:COLOR.green},{t:"¥"+money(n),c:COLOR.pure,cls:"hl"},
           {t:"  仅影响当前周期 "+p.label+"；以后各期仍为 ¥"+money(state.settings.budget),c:COLOR.gray}]);
     showForecastLine();
     return;
   }
   if(sub==="default"){
-    const n = numeric(tokens[1]);
-    if(n==null || n<=0){ line([{t:"用法: budget default <金额>   例 budget default 1000 (改默认, 各期生效)",c:COLOR.yellow}]); return; }
-    state.settings.budget = r2(n);
-    line([{t:"✓ 默认预算已设为 ",c:COLOR.green},{t:"¥"+money(r2(n)),c:COLOR.pure,cls:"hl"},{t:" (未单独覆盖的周期都用它)",c:COLOR.gray}]);
+    const n = parseAmount(tokens[1]);
+    if(n==null){ line([{t:"用法: budget default <金额>   例 budget default 1000 (改默认, 各期生效)",c:COLOR.yellow}]); return; }
+    state.settings.budget = n;
+    line([{t:"✓ 默认预算已设为 ",c:COLOR.green},{t:"¥"+money(n),c:COLOR.pure,cls:"hl"},{t:" (未单独覆盖的周期都用它)",c:COLOR.gray}]);
     showForecastLine();
     return;
   }
@@ -2084,17 +2293,413 @@ function showBudget(){
   blank();
 }
 
+/* ===================== 地点 place (v0.0.12) =====================
+   目标: 记账时自动带出**行政区地名**, 也允许手动填写; 只存地名字符串, 不存坐标。
+   合规: 只接腾讯地图 JSAPI GL (service 库) 的 TMap.service.Geocoder; 不手写 fetch、
+        不用任何境外/无资质地图源。key 由用户自己申请并写进本地 settings, 代码只有占位符。
+   架构: 命令链路(add)只负责"发起异步任务"并传记录对象; 结果回来后 applyAutoPlace()
+        先做对象引用/模式复查, 再经 mutate 压一步撤销 + commit()(H4 统一提交点)落盘刷新。
+        P0 修复后自动填地点是**可独立撤销的一步**(旧版不经 mutate, 会被无关 undo 静默清掉)。 */
+function normalizePlace(v){
+  if(v==null) return "";
+  return String(v).replace(/[\u0000-\u001f\u007f]/g," ").trim().slice(0,GEO_MAX_PLACE_LEN);
+}
+/* P1 B-12: Key 的唯一归一化入口 —— config 写入、备份/重启加载都走这里。
+   占位符、提示文案、含空白或引号的脏值一律当作"没填", 绝不拿去发请求。 */
+function normalizeGeoKey(v){
+  if(typeof v!=="string") return "";
+  const s = v.trim().slice(0,128);
+  if(!s || s===GEO_KEY_PLACEHOLDER || s.indexOf("请")===0 || /[\s"'`]/.test(s)) return "";
+  return s;
+}
+function maskGeoKey(k){
+  const s = String(k||"");
+  return s.length>8 ? (s.slice(0,3)+"…"+s.slice(-3)) : "***";
+}
+function geoModeLabel(){ return (state && state.settings.geoMode==="auto") ? "自动" : "手动"; }
+/* 手动设置/清除地点: 走 runCommand 的 mutate → 自然进撤销栈 */
+function doPlace(tokens){
+  const id = numeric(tokens[0]);
+  if(id==null){ line([{t:"用法: place <id> <地点..>   (place <id> - 清除; 例 place 3 广东省深圳市南山区)",c:COLOR.yellow}]); return; }
+  const rec = state.records.find(r=>r.id===id);
+  if(!rec){ line([{t:"未找到 #"+id+"。用 list 查看编号",c:COLOR.yellow}]); return; }
+  /* P1 B-14: 与 add/amort/update 共用 splitRecordArgs() —— 剥离 @日期 / #地点 参数,
+     不再把 "北京市 @2027-08-30" 整串存成地名; 清除关键字只在「单个裸 token 且大小写精确」
+     时成立, 地名 Clear / Off 不再被误清空(旧写法把整串忽略大小写后比对关键字)。 */
+  const args = splitRecordArgs(tokens.slice(1));
+  const parts = args.tokens.map(String);
+  const only = parts.length===1 ? parts[0] : null;
+  const raw = (args.place!=null ? args.place : parts.join(" ").trim());
+  const CLEAR_TOKENS = ["-","clear","off","清除"];
+  const cleared = args.place==="-" || args.place==="off" ||
+                  (args.place==null && only!==null && CLEAR_TOKENS.includes(only));
+  if(!cleared && !raw){ line([{t:"用法: place <id> <地点..>   (place <id> - 清除; 不填则空着)",c:COLOR.yellow}]); return; }
+  rec.place = cleared ? "" : normalizePlace(raw);
+  line([{t:cleared?"✗ 已清除 #":"✓ #",c:cleared?COLOR.yellow:COLOR.green},
+        {t:String(id),c:COLOR.pure},
+        {t:cleared?" 的地点":" 地点 → ",c:COLOR.gray},
+        {t:cleared?"":rec.place,c:COLOR.cyan}]);
+}
+/* ---------- WGS-84 → GCJ-02 (浏览器定位坐标 → 腾讯地图坐标系) ----------
+   纯本地换算, 不发请求; 境外坐标不做偏移。 */
+function geoTransformLat(x,y){
+  let ret = -100.0+2.0*x+3.0*y+0.2*y*y+0.1*x*y+0.2*Math.sqrt(Math.abs(x));
+  ret += (20.0*Math.sin(6.0*x*Math.PI)+20.0*Math.sin(2.0*x*Math.PI))*2.0/3.0;
+  ret += (20.0*Math.sin(y*Math.PI)+40.0*Math.sin(y/3.0*Math.PI))*2.0/3.0;
+  ret += (160.0*Math.sin(y/12.0*Math.PI)+320.0*Math.sin(y*Math.PI/30.0))*2.0/3.0;
+  return ret;
+}
+function geoTransformLng(x,y){
+  let ret = 300.0+x+2.0*y+0.1*x*x+0.1*x*y+0.1*Math.sqrt(Math.abs(x));
+  ret += (20.0*Math.sin(6.0*x*Math.PI)+20.0*Math.sin(2.0*x*Math.PI))*2.0/3.0;
+  ret += (20.0*Math.sin(x*Math.PI)+40.0*Math.sin(x/3.0*Math.PI))*2.0/3.0;
+  ret += (150.0*Math.sin(x/12.0*Math.PI)+300.0*Math.sin(x/30.0*Math.PI))*2.0/3.0;
+  return ret;
+}
+function wgs84ToGcj02(lat,lng){
+  if(!isFinite(lat) || !isFinite(lng)) return null;
+  if(lat<0.8293 || lat>55.8271 || lng<72.004 || lng>137.8347) return {lat,lng};
+  const a=6378245.0, ee=0.00669342162296594323;
+  let dLat=geoTransformLat(lng-105.0, lat-35.0), dLng=geoTransformLng(lng-105.0, lat-35.0);
+  const radLat = lat/180.0*Math.PI;
+  let magic = Math.sin(radLat); magic = 1 - ee*magic*magic;
+  const sqrtMagic = Math.sqrt(magic);
+  dLat = (dLat*180.0)/((a*(1-ee))/(magic*sqrtMagic)*Math.PI);
+  dLng = (dLng*180.0)/(a/sqrtMagic*Math.cos(radLat)*Math.PI);
+  return { lat:lat+dLat, lng:lng+dLng };
+}
+/* 只取省/市/区, 直辖市 province===city 时去重; POI / 街道 / 门牌一律不取 */
+function placeFromAddressComponent(ac){
+  if(!ac || typeof ac!=="object") return "";
+  const parts=[];
+  for(const k of ["province","city","district"]){
+    const v = typeof ac[k]==="string" ? normalizePlace(ac[k]) : "";
+    if(v && !parts.includes(v)) parts.push(v);
+  }
+  return normalizePlace(parts.join(""));
+}
+/* 左上角只显示区/县级(如「南山区」); 没有 district 时退回完整地名的末段 */
+function districtFromAddressComponent(ac){
+  if(!ac || typeof ac!=="object") return "";
+  for(const k of ["district","city","province"]){
+    const v = typeof ac[k]==="string" ? normalizePlace(ac[k]) : "";
+    if(v) return v;
+  }
+  return "";
+}
+function districtOf(place){
+  const s = normalizePlace(place);
+  const m = /([^省市区]{1,10}(?:区|县|旗|盟))$/.exec(s);
+  return m ? m[1] : s;
+}
+/* 按需加载官方 SDK: URL 只带用户自填的 key, 代码里没有有效 key。
+   P1 B-09: 缓存按 Key 绑定; onload 失败 / onerror / 超时 / 宿主缺失一律清缓存允许下次重试;
+            换 Key 时丢弃旧 script 与旧的全局 SDK 实例, 不再拿旧 Key 鉴权。 */
+let tmapLoadPromise = null, tmapLoadedKey = "", tmapScriptEl = null, tmapScriptHost = null, tmapTimer = null;
+function resetTMapSDK(){
+  tmapLoadPromise = null; tmapLoadedKey = "";
+  if(tmapTimer){ clearTimeout(tmapTimer); tmapTimer = null; }
+  if(tmapScriptEl){
+    if(tmapScriptHost && typeof tmapScriptHost.removeChild==="function") tmapScriptHost.removeChild(tmapScriptEl);
+    tmapScriptEl = null; tmapScriptHost = null;
+  }
+  /* 浏览器里 SDK 挂在 window 上; 不清掉就会一直复用旧 Key 的实例(测试注入的 TMap 是形参, 不受影响) */
+  try{ if(typeof window!=="undefined" && window && "TMap" in window) window.TMap = undefined; }catch(e){}
+}
+function loadTMapSDK(){
+  const key = (state && state.settings) ? state.settings.geoKey : "";
+  if(!key) return Promise.resolve(false);
+  if(tmapLoadPromise && tmapLoadedKey===key) return tmapLoadPromise;
+  if(tmapLoadPromise) resetTMapSDK();          // Key 变了: 旧 promise / 旧 script 一律作废
+  const preloaded = typeof TMap!=="undefined" && TMap && TMap.service && TMap.service.Geocoder;
+  if(preloaded && !tmapScriptEl){              // 页面已自带 / 测试注入的 SDK: 绑定当前 Key 复用
+    tmapLoadedKey = key;
+    tmapLoadPromise = Promise.resolve(true);
+    return tmapLoadPromise;
+  }
+  tmapLoadedKey = key;
+  tmapLoadPromise = new Promise((resolve)=>{
+    let done = false;
+    const finish = (ok)=>{
+      if(done) return; done = true;
+      if(tmapTimer){ clearTimeout(tmapTimer); tmapTimer = null; }
+      if(!ok) resetTMapSDK();                 // 失败/超时/缺 Geocoder → 下一次重新加载, 不永久缓存
+      resolve(ok);
+    };
+    const s = document.createElement("script");
+    s.id = "tmapSdkScript";
+    s.src = GEO_SDK_BASE + "&key=" + encodeURIComponent(key);
+    s.onload = ()=> finish(!!(typeof TMap!=="undefined" && TMap && TMap.service && TMap.service.Geocoder));
+    s.onerror = ()=> finish(false);
+    const host = document.head || document.body;
+    if(!host || typeof host.appendChild!=="function"){ finish(false); return; }
+    tmapScriptEl = s; tmapScriptHost = host;
+    host.appendChild(s);
+    tmapTimer = setTimeout(()=>finish(false), GEO_SDK_TIMEOUT_MS);
+    if(tmapTimer && typeof tmapTimer.unref==="function") tmapTimer.unref();   // 离线测试不挂住进程
+  });
+  return tmapLoadPromise;
+}
+function geoLocate(){
+  return new Promise((resolve,reject)=>{
+    const g = (typeof navigator!=="undefined") ? navigator.geolocation : null;
+    if(!g || typeof g.getCurrentPosition!=="function"){ reject(new Error("no-geolocation")); return; }
+    g.getCurrentPosition(
+      (pos)=>{
+        const c = pos && pos.coords;
+        if(!c || !isFinite(c.latitude) || !isFinite(c.longitude)){ reject(new Error("bad-coords")); return; }
+        resolve({ lat:c.latitude, lng:c.longitude });   // 只在内存里, 绝不写 state
+      },
+      (err)=>reject(err || new Error("geo-denied")),
+      { enableHighAccuracy:false, timeout:GEO_TIMEOUT_MS, maximumAge:60000 }
+    );
+  });
+}
+function geoReverse(lat,lng){
+  const gcj = wgs84ToGcj02(lat,lng);
+  if(!gcj) return Promise.reject(new Error("bad-coords"));
+  return loadTMapSDK().then((ok)=>{
+    if(!ok) throw new Error("sdk-unavailable");
+    // 官方 API: new TMap.service.Geocoder().getAddress({location: new TMap.LatLng(lat,lng)})
+    // → Promise<AddressResult>, 取 result.address_component 的 province/city/district
+    return new TMap.service.Geocoder().getAddress({ location: new TMap.LatLng(gcj.lat, gcj.lng) });
+  }).then((res)=>{
+    const r = res && res.result;
+    const ac = r && (r.address_component || r.ad_info);
+    const place = placeFromAddressComponent(ac);
+    if(!place) throw new Error("empty-address");
+    return { place, district: districtFromAddressComponent(ac) || districtOf(place) };
+  });
+}
+/* ============ 启动预热 · v0.0.12 同版重构 ============
+   旧模型: 每笔 add 后异步定位 → 结果回来再回填记录。用户实测"定位晚于数据落盘",
+     派生出 id 复用 / undo 吞掉地名 / 期间切模式 等一串竞态。
+   新模型: **打开时只申请一次定位**; 结果只写内存 + 独立 localStorage 缓存 + 左上角 badge。
+     记账时从缓存**同步**取地名写进 rec.place, 随命令的 mutate→commitIfDirty() 一次落盘。
+     异步链路不再触碰 state.records, 竞态从根上消失; 一次记账仍只压一步撤销。 */
+let geoCache = { place:"", district:"" };   // 只存地名字符串, 不存坐标
+let geoStatus = { kind:"idle", text:"定位中…" };
+let geoPrimed = false;                       // 每次打开只申请一次
+let geoBadgeEl = null, geoBadgeTextEl = null, geoBadgeCanvasEl = null;
+function loadGeoCache(){
+  try{
+    const o = JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || "null");
+    if(o && typeof o.place==="string" && o.place){
+      geoCache = { place:normalizePlace(o.place), district:normalizePlace(o.district) || districtOf(o.place) };
+      return true;
+    }
+  }catch(e){ /* 缓存损坏当没缓存 */ }
+  geoCache = { place:"", district:"" };
+  return false;
+}
+function saveGeoCache(){
+  try{ localStorage.setItem(GEO_CACHE_KEY, JSON.stringify({place:geoCache.place, district:geoCache.district})); }
+  catch(e){ /* 隐私模式/禁用存储: 缓存非必需, 静默 */ }
+}
+function clearGeoCache(){
+  geoCache = { place:"", district:"" };
+  try{ localStorage.removeItem(GEO_CACHE_KEY); }catch(e){}
+}
+function setGeoStatus(kind, text){
+  geoStatus = { kind, text };
+  if(!geoBadgeEl || !geoBadgeTextEl) return;
+  geoBadgeEl.className = "geo-badge "+kind;
+  geoBadgeTextEl.textContent = text;
+  drawGeoIcon();
+}
+/* 地点图标: 左上角 badge 与所有行内地点共用同一套 Canvas 2D 手绘准星 ——
+   直角刻线 + 圆环 + 方形中心点, 与站内的方形进度条/色块同一套视觉语言。
+   状态色随 kind 变化; 不用 Emoji / 外部图片。
+   getContext 不可用(离线 DOM stub)时静默降级, 文字仍可读。 */
+function paintGeoIcon(cv, kind){
+  const ctx = cv && cv.getContext ? cv.getContext("2d") : null;
+  if(!ctx) return;
+  const side = 16, dpr = 2;
+  cv.width = side*dpr; cv.height = side*dpr;
+  cv.style.width = side+"px"; cv.style.height = side+"px";
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,side,side);
+  const col = (kind==="locating"||kind==="nokey"||kind==="failed") ? COLOR.yellow
+            : (kind==="off"||kind==="unsupported"||kind==="idle") ? COLOR.gray : COLOR.cyan;
+  ctx.strokeStyle = col; ctx.lineWidth = 1.25; ctx.lineCap = "butt";
+  ctx.beginPath(); ctx.arc(8,8,5.25,0,Math.PI*2); ctx.stroke();   // 外圈准星
+  ctx.beginPath();                                                  // 四向直角刻线
+  ctx.moveTo(8,0.5);  ctx.lineTo(8,2.2);
+  ctx.moveTo(8,13.8); ctx.lineTo(8,15.5);
+  ctx.moveTo(0.5,8);  ctx.lineTo(2.2,8);
+  ctx.moveTo(13.8,8); ctx.lineTo(15.5,8);
+  ctx.stroke();
+  ctx.fillStyle = (kind==="ok"||kind==="cached") ? COLOR.green : col;
+  ctx.fillRect(7,7,2,2);                                            // 方形中心点
+}
+function drawGeoIcon(){ paintGeoIcon(geoBadgeCanvasEl, geoStatus.kind); }
+/* 行内地点图标: 每处新建一个 16×16 canvas, 与左上角"已定位"状态同色 */
+function makeGeoIcon(){
+  const cv = document.createElement("canvas");
+  cv.className = "geo-ic";
+  cv.setAttribute("aria-hidden","true");
+  paintGeoIcon(cv, "ok");
+  return cv;
+}
+/* 所有 DOM 里的地点展示统一走这里; lead / label 只是命令输出与列表行的文案差异。
+   (纯文本 export 无法承载 Canvas, 由 buildReportText 用「地点:」文字标签降级) */
+function geoPlaceSegs(place, lead, label){
+  return [{t:lead, c:COLOR.gray}, {node:makeGeoIcon()},
+          {t:label, c:COLOR.gray}, {t:String(place), c:COLOR.cyan}];
+}
+/* 左上角 badge: 由 refreshHeader() 清空后第一个 append, 不占 .stat 索引(浏览器探针按 .stat 取列) */
+function renderGeoBadge(bar){
+  if(!bar) return;
+  if(!geoBadgeEl){
+    geoBadgeEl = document.createElement("div");
+    geoBadgeEl.id = "geoBadge";
+    geoBadgeEl.title = "当前记账地点 · 点击重新定位";
+    geoBadgeCanvasEl = document.createElement("canvas");
+    geoBadgeCanvasEl.className = "geo-cv";
+    geoBadgeCanvasEl.setAttribute("aria-hidden","true");
+    geoBadgeTextEl = document.createElement("span"); geoBadgeTextEl.className="geo-txt";
+    geoBadgeEl.appendChild(geoBadgeCanvasEl); geoBadgeEl.appendChild(geoBadgeTextEl);
+    geoBadgeEl.addEventListener("click", ()=>primeGeoLocation(true));
+  }
+  bar.appendChild(geoBadgeEl);
+  setGeoStatus(geoStatus.kind, geoStatus.text);
+}
+let geoHintShown = false;
+function geoHintOnce(){
+  if(geoHintShown) return;
+  geoHintShown = true;
+  line([{t:"   ℹ 自动定位未启用: 在「地点 ▾ → 地点设置」填入自己的腾讯地图 Key 后会自动重新定位; 或切到全手动。", c:COLOR.gray}]);
+}
+/* P1 B-10: 失败不再 .catch(()=>{}) 全吞 —— badge title 记具体原因、终端按原因一次性提示、
+   console.warn 每次留痕; 用户能区分「拒绝授权 / 超时 / Key 无效 / 无网 / 无行政区结果」。 */
+const geoWarned = new Set();
+function geoErrorText(err){
+  const code = err && err.code, msg = String((err && err.message) || err || "");
+  if(code===1) return "定位权限被拒绝(在浏览器地址栏重新授权)";
+  if(code===2) return "位置信息不可用(检查系统定位服务)";
+  if(code===3 || /timeout/i.test(msg)) return "定位超时";
+  if(msg==="no-geolocation") return "浏览器不支持定位";
+  if(msg==="bad-coords") return "定位坐标无效";
+  if(msg==="sdk-unavailable") return "地图 SDK 加载失败(Key 无效 / 无网络 / 脚本被拦截)";
+  if(msg==="empty-address") return "逆地理编码没有返回行政区";
+  if(/network|fetch|fail/i.test(msg)) return "地图服务请求失败(网络或 Key 鉴权)";
+  return "定位失败("+msg.slice(0,40)+")";
+}
+function geoWarnOnce(err){
+  const text = geoErrorText(err);
+  try{ console.warn("[geo] "+text); }catch(e){}
+  if(geoWarned.has(text)) return text;
+  geoWarned.add(text);
+  line([{t:"   ⚠ 自动定位失败: "+text+"  (「地点 ▾ → 地点设置」可查 Key / 切全手动, 点击左上角图标重试)", c:COLOR.yellow}]);
+  return text;
+}
+/* 每次打开调用一次(boot); 切模式/填 Key/点 badge 时 force 补一次。记账时绝不发起定位。 */
+function primeGeoLocation(force){
+  if(geoPrimed && !force) return;
+  geoPrimed = true;
+  if(!state) return;
+  if(state.settings.geoMode!=="auto"){
+    clearGeoCache(); setGeoStatus("off","全手动"); return;
+  }
+  const g = (typeof navigator!=="undefined") ? navigator.geolocation : null;
+  if(!g || typeof g.getCurrentPosition!=="function"){
+    setGeoStatus("unsupported","定位不可用"); return;   // 离线测试环境: 完全静默
+  }
+  if(!state.settings.geoKey){
+    setGeoStatus("nokey","未配置 Key"); geoHintOnce(); return;
+  }
+  if(!geoCache.place) setGeoStatus("locating","定位中…");
+  else setGeoStatus("cached", geoCache.district || districtOf(geoCache.place));
+  geoLocate()
+    .then(c=>geoReverse(c.lat,c.lng))
+    .then((r)=>{
+      // 期间切全手动 / 清空 Key → 只丢弃缓存更新, 绝不改任何记录
+      if(!state || state.settings.geoMode!=="auto" || !state.settings.geoKey) return;
+      geoCache = { place:r.place, district:r.district || districtOf(r.place) };
+      saveGeoCache();
+      setGeoStatus("ok", geoCache.district || districtOf(geoCache.place));
+      if(geoBadgeEl) geoBadgeEl.title = "当前记账地点 · 点击重新定位";
+    })
+    .catch((err)=>{
+      const reason = geoWarnOnce(err);
+      if(geoBadgeEl) geoBadgeEl.title = "定位失败: "+reason+" · 点击重试";
+      if(geoCache.place) setGeoStatus("cached", geoCache.district || districtOf(geoCache.place));
+      else setGeoStatus("failed","定位失败");
+    });
+}
+/* 记账时同步读取(无异步): 全手动/无定位结果时返回空串 */
+function currentGeoPlace(){
+  return (state && state.settings.geoMode==="auto") ? geoCache.place : "";
+}
+/* ---------- 主页「地点 ▾」与设置弹窗 (UI 一律回灌命令, H5 双通道对称) ---------- */
+const GEO_COMMANDS = { auto:"config set geo auto", manual:"config set geo manual" };
+function refreshGeoUI(){
+  const b = document.getElementById("btnGeoDd");
+  if(b) b.textContent = "地点: "+geoModeLabel()+" ▾";
+  const h = document.getElementById("geoDdHint");
+  if(h) h.textContent = "当前: "+geoModeLabel()+" · "+(state && state.settings.geoKey ? "Key 已配置" : "未配置 Key");
+  // 全手动时左上角不许残留上次定位的区名
+  if(state && state.settings.geoMode==="manual" && geoStatus.kind!=="off") setGeoStatus("off","全手动");
+}
+function openGeoModal(){
+  const k = state.settings.geoKey;
+  const el = document.getElementById("g_key");
+  el.value = "";                              // 不回显明文 key
+  el.placeholder = k ? ("已配置 ("+maskGeoKey(k)+")，留空则不修改") : "请在腾讯位置服务开放平台申请自己的 key 并填入";
+  updateGeoHint();
+  openOverlay("geoWrap");
+  el.focus();
+}
+function closeGeoModal(){ document.getElementById("geoWrap").classList.remove("open"); }
+function updateGeoHint(){
+  const auto = state.settings.geoMode==="auto";
+  document.getElementById("g_auto").classList.toggle("on", auto);
+  document.getElementById("g_manual").classList.toggle("on", !auto);
+  document.getElementById("g_hint").textContent =
+    "自动填充地址: 打开时申请一次定位, 左上角显示区名; 记账时同步写入省/市/区(不会晚于落盘)。\n"+
+    "点击左上角定位图标、切模式或填 Key 会重新定位; 坐标不落盘。\n"+
+    "全手动: 不定位, 地点留空; 可用 place <id> <地点> 或弹窗里的「地点」字段补填。\n"+
+    "分摊成本(amort) 从不自动带地点。";
+  document.getElementById("g_key_hint").textContent =
+    "申请: 腾讯位置服务控制台 → 应用管理 → 我的应用 → 创建应用 → 添加 Key(勾选 Web端 JSAPI 与 WebServiceAPI)。\n"+
+    "本地 file:// 打开时 Referer 为空: 域名白名单请留空/不启用; 商用请改后端代理鉴权。\n"+
+    "SDK 模板: "+GEO_SDK_URL_TEMPLATE;
+}
+function setGeoMode(mode){
+  runCommand(GEO_COMMANDS[mode==="auto"?"auto":"manual"]);
+  updateGeoHint();
+}
+function saveGeoKey(){
+  const v = document.getElementById("g_key").value.trim();
+  if(!v){ document.getElementById("g_key_hint").textContent = "请填入自己的 Key；留空不会修改。"; return; }
+  closeGeoModal();
+  runCommand("config set geokey "+quote(v));   // P1 B-12: 整串 quote, 不再被 tokenize 吞掉
+}
+function submitGeoPlace(){
+  const id = document.getElementById("g_id").value.trim();
+  const p  = document.getElementById("g_place").value.trim();
+  if(!/^\d+$/.test(id) || !p){
+    document.getElementById("g_key_hint").textContent = "请填记录 id 与地点 (地点填 - 可清除)。id 见 list。";
+    return;
+  }
+  closeGeoModal();
+  /* P1 B-14: 地名以 # / @ 开头时沿用 P0 的备注转义, 否则会被当成 #地点 / @日期 参数吞掉 */
+  const arg = (p==="-"||p==="off"||p==="清除") ? p : quoteNote(p);
+  runCommand("place "+id+" "+arg);
+}
+
 /* ------------------------------- add ----------------------------------- */
 function validateCategory(cat){
   const c = String(cat||"").trim();
   if(!c){ line([{t:"类别不能为空。例: add 50 餐饮 午餐",c:COLOR.yellow}]); return null; }
-  if(!PREDEFINED.has(c)) PREDEFINED.set(c, COLOR.catFallback);   // register custom category color
-  refreshCatlist();
+  /* P1 B-13: 不再往全局 PREDEFINED 写颜色 —— 旧写法在命令后续校验失败时留下副作用,
+     且不受 undo / 落盘约束。颜色统一由 catColor() 从 knownCategories() 动态派生(B-15)。
+     下拉由 refreshAll() 的统一出口刷新, 此时记录已入账本。 */
   return c;
 }
 function doAdd(tokens){
-  if(!tokens.length){ line([{t:"用法: add <金额> <类别> [备注..] [@日期]   例 add 50 餐饮 午餐",c:COLOR.yellow}]); return; }
-  const {tokens:rest, date:rawDate} = findDateToken(tokens);
+  if(!tokens.length){ line([{t:"用法: add <金额> <类别> [备注..] [@日期] [#地点]   例 add 50 餐饮 午餐",c:COLOR.yellow}]); return; }
+  const {tokens:rest, date:rawDate, place:rawPlace} = splitRecordArgs(tokens);
   const amt = numeric(rest[0]);
   if(amt==null||amt<=0){ line([{t:"金额无效。例 add 50 餐饮 午餐",c:COLOR.yellow}]); return; }
   const cat = validateCategory(rest[1]);
@@ -2103,7 +2708,10 @@ function doAdd(tokens){
   const date = cleanDateStr(rawDate);
   if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
   const rec = makeRecord(amt, cat, note, date);
+  if(rawPlace!=null) rec.place = (rawPlace==="-"||rawPlace==="off") ? "" : normalizePlace(rawPlace);
+  else rec.place = normalizePlace(currentGeoPlace());   // 启动预热缓存: 同步写入, 随命令一次落盘
   state.records.push(rec);
+  if(rec.place) line(geoPlaceSegs(rec.place, "   ", " 地点 "));
   const st = periodSnapshot();
   const bar = progressBar(st.ratio);
   line([{t:"✓ 已记入 #",c:COLOR.green},{t:rec.id,c:COLOR.pure,cls:"hl"},
@@ -2124,6 +2732,7 @@ function doAdd(tokens){
       {t:aw.t,c:aw.c,cls:"glow"}
     ]);
   }
+  // 定位在 boot 时已预热完毕, 记账只同步取缓存; 此处不再发起任何异步请求
 }
 function makeRecord(amount, category, note, date, amortDays){
   state.seq += 1;
@@ -2132,7 +2741,7 @@ function makeRecord(amount, category, note, date, amortDays){
   const total = r2(amount);                       // amount 传进来的是"总价"(普通消费即金额本身)
   const daily = days>1 ? r2(total/days) : total;
   const inv = investOf(total);
-  return { id:state.seq, amount:daily, category, note, date,
+  return { id:state.seq, amount:daily, category, note, place:"", date,
            amortDays:days, amortTotal:total,
            mm:inv.mm, idx:inv.idx, moneyInv:0, indexInv:0, created: todayYMD() };
 }
@@ -2161,10 +2770,10 @@ function parseDaysToken(t){
   }
   return null;
 }
-function amortUsage(){ return "用法: amort <总价> <天数> <类别> [备注..] [@开始日期]   例 amort 3000 365 房租 年付  或 amort 600 12月 会员费"; }
+function amortUsage(){ return "用法: amort <总价> <天数> <类别> [备注..] [@开始日期] [#地点]   例 amort 3000 365 房租 年付  或 amort 600 12月 会员费"; }
 function doAmort(tokens){
   if(tokens.length < 3){ line([{t:amortUsage(),c:COLOR.yellow}]); return; }
-  const {tokens:rest, date:rawDate} = findDateToken(tokens);
+  const {tokens:rest, date:rawDate, place:rawPlace} = splitRecordArgs(tokens);
   const total = numeric(rest[0]);
   if(total==null || total<=0){ line([{t:"总价无效。例 amort 3000 365 房租 年付",c:COLOR.yellow}]); return; }
   const d = parseDaysToken(rest[1]);
@@ -2180,7 +2789,9 @@ function doAmort(tokens){
   const date = cleanDateStr(rawDate);
   if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
   const rec = makeRecord(total, cat, note, date, d.days);
+  if(rawPlace!=null) rec.place = (rawPlace==="-"||rawPlace==="off") ? "" : normalizePlace(rawPlace);
   state.records.push(rec);
+  if(rec.place) line(geoPlaceSegs(rec.place, "   ", " 地点 "));
   const end = addDaysYMD(date, rec.amortDays-1);
   line([{t:"✓ 已记入分摊成本 #",c:COLOR.green},{t:rec.id,c:COLOR.pure,cls:"hl"},
         {t:"  "+cat+" ",c:catColor(cat)},
@@ -2205,6 +2816,7 @@ function doAmort(tokens){
 
 /* ------------------------------- list ---------------------------------- */
 function addSeg(div, s){
+  if(s.node){ div.appendChild(s.node); return; }      // Canvas 图标段(地点准星)
   const sp=document.createElement("span");
   if(s.c) sp.style.color = s.c;
   if(s.cls) sp.className = s.cls;
@@ -2230,6 +2842,7 @@ function renderRecordRow(r){
   const stSpan  = mkSpan("", COLOR.gray);       // 状态
   d.appendChild(invSpan); d.appendChild(stSpan);
   if(r.note) addSeg(d,{t:"  · "+r.note, c:COLOR.gray});
+  if(r.place) for(const s of geoPlaceSegs(r.place, "  · ", " ")) addSeg(d,s);
   addSeg(d,{t:"  ", c:COLOR.gray});
   const b = document.createElement("button"); b.type="button"; b.className="tbtn";
   b.title = "把 #"+r.id+" 应投货币/指数全部标记已投 (等同 pay "+r.id+" all), 再点重置";
@@ -2378,17 +2991,18 @@ function doDelete(tokens){
         {t:recAmortized(rm) ? ("  (分摊"+(rm.amortDays)+"天 · 总价 ¥"+money(recTotal(rm))+")") : "", c:COLOR.gray}]);
 }
 function doUpdate(tokens){
-  if(tokens.length<3){ line([{t:"用法: update <id> <金额> <类别> [备注..] [@日期]",c:COLOR.yellow}]); return; }
+  if(tokens.length<3){ line([{t:"用法: update <id> <金额> <类别> [备注..] [@日期] [#地点]",c:COLOR.yellow}]); return; }
   const id = numeric(tokens[0]);
   const rec = state.records.find(r=>r.id===id);
   if(!rec){ line([{t:"未找到 #"+id,c:COLOR.yellow}]); return; }
-  const {tokens:rest, date:rawDate} = findDateToken(tokens.slice(1));
+  const {tokens:rest, date:rawDate, place:rawPlace} = splitRecordArgs(tokens.slice(1));
   const amt = numeric(rest[0]);
   if(amt==null||amt<=0){ line([{t:"金额无效",c:COLOR.yellow}]); return; }
   const cat = validateCategory(rest[1]); if(!cat) return;
   const note = rest.slice(2).join(" ");
   const days = recDays(rec);                    // 分摊成本: 天数不变, 金额按"每天"解释 → 总价同步重算
   rec.amount = r2(amt); rec.category = cat; rec.note = note;
+  if(rawPlace!=null) rec.place = (rawPlace==="-"||rawPlace==="off"||rawPlace==="clear") ? "" : normalizePlace(rawPlace);
   rec.amortDays = days;
   rec.amortTotal = days>1 ? r2(rec.amount*days) : rec.amount;
   if(rawDate){ const d = cleanDateStr(rawDate); if(d) rec.date=d; }
@@ -2939,7 +3553,12 @@ function doReport(tokens){
 }
 
 /* ------------------------------ export --------------------------------- */
+/* P2 B-19: 用户输入(类别/备注/地点)原样拼进 Markdown 会破坏结构(**、#、[]、| 等); 导出 md 时转义 */
+function escapeMd(s){
+  return String(s==null?"":s).replace(/([\\`*_\[\]#<>|~])/g, "\\$1");
+}
 function buildReportText(md){
+  const esc=(s)=> md ? escapeMd(s) : String(s==null?"":s);   // txt 无结构字符, 原样输出
   const t=todayYMD();
   const p=currentPeriod();
   const L = [];
@@ -2969,7 +3588,7 @@ function buildReportText(md){
   push("消费笔数", String(w.count));
   push("总消费", moneyF(w.total));
   if(w.amortTotal>0) push("其中分摊成本(按落在本期的天数计)", moneyF(w.amortTotal));
-  for(const [cat,amt] of w.cats){ push("类别·"+cat, moneyF(amt)+" ("+(w.total?amt/w.total*100:0).toFixed(1)+"%)"); }
+  for(const [cat,amt] of w.cats){ push("类别·"+esc(cat), moneyF(amt)+" ("+(w.total?amt/w.total*100:0).toFixed(1)+"%)"); }
   HR();
   H("自动投资换算");
   push("应投货币 ("+mmPct()+"%口径)", moneyF(w.mmT));
@@ -2986,10 +3605,11 @@ function buildReportText(md){
     const amort = recAmortized(r)
       ? ("  分摊"+recDays(r)+"天("+recWindow(r).start+"~"+recWindow(r).end
          +" 总价¥"+money(recTotal(r))+" → 每天¥"+money(r.amount)+")") : "";
-    L.push("- "+r.date+"  #"+r.id+"  "+r.category+"  ¥"+money(r.amount)+amort
+    L.push("- "+r.date+"  #"+r.id+"  "+esc(r.category)+"  ¥"+money(r.amount)+amort
           +"  (应投货币¥"+money(r.mm)+" 指数¥"+money(r.idx)
           +"  已投货币¥"+money(r.moneyInv||0)+" 指数¥"+money(r.indexInv||0)+")  ["+paidSt+"]"
-          +(r.note?"  "+r.note:""));
+          +(r.note?"  "+esc(r.note):"")+(r.place?"  地点:"+esc(r.place):"")
+          +(r.created?"  创建:"+r.created:""));   // P2 B-19: 补 created 字段, 用户输入走 esc()
   }
   HR();
   L.push("");
@@ -3034,6 +3654,9 @@ function showSettings(){
   const sp = rateSplit();
   kv("消费/投资比例", "消费 "+consumePct()+"%  |  投资 "+invPct()+"%  (货币 "+r2(sp.mm*100)+"% + 指数 "+r2(sp.idx*100)+"%)");
   kv("换算(占用)", "占用 = 消费 ÷ "+consumePct()+"%   (config set invest 15 / config set consume 85 可调)");
+  kv("地点模式", s.geoMode==="auto" ? "自动填充地址 (仅 add · 只存行政区名)" : "全手动 (不填则空)");
+  kv("腾讯地图 Key", s.geoKey ? (maskGeoKey(s.geoKey)+"   (已配置, 仅存本机)") : "未配置 → config set geokey <Key>");
+  kv("当前定位", geoCache.place ? (geoCache.place+"   ["+geoStatus.text+"]") : ("尚未定位  ["+geoStatus.text+"]"));
   blank();
 }
 
@@ -3158,7 +3781,12 @@ function doAssets(tokens){
 function echoCommand(raw){
   const div=document.createElement("div"); div.className="l";
   div.appendChild(Object.assign(document.createElement("span"),{className:"prompt glow",textContent:"user@budget:~$ "}));
-  div.appendChild(Object.assign(document.createElement("span"),{className:"cmd",textContent:raw}));
+  // v0.0.12: 终端不回显明文地图 Key(命令历史仍保留原值, 方便重跑); config 页也只显示打码值
+  let shown = raw;
+  /* P1 B-12: 打码吃掉整段 Key(含引号/空格), 旧正则只吃第一个 \S+ 会漏出后半截明文。 */
+  const km = /^(config\s+set\s+(?:geokey|mapkey|key)\s+)(.+)$/i.exec(raw);
+  if(km) shown = km[1]+maskGeoKey(km[2].trim());
+  div.appendChild(Object.assign(document.createElement("span"),{className:"cmd",textContent:shown}));
   term.appendChild(div);
 }
 function refreshHeader(){
@@ -3169,6 +3797,7 @@ function refreshHeader(){
   const pb=progressBar(st.ratio);
   const iMoney = moneyInvestedTotal(), iIndex = indexInvestedTotal();
   bar.innerHTML="";
+  renderGeoBadge(bar);       // 左上角定位状态: 清空后第一个 append, 不占 .stat 索引
   const modeLabel = p.mode==="rolling" ? ("每"+state.settings.lengthDays+"天周期") : (state.settings.monthStart===1?"自然月":("月"+state.settings.monthStart+"日起"));
   const cells=[
     ["周期模式", modeLabel],
@@ -3301,10 +3930,14 @@ function updateAmortHint(){
   if(!chosen){
     el.className="mhint bad"; el.textContent="起始日期需为 YYYY-MM-DD 的合法日期（也可以留空 = 今天）。"; return;
   }
-  // 与终端显示口径一致: 用 r2 后的每天金额反推总价并算应投, 保证"预览 = 提交后的数字"
-  const shownTotal = r2(daily*d.days);
-  const inv = investOf(shownTotal);
-  let s = "= 每天 ¥"+money(daily)+" × "+d.days+" 天（合计 ¥"+money(shownTotal)+"）";
+  /* P0: 预览必须与 makeRecord 同一口径 —— 投资只按"记录总价" r2(total) 记一次;
+     逐日累计(每天金额 × 天数)是消费口径, 因 r2 中间取整可能与总价不等, 分别写明不混算。 */
+  const recTotal = r2(total);
+  const accrued  = r2(daily*d.days);
+  const inv = investOf(recTotal);
+  let s = "= 每天 ¥"+money(daily)+" × "+d.days+" 天（记录总价 ¥"+money(recTotal);
+  if(accrued!==recTotal) s += "，逐日累计 ¥"+money(accrued)+"（消费口径）";
+  s += "）";
   s += "，从 "+chosen.date+" 起";
   s += "\n生效区间: "+chosen.date+" ~ "+addDaysYMD(chosen.date, d.days-1)+"（含首尾，共 "+d.days+" 天）";
   s += "\n应投按总价一次记入: 货币 ¥"+money(inv.mm)+" + 指数 ¥"+money(inv.idx);
@@ -3322,13 +3955,14 @@ function amortPickDate(raw){
 }
 function openAdd(){ modalMode="add"; modalId=null;
   document.getElementById("f_amt").value=""; document.getElementById("f_note").value="";
+  document.getElementById("f_place").value="";
   document.getElementById("f_date").value=todayYMD(); document.getElementById("f_cat").value="";
   document.getElementById("fa_total").value=""; document.getElementById("fa_days").value="";
-  document.getElementById("fa_note").value=""; document.getElementById("fa_cat").value="";
+  document.getElementById("fa_note").value=""; document.getElementById("fa_place").value=""; document.getElementById("fa_cat").value="";
   document.getElementById("fa_date").value=todayYMD();   // 精确到日(以前给的是 YYYY-MM)
   setModalTabsVisible(true);           // 新增模式: 两个选项卡都在
   setModalTab("add");                  // 每次打开都回到最常用的"单笔消费"
-  document.getElementById("modalWrap").classList.add("open");
+  openOverlay("modalWrap");
   document.getElementById("f_amt").focus();
 }
 /* H5: 列表行 ✎ 编辑 —— 接活原来不可达的弹窗 edit 分支(modalMode="edit" / modalId=记录 id)。
@@ -3345,13 +3979,14 @@ function openEdit(r){
   document.getElementById("f_cat").value  = r.category;
   document.getElementById("f_date").value = r.date;
   document.getElementById("f_note").value = r.note || "";
+  document.getElementById("f_place").value = r.place || "";
   setModalTab("add");                  // 编辑固定单笔表单(标题会变成「编辑记录 #id」)
-  document.getElementById("modalWrap").classList.add("open");
+  openOverlay("modalWrap");
   document.getElementById("f_amt").focus();
 }
 function refreshCatlist(){
   const d=document.getElementById("catlist"); d.innerHTML="";
-  for(const c of PREDEFINED.keys()){
+  for(const c of knownCategories()){       // P1 B-13: 记录里的自定义类别也进下拉(导入备份不再丢)
     const o=document.createElement("option"); o.value=c; d.appendChild(o);
   }
 }
@@ -3368,7 +4003,7 @@ function openBudgetModal(){
   const db = state.settings.dailyBudget;
   document.getElementById("b_daily").value = (typeof db==="number" && db>0) ? db : "";
   updateDailyHint();
-  document.getElementById("budgetWrap").classList.add("open");
+  openOverlay("budgetWrap");
   document.getElementById("b_amt").focus();
 }
 function closeBudgetModal(){ document.getElementById("budgetWrap").classList.remove("open"); }
@@ -3379,7 +4014,7 @@ function openInvestModal(){
   const inv = invPct();
   document.getElementById("i_pct").value = inv;
   updateInvestHint();
-  document.getElementById("investWrap").classList.add("open");
+  openOverlay("investWrap");
   document.getElementById("i_pct").focus();
 }
 function closeInvestModal(){ document.getElementById("investWrap").classList.remove("open"); }
@@ -3453,12 +4088,15 @@ function submitModal(){
   const cat=document.getElementById("f_cat").value.trim();
   const date=document.getElementById("f_date").value||todayYMD();
   const note=document.getElementById("f_note").value.trim();
+  const place=document.getElementById("f_place").value.trim();
   if(amt==null||amt<=0){ alertModal("金额需为大于0的数字"); return; }
   if(!cat){ alertModal("请输入类别，如 餐饮 / 交通"); return; }
   closeModal();
+  // 编辑模式清空地点 → 回灌 #- 才会真的清掉; 新增模式留空就什么都不带(不填则空着)
+  const placePart = place ? " "+quotePlace(place) : (modalMode==="edit" ? " #-" : "");
   const cmd = modalMode==="edit"
-    ? "update "+modalId+" "+amt+" "+cat+(note?" "+quote(note):"")+" @"+date
-    : "add "+amt+" "+cat+(note?" "+quote(note):"")+" @"+date;
+    ? "update "+modalId+" "+amt+" "+cat+(note?" "+quoteNote(note):"")+" @"+date+placePart
+    : "add "+amt+" "+cat+(note?" "+quoteNote(note):"")+" @"+date+placePart;
   input.value = cmd; input.focus();
   runCommand(cmd);
 }
@@ -3468,6 +4106,7 @@ function submitAmort(){
   const d=parseDaysToken(document.getElementById("fa_days").value);
   const cat=document.getElementById("fa_cat").value.trim();
   const note=document.getElementById("fa_note").value.trim();
+  const place=document.getElementById("fa_place").value.trim();
   if(total==null||total<=0){ alertModal("总价需为大于0的数字"); return; }
   if(!d){ alertModal("分摊天数需为 ≥ "+AMORT_MIN_DAYS+" 的整数天"); return; }
   if(!Number.isInteger(d.days) || d.days<AMORT_MIN_DAYS || d.days>AMORT_MAX_DAYS){
@@ -3480,14 +4119,41 @@ function submitAmort(){
   const picked = amortPickDate(document.getElementById("fa_date").value);
   if(!picked){ alertModal("起始日期需为 YYYY-MM-DD 的合法日期（或留空 = 今天）"); return; }
   closeModal();
-  const cmd = "amort "+total+" "+d.days+" "+cat+(note?" "+quote(note):"")
-            + (picked.blank ? "" : (" @"+picked.date));
+  const cmd = "amort "+total+" "+d.days+" "+cat+(note?" "+quoteNote(note):"")
+            + (picked.blank ? "" : (" @"+picked.date))
+            + (place ? " "+quotePlace(place) : "");
   input.value = cmd; input.focus();
   runCommand(cmd);
 }
 function input2num(v){ const n=parseFloat(String(v).replace(/,/g,"")); return isNaN(n)?null:n; }
 function quote(s){ return '"'+String(s).replace(/\\/g,"\\\\").replace(/"/g,'\\"')+'"'; }
 function alertModal(msg){ const old=document.getElementById("btnSubmit").textContent; document.getElementById("btnSubmit").textContent=msg; setTimeout(()=>{document.getElementById("btnSubmit").textContent="确认";},1400); }
+
+/* ---- 浮层互斥(v0.0.12 同版修复) ----
+   现象: 点第二个下拉时 toggleDd() 只 toggle 自己并 stopPropagation, document 的"点空白收起"
+        不会执行 → 多个下拉/弹窗同时叠在页面上(互相遮挡)。
+   规则: 全局同时最多一个浮层 open —— 打开任一下拉/弹窗前, 先关掉其它所有浮层。
+   下拉与弹窗都走这两个入口, 不再各写一份 close 清单(F1 横向重复)。 */
+const DD_IDS = ["listDd","reportDd","configDd","geoDd"];
+const MODAL_IDS = ["modalWrap","budgetWrap","investWrap","dateWrap","geoWrap"];
+function closeAllOverlays(except){
+  for(const id of DD_IDS.concat(MODAL_IDS)){
+    if(id===except) continue;
+    const el=document.getElementById(id);
+    if(el) el.classList.remove("open");
+  }
+}
+function openOverlay(id){
+  closeAllOverlays(id);
+  const el=document.getElementById(id);
+  if(el) el.classList.add("open");
+}
+function closeAllDd(){
+  for(const id of DD_IDS){
+    const el=document.getElementById(id);
+    if(el) el.classList.remove("open");
+  }
+}
 
 /* toolbar */
 function bindToolbar(){
@@ -3501,12 +4167,23 @@ function bindToolbar(){
         if(b.dataset.config==="invest") openInvestModal(); else openBudgetModal();
         return;
       }
+      /* v0.0.12 「地点 ▾」: 模式项回灌 config 命令, 第三项开设置弹窗(弹窗再回灌命令) */
+      if(b.dataset && b.dataset.geo!==undefined){
+        closeDd("geoDd");
+        if(b.dataset.geo==="settings"){ openGeoModal(); return; }
+        const gc = GEO_COMMANDS[b.dataset.geo];
+        if(!gc) return;
+        input.value = gc; input.focus();
+        runCommand(gc);
+        return;
+      }
       if(b.id==="btnListDd"){ toggleDd("listDd", ev); return; }
       if(b.id==="btnReportDd"){ toggleDd("reportDd", ev); return; }
       if(b.id==="btnConfigDd"){ toggleDd("configDd", ev); return; }
+      if(b.id==="btnGeoDd"){ toggleDd("geoDd", ev); return; }
       const c=b.dataset.cmd;
       if(!c) return;
-      closeDd("listDd"); closeDd("reportDd"); closeDd("configDd");
+      closeDd("listDd"); closeDd("reportDd"); closeDd("configDd"); closeDd("geoDd");
       if(c==="open-add"){ openAdd(); return; }
       if(c==="open-budget"){ openBudgetModal(); return; }
       if(c==="open-invest"){ openInvestModal(); return; }
@@ -3525,9 +4202,9 @@ function bindToolbar(){
     try{ await restoreFromText(await file.text()); }
     catch(e){ line([{t:"导入失败: "+(e&&e.message||e), c:COLOR.red}]); }
   });
-  // 点空白处收起下拉
+  // 点空白处收起下拉(清单走 DD_IDS 单一来源)
   document.addEventListener("click",(ev)=>{
-    for(const id of ["listDd","reportDd","configDd"]){
+    for(const id of DD_IDS){
       const dd=document.getElementById(id);
       if(dd && ev.target && dd.contains && !dd.contains(ev.target)) dd.classList.remove("open");
     }
@@ -3542,6 +4219,8 @@ function bindToolbar(){
 function toggleDd(id, ev){
   const dd=document.getElementById(id);
   if(!dd) return;
+  const willOpen = !dd.classList.contains("open");
+  if(willOpen) closeAllOverlays(id);   // 打开前先关掉其它所有浮层(含弹窗), 保持全局互斥
   dd.classList.toggle("open");
   if(ev && ev.stopPropagation) ev.stopPropagation();
 }
@@ -3609,7 +4288,7 @@ function openDateModal(target){
   ["d_date_native","d_month_native"].forEach(id=>{ dateModalEl(id).value=""; });
   setDateHint(DATE_HINT,false);
   updateDatePreview();
-  dateModalEl("dateWrap").classList.add("open");
+  openOverlay("dateWrap");
   dateModalEl("d_date").focus();
 }
 function closeDateModal(){ dateModalEl("dateWrap").classList.remove("open"); }
@@ -3646,7 +4325,8 @@ function bindModal(){
   document.getElementById("btnCancel").addEventListener("click",closeModal);
   document.getElementById("btnSubmit").addEventListener("click",submitModal);
   document.getElementById("modalWrap").addEventListener("click",(e)=>{ if(e.target.id==="modalWrap") closeModal(); });
-  [document.getElementById("f_amt"),document.getElementById("f_date"),document.getElementById("f_cat"),document.getElementById("f_note")]
+  [document.getElementById("f_amt"),document.getElementById("f_date"),document.getElementById("f_cat"),
+   document.getElementById("f_note"),document.getElementById("f_place")]
     .forEach(el=>el.addEventListener("keydown",(e)=>{ if(e.key==="Enter") submitModal(); }));
   // 「记一笔」的两个选项卡 + 分摊预览(输入即预览, 与"配置预算"弹窗的实时预览同一风格)
   document.querySelectorAll("#modal .mtabs .mtab").forEach(b=>{
@@ -3655,7 +4335,8 @@ function bindModal(){
   ["fa_total","fa_days","fa_date"].forEach(id=>{
     const el=document.getElementById(id); if(el) el.addEventListener("input",updateAmortHint);
   });
-  [document.getElementById("fa_total"),document.getElementById("fa_days"),document.getElementById("fa_cat"),document.getElementById("fa_note")]
+  [document.getElementById("fa_total"),document.getElementById("fa_days"),document.getElementById("fa_cat"),
+   document.getElementById("fa_note"),document.getElementById("fa_place")]
     .forEach(el=>el.addEventListener("keydown",(e)=>{ if(e.key==="Enter") submitModal(); }));
   // 预算弹窗
   document.getElementById("b_cancel").addEventListener("click",closeBudgetModal);
@@ -3690,14 +4371,26 @@ function bindModal(){
   });
   document.getElementById("d_cat").addEventListener("input",updateDatePreview);
   document.getElementById("d_cat").addEventListener("keydown",(e)=>{ if(e.key==="Enter") applyDateModal(); });
+  // 地点设置弹窗(v0.0.12): 所有动作都回灌命令, 不直接改 state
+  document.getElementById("g_cancel").addEventListener("click",closeGeoModal);
+  document.getElementById("g_auto").addEventListener("click",()=>setGeoMode("auto"));
+  document.getElementById("g_manual").addEventListener("click",()=>setGeoMode("manual"));
+  document.getElementById("g_save").addEventListener("click",saveGeoKey);
+  document.getElementById("g_place_save").addEventListener("click",submitGeoPlace);
+  document.getElementById("geoWrap").addEventListener("click",(e)=>{ if(e.target.id==="geoWrap") closeGeoModal(); });
+  document.getElementById("g_key").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveGeoKey(); });
+  document.getElementById("g_place").addEventListener("keydown",(e)=>{ if(e.key==="Enter") submitGeoPlace(); });
 }
 /* ===================== Tab 命令补全 ===================== */
 /* M1: 补全词同样由 COMMANDS 派生(主名在前, 别名在后), 不再手抄一份 */
 const CMD_WORDS = [...new Set([...COMMAND_NAMES, ...Object.keys(CMD_ALIAS)])];
 function recordIds(){ return state.records.map(r=>String(r.id)); }
-// 已知类别 + 历史记录里出现过的类别(含自定义)，用于补全与提示
-function allCategories(){
-  return [...new Set([...PREDEFINED.keys(), ...state.records.map(r=>r.category)])].filter(Boolean);
+/* P1 B-13: 类别的「单一真相来源」= 默认类别 + 账本里出现过的类别(含导入备份的自定义类别)。
+   datalist / Tab 补全 / list·summary·chart 提示 / 自定义类别配色全部走这里, 不再三套口径;
+   H3 复发点: 以前 refreshCatlist() 只遍历 PREDEFINED.keys(), 导入后自定义类别不进下拉。 */
+function knownCategories(){
+  const recCats = (state && Array.isArray(state.records)) ? state.records.map(r=>r.category) : [];
+  return [...new Set([...PREDEFINED.keys(), ...recCats])].filter(Boolean);
 }
 /* 参数补全。
    M2 修复: 以前用"第几个 token"当槽位, 但 `@日期` 是**位置无关**参数
@@ -3710,12 +4403,30 @@ function argCandidates(c0, slot, tokens, cur){
   let arg = 0;                       // 语义槽位(0-based)
   for(let i=1; i<slot && i<tokens.length; i++){
     const t = tokens[i];
-    if(t && t[0]!=="@") arg++;       // @日期不占槽位
+    if(t && t[0]!=="@" && t[0]!=="#") arg++;       // @日期 / #地点 都不占语义槽位
   }
   const typingAt = !!(cur && cur[0]==="@");
+  if(cur && cur[0]==="#") return [];               // 地点自由输入, 不给候选
   // 正在输入 @条件: 只有 list 支持关键字写法, 其余命令要么接受 ISO 日期(@YYYY-MM-DD), 要么不支持
   if(typingAt) return (cmd==="list") ? ["@today","@period","@month"] : [];
-  if(cmd==="help"||cmd==="config"||cmd==="cls"||cmd==="undo"||cmd==="redo") return [];
+  if(cmd==="help"||cmd==="cls"||cmd==="undo"||cmd==="redo") return [];
+  /* P2 B-20: config 的子命令/子名也给候选(旧版整体返回空, geo/geokey/ratio 补不出来) */
+  if(cmd==="config"){
+    if(arg===0) return ["set"];
+    if(arg===1) return ["budget","invest","consume","ratio","share","geo","geokey"];
+    if(arg===2){
+      const sub=(tokens[2]||"").toLowerCase();   // 子名槽: tokens[1]="set", tokens[2]=子名
+      if(sub==="budget") return ["800","1000","1200","1500"];
+      if(sub==="invest"||sub==="consume"||sub==="ratio"||sub==="share") return ["15","85","0.85","0.9"];
+      if(sub==="geo") return ["auto","manual"];
+      return [];
+    }
+    if(arg===3){
+      if((tokens[2]||"").toLowerCase()==="budget") return ["now"];
+      return [];
+    }
+    return [];
+  }
   if(cmd==="assets"||cmd==="forecast") return [];
   if(cmd==="budget"){
     if(arg===0) return ["set","default","reset"];
@@ -3743,22 +4454,27 @@ function argCandidates(c0, slot, tokens, cur){
   }
   /* add <金额> <类别> [备注..] [@日期]: 金额位不提示(数字自己敲), 类别位给类别, 备注位不给 */
   if(cmd==="add"){
-    if(arg===1) return [...PREDEFINED.keys()];
+    if(arg===1) return knownCategories();
     return [];
   }
   /* amort <总价> <天数> <类别> [备注..] [@开始日期]: 金额位/天数位不提示, 类别位给类别(与 add 同一套) */
   if(cmd==="amort"){
-    if(arg===2) return [...PREDEFINED.keys()];
+    if(arg===2) return knownCategories();
     if(arg===1) return ["30","90","180","365","12月"];
     return [];
   }
   /* update <id> <金额> <类别> [备注..] [@日期]: 修复前类别被放在金额位(slot 2), 类别位(slot 3)返回空 */
   if(cmd==="update"){
     if(arg===0) return recordIds();
-    if(arg===2) return [...PREDEFINED.keys()];
+    if(arg===2) return knownCategories();
     return [];
   }
   if(cmd==="del"){ if(arg===0) return recordIds(); return []; }
+  if(cmd==="place"){
+    if(arg===0) return recordIds();
+    if(arg===1) return [...new Set(state.records.map(r=>r.place).filter(Boolean))];
+    return [];
+  }
   if(cmd==="pay"){
     if(arg===0) return recordIds();
     // pay full [mm|idx]: 全额投资只认两种池; pay <id> 才给 all/none
@@ -3766,16 +4482,16 @@ function argCandidates(c0, slot, tokens, cur){
     return [];
   }
   if(cmd==="list"){                                   // 类别/@日期/条数 顺序自由, 各槽位都给同一组候选
-    return ["@today","@period","@month", ...allCategories()];
+    return ["@today","@period","@month", ...knownCategories()];
   }
   if(cmd==="summary"){
-    if(arg===0) return ["day","week","month","cat", ...allCategories()];
-    return allCategories();                           // 类别筛选
+    if(arg===0) return ["day","week","month","cat", ...knownCategories()];
+    return knownCategories();                           // 类别筛选
   }
   /* chart: 窗口 / 图型 / 类别顺序自由, 各槽位给同一组候选(与 list 的做法一致) */
-  if(cmd==="chart") return ["day","week","period","month","bar","pie","both", ...allCategories()];
+  if(cmd==="chart") return ["day","week","period","month","bar","pie","both", ...knownCategories()];
   /* report: 固定双图, 只补窗口与类别 */
-  if(cmd==="report") return ["day","week","period","month", ...allCategories()];
+  if(cmd==="report") return ["day","week","period","month", ...knownCategories()];
   if(cmd==="export"){ if(arg===0) return ["md","txt"]; return []; }
   return [];
 }
@@ -3889,7 +4605,11 @@ function historyDown(){ if(hIdx<0) return; hIdx++; if(hIdx>=history.length){ hId
 
 function boot(){
   const dropped = loadState();
-  refreshAll();               // 顶栏统计/理财条/类别下拉/撤销按钮 一次刷新(H4 的同一入口)
+  /* v0.0.12: 先把上次定位的地名从独立缓存读回来(左上角立即可见、首笔即可用), 再申请一次新定位 */
+  const cached = loadGeoCache();
+  setGeoStatus(cached ? "cached" : "idle",
+               cached ? (geoCache.district || districtOf(geoCache.place)) : "定位中…");
+  refreshAll();               // 顶栏统计/理财条/类别下拉/左上角定位/撤销按钮 一次刷新(H4 的同一入口)
   bindToolbar(); bindModal(); bindInput();
   armAutoReconnect();
   if(dropped) line([{t:"⚠ 本地数据里有 "+dropped+" 条记录金额/日期损坏, 已跳过(其余记录照常加载)。", c:COLOR.yellow}]);
@@ -3909,6 +4629,7 @@ function boot(){
   showBudget();
   line([{t:"输入 ",c:COLOR.gray},{t:"help",c:COLOR.yellow},{t:" 查看全部命令；或点上方按钮快速操作。",c:COLOR.gray}]);
   blank();
+  primeGeoLocation();         // 每次打开只申请一次定位(结果只更新缓存 + 左上角, 不碰账本)
   input.focus();
 }
 

@@ -52,8 +52,8 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
   eq("CH1.8 别名 charts 的参数补全与 chart 一致",
      S.argCandidates("charts", 1, ["charts"], ""), cands);
   eq("CH1.9 第二槽位仍给候选(顺序自由)", S.argCandidates("chart", 2, ["chart","week"], ""), cands);
-  eq("CH1.10 版本号已升到 v0.0.11", S.APP_VERSION, "v0.0.11");
-  ok("CH1.11 README 当前版本同步", /当前版本：\*\*v0\.0\.11\*\*/.test(readme), "");
+  eq("CH1.10 版本号已升到 v0.0.12", S.APP_VERSION, "v0.0.12");
+  ok("CH1.11 README 当前版本同步", /当前版本：\*\*v0\.0\.12\*\*/.test(readme), "");
   ok("CH1.12 README 命令表含 chart", /`chart \[/.test(readme), "");
   /* 工具栏(v0.0.10 同版迭代): 周期/日/周总结 + 图表总结 四个入口合成一个 */
   ok("CH1.13 旧的四个总结按钮与图表下拉已移除",
@@ -300,7 +300,7 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
   const rc = S.argCandidates("report", 1, ["report"], "");
   for(const w of ["day","week","period","month"]) ok("CH9.7 补全含 "+w, rc.includes(w), rc.join(","));
   ok("CH9.8 report 补全不含图型(固定双图)", !rc.includes("bar") && !rc.includes("pie") && !rc.includes("both"), rc.join(","));
-  eq("CH9.9 版本号随视觉改造升到 v0.0.11", S.APP_VERSION, "v0.0.11");
+  eq("CH9.9 版本号随视觉改造升到 v0.0.12", S.APP_VERSION, "v0.0.12");
 
   /* 一次输出必须同时含总结表 / 柱状图 / 饼图 / 自动分析 / 结论 */
   const txt = runChart(S, "report week");
@@ -384,6 +384,45 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
   runChart(R, "report");
   ok("CH9.35 report 纯只读: 不进撤销栈、不写盘",
      R.undoDepth===before.u && R.__storage.getItem("budget_term_v1")===before.ls, "");
+}
+
+/* ---------- 10. 浮层互斥(v0.0.12 同版修复): 全局同时最多一个下拉/弹窗 open ---------- */
+{
+  const S = loadApp(); S.boot(); S.clearTerm();
+  const d = S.__doc;
+  S.closeAllOverlays();                       // doc 是共享 stub, 先清场
+  const openIds = ()=> S.DD_IDS.concat(S.MODAL_IDS)
+    .filter(id=> d.getElementById(id).classList.contains("open"));
+
+  eq("CH10.1 下拉/弹窗清单齐全(4 + 5)", [S.DD_IDS.length, S.MODAL_IDS.length], [4,5]);
+  ok("CH10.2 所有浮层打开收口到 openOverlay(), toggleDd 打开前先互斥",
+     /if\(willOpen\) closeAllOverlays\(id\);/.test(jsCode)
+     && /function openOverlay\(id\)\{\s*closeAllOverlays\(id\);/.test(jsCode)
+     && (jsCode.match(/classList\.add\("open"\)/g)||[]).length===1
+     && (jsCode.match(/openOverlay\("/g)||[]).length>=6, "");
+
+  S.toggleDd("geoDd");
+  ok("CH10.3 打开第一个下拉", openIds().length===1 && openIds()[0]==="geoDd", openIds().join(","));
+  S.toggleDd("reportDd");
+  ok("CH10.4 打开第二个下拉 → 第一个自动关闭(不再叠在一起)",
+     openIds().length===1 && openIds()[0]==="reportDd", openIds().join(","));
+
+  S.openGeoModal();
+  ok("CH10.5 下拉开着时打开地点弹窗 → 下拉全关, 只剩弹窗",
+     openIds().length===1 && openIds()[0]==="geoWrap", openIds().join(","));
+  S.openDateModal("report");
+  ok("CH10.6 弹窗 A 开着时打开弹窗 B → A 自动关闭",
+     openIds().length===1 && openIds()[0]==="dateWrap", openIds().join(","));
+  S.toggleDd("listDd");
+  ok("CH10.7 弹窗开着时打开下拉 → 弹窗自动关闭",
+     openIds().length===1 && openIds()[0]==="listDd", openIds().join(","));
+
+  S.toggleDd("listDd");
+  ok("CH10.8 同一个按钮二次点击仍可关掉自己(toggle 语义保留)",
+     openIds().length===0, openIds().join(","));
+  S.toggleDd("configDd");
+  for(const fn of (d._documentListeners.click||[])) fn({ target:d.createElement("div") });
+  ok("CH10.9 点空白处收起全部下拉", openIds().length===0, openIds().join(","));
 }
 
 console.log("PASS " + pass + " / FAIL " + fails.length);
