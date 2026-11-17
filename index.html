@@ -134,6 +134,17 @@
   }
   nav.toolbar .dd-menu button:hover{background:rgba(61,255,122,.12);color:var(--white);}
   nav.toolbar .dd-menu .dd-hint{color:var(--gray);font-size:11px;padding:4px 10px 2px;}
+  /* v0.0.13 · 查找框: 工具条最右侧的**唯一**搜索入口 —— 回车回灌 `search …` 命令,
+     查询语法/结果渲染只有一套实现(与命令行完全等价, 不新建第二套查询状态)。 */
+  nav.toolbar .searchbox{margin-left:auto;display:flex;align-items:center;}
+  nav.toolbar #searchBox{
+    width:230px;min-width:150px;max-width:34vw;
+    background:var(--field);border:1px solid var(--border);border-radius:3px;
+    color:var(--white);font-family:inherit;font-size:12px;padding:4px 10px;outline:none;
+  }
+  nav.toolbar #searchBox::placeholder{color:var(--faint);}
+  nav.toolbar #searchBox:focus{border-color:var(--green);box-shadow:0 0 0 1px rgba(61,255,122,.18);}
+  nav.toolbar #searchBox::-webkit-search-cancel-button{filter:invert(.65);cursor:pointer;}
   /* 行内 "已投资" 开关按钮 */
   .tbtn{
     background:transparent;color:var(--yellow);border:1px solid var(--yellow);
@@ -425,6 +436,12 @@
   <button data-cmd="restore-file">导入 .json…</button>
   <button id="btnAutosave" data-cmd="autosave-dir" class="accent">存到本地目录: 关</button>
   <button data-cmd="cls" class="danger">清屏</button>
+  <!-- v0.0.13: 单一搜索框 —— 回车回灌 `search <内容>` 命令(与命令行等价), Esc 清空 -->
+  <span class="searchbox">
+    <input id="searchBox" type="search" autocomplete="off" spellcheck="false"
+           placeholder="查找 类别/编号/金额/日期…" aria-label="查找消费记录"
+           title="按类别/备注/地点关键词、#编号、金额(>100 / 100-200)、@日期或月份查找；回车执行，Esc 清空">
+  </span>
 </nav>
 <input type="file" id="fileImport" accept="application/json,.json" style="display:none">
 <div id="investbar"></div>
@@ -568,7 +585,7 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.12";         // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.0.13";         // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
 /* ---- 地点 (v0.0.12) · 合规边界 ----
    只用腾讯地图 JSAPI GL + service 库。本应用是"本地双击"的单文件应用, 属非默认场景:
@@ -1196,11 +1213,15 @@ function recAmountInRange(r, start, end){
   const n = recDaysInRange(r, start, end);
   return n > 0 ? r2(n * (Number(r.amount)||0)) : 0;
 }
-/* 到"今天"为止已实际发生的消费额: 分摊成本只累计到窗口内的今天 ——
-    封顶到 today 是为了不让未来的分摊天数提前占掉今天的可用余额
-    (否则记一笔年付房租, 可用余额立刻变负; 未来那些天尚未来到, 不该算已消费)。 */
+/* 到指定日为止已实际发生的消费额: 分摊成本只累计到该日 ——
+    封顶是为了不让未来的分摊天数提前占掉可用余额
+    (否则记一笔年付房租, 可用余额立刻变负; 未来那些天尚未来到, 不该算已消费)。
+    dayStr 省略 = 今天; 传历史日给"过去某期"的余额快照用。 */
+function recAmountUpTo(r, dayStr){
+  return recAmountInRange(r, recWindow(r).start, dayStr || todayYMD());
+}
 function recAmountUpToToday(r){
-  return recAmountInRange(r, recWindow(r).start, todayYMD());
+  return recAmountUpTo(r, todayYMD());
 }
 /* 一组记录在窗口内的消费合计 / 其中分摊部分(列表与总结共用, 避免两处口径漂移) */
 function sumRange(rows, start, end){
@@ -1370,23 +1391,79 @@ function periodStartsUpTo(endStart){
   if(!out.length) out.push(endStart);
   return out;
 }
-function grantedTotal(){
+/* 发放链累计到**指定周期**(默认当前周期): 统计历史窗口时要按那个时点的发放额算,
+   不能一律用今天的 —— 否则 `report @2026-09` 的"本期发放"会是现在的周期预算。 */
+function grantedTotalAt(startStr){
   ensureEpoch();
-  const cur = currentPeriod().start;
   let sum=0;
-  for(const s of periodStartsUpTo(cur)) sum += effectiveBudget({start:s});
+  for(const s of periodStartsUpTo(startStr)) sum += effectiveBudget({start:s});
   return r2(sum);
 }
-/* 累计已发生的占用: 分摊成本按**到今天为止已过的天数**累计
+function grantedTotal(){ return grantedTotalAt(currentPeriod().start); }
+/* 累计已发生的占用: 分摊成本按**到指定日为止已过的天数**累计
    (不是把每天金额只在记账当天算一次, 也不是把未来那些天提前算掉)。 */
-function totalCharge(){ return r2(state.records.reduce((s,r)=>s + recAmountUpToToday(r)/consumeShare(), 0)); }
-function availableBalance(){ return r2(grantedTotal() - totalCharge()); }
+function totalChargeAt(dayStr){
+  return r2(state.records.reduce((s,r)=>s + recAmountUpTo(r, dayStr)/consumeShare(), 0));
+}
+function totalCharge(){ return totalChargeAt(todayYMD()); }
+/* 累计可用余额 = 已发放 − 已占用。默认是"今天"的口径(summary/budget/顶栏);
+   传入某个周期(或预算行区间, 带 lastStart)时给的是**该区间末**的历史快照:
+   - 发放累计到 min(区间最后一期, 当前周期) —— 未来的周期还没发放;
+   - 占用累计到 min(区间末, 今天) —— 未来还没发生。
+   两者在当前区间上退化为今天的值(行为与 v0.0.12 完全一致)。 */
+function availableBalance(p){
+  const t = todayYMD(), cur = currentPeriod();
+  const ref = p || cur;
+  const lastStart = ref.lastStart || ref.start;          // 多期区间: 发放要算到最后一期
+  const grantTo = (lastStart < cur.start) ? lastStart : cur.start;
+  const capDay  = (ref.end   < t)         ? ref.end   : t;
+  return r2(grantedTotalAt(grantTo) - totalChargeAt(capDay));
+}
 function periodDayCount(p){ return daysBetween(p.start, p.end) + 1; }
-/* 当前周期快照(含燃尽预测所需的日进度)
+/* 预算行的首期 = 统计窗口**起点所在**的记账周期。
+   v0.0.13 修复: summary/report/chart 以前一律拿 currentPeriod() 当预算口径,
+   于是 `report @2026-09` 标题写着 2026-09, 表里的"本期发放/本期消费/累计余额"
+   却全是今天这个周期的数字(用户报的 bug)。 */
+function periodOfWindow(win){
+  const anchor = (win && typeof win.start==="string") ? win.start : todayYMD();
+  /* 滚动周期缺锚点时 periodBounds 会拿传入日期去补锚点 —— 查历史窗口不该顺手改设置, 交给当前周期兜底 */
+  if(state.settings.periodMode === "rolling" && !state.settings.anchor) return currentPeriod();
+  return periodBounds(anchor);
+}
+/* 窗口覆盖的记账周期: 首期由窗口起点决定, 之后逐期用 nextPeriodStart **接着上一期往后推**,
+   直到盖住窗口终点。自然月 = 一期; 自定义月起日/滚动周期看一个自然月时通常就是两期
+   (第一个周期仍按起始日所在周期算, 第二个周期接着第一个算)。 */
+function budgetPeriodsOfWindow(win){
+  const out = [periodOfWindow(win)];
+  let guard = 0;
+  while(out[out.length-1].end < win.end && guard < 5000){
+    out.push(periodBounds(nextPeriodStart(out[out.length-1].start)));
+    guard++;
+  }
+  return out;
+}
+/* 预算行快照 = 窗口覆盖的**各期整期合计**(v0.0.13 用户口径):
+   发放 B = 各期发放之和; 消费/占用/结转取首期起点~末期终点这一整段。
+   一期刚好覆盖窗口时(自然月周期看自然月)N=1, 数字与原「本期」口径完全一致。 */
+function budgetOfWindow(win){
+  const periods = budgetPeriodsOfWindow(win);
+  const start = periods[0].start, end = periods[periods.length-1].end;
+  let B = 0;
+  for(const p of periods) B += effectiveBudget(p);
+  B = r2(B);
+  const w = collectWindow(start, end);        // 预算行是全局口径, 不跟随类别筛选
+  const usedUnits = r2(w.total / consumeShare());
+  return { periods, start, end, lastStart: periods[periods.length-1].start, count: periods.length, B,
+           days: daysBetween(start, end) + 1,
+           rows: w.rows, consumption: w.total, amort: w.amortTotal,
+           mm: w.mmT, idx: w.idxT, invest: r2(w.mmT + w.idxT),
+           usedUnits, ratio: B>0 ? usedUnits/B : 0 };
+}
+/* 周期快照(含燃尽预测所需的日进度)。p 省略 = 当前周期(顶栏/budget/导出)。
    行筛选与消费口径都复用 collectWindow: 本期**覆盖到的**记录(分摊窗口与本期有交集)才算一笔,
    它的消费额按"落在本期内的天数"计 —— 以前只认 r.date, 于是分摊只在记账当天算一次。 */
-function periodSnapshot(){
-  const p = currentPeriod();
+function periodSnapshot(p){
+  p = p || currentPeriod();
   const B = effectiveBudget(p);
   const win = collectWindow(p.start, p.end);
   const consumption = win.total;                                   // 消费口径 (元)
@@ -1812,6 +1889,7 @@ const COMMANDS = [
   { n:["add","a"],                                 u:"add <金额> <类别> [备注..] [@日期] [#地点]", d:"add 50 餐饮 午餐  或  add @2025-03-05 300 购物 外套; 自动模式会填行政区地名" },
   { n:["amort","amortize"],                        u:"amort <总价> <天数> <类别> [备注..] [@开始日期] [#地点]", d:"分摊成本: 总价按天数摊到每天, 投资只按总价记一次, 如 amort 3000 365 房租 年付 (天数可写 12月); 不自动定位" },
   { n:["list","ls"],                               u:"list [类别X] [@日期/月份]",         d:"消费列表: list 餐饮 / list @2027-08-18 / list @2027-08 / list @today|@period|@month" },
+  { n:["search","find"],                           u:"search <关键词|#编号|金额|@日期>",  d:"查找记录: 类别/备注/地点关键词、#编号、金额(=50 / >100 / 100-200)、@日期或月份; 多个条件同时满足" },
   { n:["del","rm","delete"],                       u:"del <id>",                        d:"删除指定记录(id 见 list)" },
   { n:["update","edit"],                           u:"update <id> <金额> <类别> [备注..] [@日期] [#地点]", d:"修改某条记录并自动重算投资额; #- 可清除地点" },
   { n:["place","where"],                           u:"place <id> <地点..> | -",          d:"手动设置地点(行政区名即可), 如 place 3 广东省深圳市南山区; - 清除; 不填则空着" },
@@ -1983,6 +2061,7 @@ function dispatch(cmd, tokens){
     case "add":      doAdd(tokens); break;
     case "amort":    doAmort(tokens); break;
     case "list":     doList(tokens); break;
+    case "search":   doSearch(tokens); break;
     case "del":      doDelete(tokens); break;
     case "update":   doUpdate(tokens); break;
     case "place":    doPlace(tokens); break;
@@ -2824,12 +2903,34 @@ function addSeg(div, s){
   div.appendChild(sp);
 }
 function mkSpan(t,c){ const s=document.createElement("span"); s.textContent=t; if(c) s.style.color=c; return s; }
-/* 每条记录一行; 点右侧"投资状态"按钮后, 行内状态/已投小计即时刷新(修复点了仍显示未投) */
-function renderRecordRow(r){
+/* v0.0.13 查找结果高亮: 把 text 里命中 needles 的片段切成"普通段 + .hl 段"。
+   只做字面量匹配(不构造正则), 大小写不敏感; 文本一个字都不改 —— 行的 textContent 与 list 完全一致。 */
+function hlSegs(text, color, needles){
+  const s = String(text==null?"":text);
+  const ns = (Array.isArray(needles)?needles:[needles]).map(x=>String(x==null?"":x)).filter(Boolean).map(x=>x.toLowerCase());
+  if(!s || !ns.length) return [{t:s, c:color}];
+  const low = s.toLowerCase();
+  const out=[]; let buf="", i=0;
+  while(i < s.length){
+    const hit = ns.find(n=>low.startsWith(n, i));
+    if(hit){
+      if(buf){ out.push({t:buf, c:color}); buf=""; }
+      out.push({t:s.slice(i, i+hit.length), c:color, cls:"hl"});
+      i += hit.length;
+    } else { buf += s[i]; i++; }
+  }
+  if(buf) out.push({t:buf, c:color});
+  return out;
+}
+/* 每条记录一行; 点右侧"投资状态"按钮后, 行内状态/已投小计即时刷新(修复点了仍显示未投)
+   opts.hl (v0.0.13): 查找关键词数组 —— 命中片段加 .hl 底色, 其余渲染与 list 完全一致。 */
+function renderRecordRow(r, opts){
+  const hl = (opts && Array.isArray(opts.hl) && opts.hl.length) ? opts.hl : null;
   const d = document.createElement("div"); d.className = "l";
   addSeg(d,{t:"#"+r.id, c:COLOR.cyan});
   addSeg(d,{t:"  "+r.date+"  ", c:COLOR.gray});
-  addSeg(d,{t:r.category.padEnd(6," "), c:catColor(r.category)});
+  const catTxt = r.category.padEnd(6," ");
+  for(const s of (hl ? hlSegs(catTxt, catColor(r.category), hl) : [{t:catTxt, c:catColor(r.category)}])) addSeg(d,s);
   addSeg(d,{t:"¥"+money(r.amount).padStart(8," "), c:COLOR.pure});
   // 分摊成本: 行里的金额是"每天"的金额, 后面补上"总价 X / N 天(起~止)", 否则看不出来源
   if(recAmortized(r)){
@@ -2841,7 +2942,7 @@ function renderRecordRow(r){
   const invSpan = mkSpan("", COLOR.gray);       // 已投小计
   const stSpan  = mkSpan("", COLOR.gray);       // 状态
   d.appendChild(invSpan); d.appendChild(stSpan);
-  if(r.note) addSeg(d,{t:"  · "+r.note, c:COLOR.gray});
+  if(r.note) for(const s of (hl ? hlSegs("  · "+r.note, COLOR.gray, hl) : [{t:"  · "+r.note, c:COLOR.gray}])) addSeg(d,s);
   if(r.place) for(const s of geoPlaceSegs(r.place, "  · ", " ")) addSeg(d,s);
   addSeg(d,{t:"  ", c:COLOR.gray});
   const b = document.createElement("button"); b.type="button"; b.className="tbtn";
@@ -2902,6 +3003,44 @@ function renderRecordRow(r){
   refresh();   // 初始化行内状态
   term.appendChild(d);
 }
+/* ---- 日期条件解析(v0.0.13 抽成单一实现, list 与 search 共用) ----
+   `@2027-08-18` / `@2027-08` / `@today` / `@period` / `@month` 以及中文关键字
+   (`今日` / `本周期` / `本月`) 都归一到三种结果之一:
+     {kind:"date",  date}   只看这一天
+     {kind:"month", month}  看整月(自然月)
+     {kind:"range", range}  看一段区间(周期 / 本月)
+   返回 null = 无法识别, 由调用方决定"报错"还是"当普通关键词"。
+   以前这套判断只写在 filterByTokens 里, 新增 search 时若再抄一份必然漂移(F1)。 */
+function dateKeywordCond(s){
+  const low = String(s==null?"":s).toLowerCase();
+  if(low==="today" || s==="今日" || s==="今天" || s==="当日") return { kind:"date", date:todayYMD() };
+  if(low==="period" || s==="周期" || s==="本周期"){
+    const p = currentPeriod();
+    return { kind:"range", range:{ start:p.start, end:p.end, label:"周期 "+p.label } };
+  }
+  if(low==="month" || s==="本月" || s==="月份" || s==="自然月"){
+    const m = calendarMonthBounds(todayYMD());
+    return { kind:"range", range:{ start:m.start, end:m.end, label:"本月 "+m.label } };
+  }
+  return null;
+}
+function dateCondOf(raw){
+  const s = String(raw==null?"":raw).trim().replace(/^@/,"");
+  if(!s) return null;
+  const kw = dateKeywordCond(s);
+  if(kw) return kw;
+  if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)){
+    const p = parseYMD(s);
+    if(!p || !(p.m>=1 && p.m<=12) || !(p.d>=1 && p.d<=lastDay(p.y,p.m))) return null;   // 2027-13-40 不算日期
+    return { kind:"date", date:mkYMD(p.y,p.m,p.d) };
+  }
+  if(/^\d{4}-\d{1,2}$/.test(s)){
+    const p = parseYMD(s+"-01");
+    if(!p || !(p.m>=1 && p.m<=12)) return null;
+    return { kind:"month", month:mkYMD(p.y,p.m,1).slice(0,7) };
+  }
+  return null;
+}
 /* list 参数解析: [类别X] [@日期 | @YYYY-MM | @today | @period | @month] [条数]
    - @YYYY-MM-DD / @today  → 只看该天
    - @YYYY-MM   / @month   → 看整月(自然月)
@@ -2910,27 +3049,23 @@ function renderRecordRow(r){
 function filterByTokens(tokens){
   let cat=null, month=null, date=null, range=null, limit=null;
   const bad = [];                      // 无法识别的 @条件(以前会被静默忽略, 于是 list @写错 就变成"列出全部")
-  const keyword = (s)=>{
-    const low = String(s).toLowerCase();
-    if(low==="today" || s==="今日" || s==="当日"){ date = todayYMD(); return true; }
-    if(low==="period" || s==="周期" || s==="本周期"){ const p=currentPeriod(); range={start:p.start,end:p.end,label:"周期 "+p.label}; return true; }
-    if(low==="month" || s==="本月" || s==="月份" || s==="自然月"){ const m=calendarMonthBounds(todayYMD()); range={start:m.start,end:m.end,label:"本月 "+m.label}; return true; }
-    return false;
+  const apply = (c)=>{
+    if(c.kind==="date") date = c.date;
+    else if(c.kind==="month") month = c.month;
+    else range = c.range;
   };
   for(const tk of tokens){
     const raw = String(tk);
     if(raw[0]==="@"){
-      const s = raw.slice(1);
-      if(keyword(s)) continue;
-      if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)){ const p=parseYMD(s); if(p){ date = mkYMD(p.y,p.m,p.d); continue; } }
-      else if(/^\d{4}-\d{1,2}$/.test(s)){ const p=parseYMD(s+"-01"); if(p){ month = mkYMD(p.y,p.m,1).slice(0,7); continue; } }
-      else { const p=parseYMD(s); if(p){ month = mkYMD(p.y,p.m,1).slice(0,7); continue; } }
+      const c = dateCondOf(raw);
+      if(c){ apply(c); continue; }
       bad.push(raw);
       continue;
     }
     if(/^(cat|类别|category)$/i.test(raw)) continue;
     if(numeric(raw)!==null){ limit = +raw; continue; }
-    if(keyword(raw)) continue;
+    const kw = dateKeywordCond(raw);     // 不带 @ 时只认关键字, 不把 2027-08 当日期(与旧行为一致)
+    if(kw){ apply(kw); continue; }
     cat = raw;
   }
   return {cat,month,date,range,limit,bad};
@@ -2978,6 +3113,154 @@ function doList(tokens){
            c:COLOR.gray}]);
   }
   for(const r of rows){ renderRecordRow(r); }
+  blank();
+}
+/* ============================== search (v0.0.13) =========================
+   一个入口覆盖「类别 / 编号 / 关键词 / 金额 / 日期」, 命令行与工具栏搜索框共用:
+     search 餐饮               类别 / 备注 / 地点 任一处命中
+     search 午餐 餐饮           多个关键词必须同时命中(AND; 每个词可命中任一文本字段)
+     search #12                记录编号(精确, 列表行首的 #12)
+     search 50                 金额 = 50 —— 同一条数字也按编号匹配(#50), 免得"编号搜不到"
+     search >100 / <=50        金额比较(按总价; 年付房租不会因每天 8 元被算成小额)
+     search 100-200            金额区间(写反 200-100 也按区间处理)
+     search @2027-08 / @today  日期窗口, 与 list 同一口径(分摊按窗口交集命中)
+     search 餐饮 @2027-08       不同条件之间 AND
+   结果行复用 renderRecordRow(), 行内 [标记已投资] / ✎ 编辑 与消费列表完全一致;
+   合计口径也与 list 相同: 带日期条件时只算落在窗口内的天数。 */
+const SEARCH_CMP_RE = /^(>=|<=|>|<)(\d+(?:\.\d+)?)$/;
+const SEARCH_RANGE_RE = /^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/;
+/* 金额写法的宽容归一: 全角数字 → 半角, 去掉 ¥/￥ 前缀、千分位逗号与结尾的「元」 */
+function searchNumText(t){
+  return String(t==null?"":t)
+    .replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+    .replace(/^[¥￥]/,"").replace(/,/g,"").replace(/元$/,"").trim();
+}
+function searchNum(v){ return String(+(+v).toFixed(2)); }   // 100.00 → "100", 8.20 → "8.2"
+function parseSearchQuery(tokens){
+  const q = { text:[], id:null, amount:[], date:null, month:null, range:null, bad:[], notes:[] };
+  const setDate = (c)=>{
+    /* 日期/月份/区间只接受一个: 同时给 "@2027-08 @today" 时按"第一个生效"并明确提示,
+       不再悄悄叠加成"既在 8 月又是今天"这种看不出来的组合。 */
+    if(q.date || q.month || q.range){ q.notes.push("日期/月份条件只取第一个"); return; }
+    if(c.kind==="date") q.date = c.date;
+    else if(c.kind==="month") q.month = c.month;
+    else q.range = c.range;
+  };
+  for(const tk of tokens){
+    const raw = String(tk);
+    if(!raw) continue;
+    if(raw[0]==="#"){
+      const n = numeric(raw.slice(1));
+      if(n!=null && Number.isInteger(n) && n>=0){ q.id = n; continue; }
+      q.bad.push(raw);
+      continue;
+    }
+    const dc = dateCondOf(raw);
+    if(dc){ setDate(dc); continue; }
+    if(raw[0]==="@"){ q.bad.push(raw); continue; }       // @ 开头却没解析出日期: 报错, 别当关键词
+    const num = searchNumText(raw);
+    const cmp = SEARCH_CMP_RE.exec(num);
+    if(cmp){ q.amount.push({op:cmp[1], v:parseFloat(cmp[2])}); continue; }
+    const rg = SEARCH_RANGE_RE.exec(num);
+    if(rg){
+      const a = parseFloat(rg[1]), b = parseFloat(rg[2]);
+      q.amount.push({op:"range", v:Math.min(a,b), v2:Math.max(a,b)});
+      continue;
+    }
+    const n = numeric(num);
+    if(n!=null){ q.amount.push({op:"=", v:n}); continue; }
+    q.text.push(raw.toLowerCase());
+  }
+  return q;
+}
+/* 金额条件:
+   - 等值: 「每天金额」或「总价」任一命中(用户可能照抄行里的 ¥, 也可能是记得的总价);
+   - 比较/区间: 只看**总价** —— 否则年付房租会因为"每天 8 元"被算进 "<=50" 的小额筛选, 明显反直觉。 */
+function searchAmountHit(r, t){
+  const amt = r2(Number(r.amount)||0), total = r2(recTotal(r));
+  switch(t.op){
+    case "=":     return amt===r2(t.v) || total===r2(t.v) || r.id===t.v;
+    case ">":     return total>t.v;
+    case ">=":    return total>=t.v;
+    case "<":     return total<t.v;
+    case "<=":    return total<=t.v;
+    case "range": return total>=t.v && total<=t.v2;
+  }
+  return true;
+}
+function searchTextHit(r, kw){
+  return [r.category, r.note, r.place].some(h=>String(h==null?"":h).toLowerCase().includes(kw));
+}
+function searchDesc(q){
+  const parts = [];
+  if(q.id!=null) parts.push("#"+q.id);
+  if(q.text.length) parts.push("关键词="+q.text.join("+"));
+  for(const t of q.amount){
+    parts.push(t.op==="range" ? ("金额 ¥"+searchNum(t.v)+"~¥"+searchNum(t.v2))
+               : t.op==="="   ? ("金额=¥"+searchNum(t.v))
+                              : ("金额"+t.op+"¥"+searchNum(t.v)));
+  }
+  if(q.date) parts.push("日期="+q.date);
+  else if(q.month) parts.push("月份="+q.month);
+  else if(q.range) parts.push(q.range.label);
+  return parts.join("  ");
+}
+function searchUsage(){
+  line([{t:"用法: search <关键词|#编号|金额|@日期>   多个条件用空格分隔(同时满足)", c:COLOR.yellow}]);
+  line([{t:"      search 餐饮                 类别/备注/地点 任一处含「餐饮」", c:COLOR.yellow}]);
+  line([{t:"      search #12                  按编号(列表行首的 #12)", c:COLOR.yellow}]);
+  line([{t:"      search 50 / >100 / 100-200  金额等于 / 大于 / 区间(等值含每天金额, 比较按总价)", c:COLOR.yellow}]);
+  line([{t:"      search @2027-08 / @today    日期或月份(与 list 同口径)", c:COLOR.yellow}]);
+  line([{t:"      例: search 餐饮 @2027-08    search 房租     工具栏最右侧搜索框回车同效", c:COLOR.yellow}]);
+}
+function doSearch(tokens){
+  const q = parseSearchQuery(tokens);
+  if(q.bad.length){
+    line([{t:"⚠ 无法识别的查找条件: "+q.bad.join(" ")+"   可用 #编号 / 金额(>100、100-200) / @YYYY-MM-DD / @YYYY-MM / @today|@period|@month",
+          c:COLOR.yellow}]);
+  }
+  if(q.notes.length) line([{t:"⚠ "+[...new Set(q.notes)].join("; "), c:COLOR.yellow}]);
+  if(q.id==null && !q.text.length && !q.amount.length && !q.date && !q.month && !q.range){
+    searchUsage();
+    return;
+  }
+  const rows = state.records.filter(r=>{
+    if(q.id!=null && r.id!==q.id) return false;
+    if(q.date && !recInWindow(r, q.date, q.date)) return false;
+    if(q.month){ const b = calendarMonthBounds(q.month+"-01"); if(!recInWindow(r, b.start, b.end)) return false; }
+    if(q.range && !recInWindow(r, q.range.start, q.range.end)) return false;
+    for(const t of q.amount) if(!searchAmountHit(r, t)) return false;
+    for(const kw of q.text) if(!searchTextHit(r, kw)) return false;
+    return true;
+  });
+  rows.sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:a.id-b.id));
+  const desc = searchDesc(q);
+  const descTxt = desc ? ("  [查找: "+desc+"]") : "";
+  if(!rows.length){
+    line([{t:"(没有匹配的消费记录)"+descTxt+"   换个关键词/编号/金额, 或改用 @日期 试试", c:COLOR.gray}]);
+    const cats = [...new Set(state.records.map(r=>r.category))];
+    if(cats.length) line([{t:"现有类别: "+cats.join("   "), c:COLOR.gray}]);
+    blank();
+    return;
+  }
+  /* 合计口径与 list 一致: 带日期条件时, 分摊记录只算落在窗口里的天数 */
+  let winB = null;
+  if(q.date) winB = { start:q.date, end:q.date };
+  else if(q.range) winB = { start:q.range.start, end:q.range.end };
+  else if(q.month) winB = calendarMonthBounds(q.month+"-01");
+  const sm = winB ? sumRange(rows, winB.start, winB.end)
+                  : { total:r2(rows.reduce((s,r)=>s+r.amount,0)), amort:0 };
+  blank();
+  sectionHead("查找结果", rows.length+" 条"+descTxt);
+  line([{t:" 合计 ¥"+money(sm.total)+"   点每行右侧 [标记已投资] 一键勾选, 再点 ✎ 编辑改动。", c:COLOR.gray}]);
+  if(sm.amort>0){
+    line([{t:" 其中分摊成本 ¥"+money(sm.amort)
+           +(winB && daysBetween(winB.start,winB.end)>0 ? "  (行内 ¥ 是每天的口径, 合计按落在窗口内的天数计)"
+                                                       : "  (行内 ¥ 就是当天这一份)"),
+           c:COLOR.gray}]);
+  }
+  const hl = q.text.length ? q.text : null;
+  for(const r of rows) renderRecordRow(r, { hl });
   blank();
 }
 function doDelete(tokens){
@@ -3076,17 +3359,24 @@ function doPayFull(rest){
 
 /* ----------------------------- summaries ------------------------------- */
 /* 窗口统计的唯一实现在"窗口统计"分区(collectWindow / investTotalsOf),
-   这里只放 summary 命令本身 —— 别再复制一份窗口求和。 *//* 总结报告渲染。注意: 表里的"预算行"(本期发放/占用/结余/累计余额)始终是
-   **当前记账周期**口径 —— 预算按周期发放与结转, 不随统计窗口或类别变化,
-   所以这里不接收"窗口对应的周期"参数(旧的 budgetRef 形参传了但从未被读取)。 */
+   这里只放 summary 命令本身 —— 别再复制一份窗口求和。 */
+/* 总结报告渲染。表里的"预算行"(本期发放/占用/结余/累计余额)按**窗口覆盖的记账周期合计**算
+   (v0.0.13): 预算按周期发放与结转, 所以它不跟着窗口内的天数走, 但要跟着**查询的那一段**走
+   —— `report @2026-09` 看的是 2026-09 那一段的发放与结转(自然月跨两个记账周期时就是两期之和),
+   不是今天这一期(旧实现一律 currentPeriod())。区间与窗口不完全重合时, 表头会标出预算行用的是哪一段。 */
 function printSummaryReport(win, windowName, opts){
   opts = opts || {};
-  const st = periodSnapshot();                 // 当前(含窗口所在)周期口径
+  const st = budgetOfWindow(win);              // 预算行口径 = 窗口覆盖的各期合计
   const aw  = alertWord(st.ratio);
   const carry = r2(st.usedUnits - st.B);       // >0 透支; <=0 本期剩余可结转
-  const bal = availableBalance();
+  const bal = availableBalance(st);
   const title = windowName;
   if(!opts.noTitle) sectionHead("预算总结", title);
+  /* 预算行与窗口不是同一段日期时必须说清楚, 否则"窗口 ¥5043.92 / 本期发放 ¥1823.99"还是对不上 */
+  if(st.start !== win.start || st.end !== win.end){
+    line([{t:" 预算行口径: "+st.count+" 个记账周期合计 "+st.start+" ~ "+st.end
+            +"(发放/消费/结转均按该区间)", c:COLOR.gray}]);
+  }
   const invTotal = r2(win.mmT+win.idxT);
   // stat table rows: [key, value, color, glow?]
   const rows=[
@@ -3274,11 +3564,13 @@ function parseChartArgs(tokens){
   }
   return out;
 }
-/* 分桶: 时间桶最多 CHART_MAX_BUCKETS 个(长窗口自动按天合并), 单日窗口改按类别分桶。 */
+/* 分桶: 时间桶最多 CHART_MAX_BUCKETS 个(长窗口自动按天合并), 单日窗口改按类别分桶。
+   日均基准来自**窗口覆盖的记账周期合计**(与「预算总结」同一口径、同一份 budgetOfWindow()),
+   不再固定用当前周期 —— 否则 `chart @2026-09` 的参考线是今天的日均发放, 与柱高/使用率全都对不上。 */
 function chartBuckets(win, isDay, cat){
-  const st = periodSnapshot();
-  const pDays = Math.max(1, periodDayCount(st.p));
-  const perDay = r2(st.B / pDays);                   // 占用口径: 本期发放 ÷ 本期天数
+  const bs = budgetOfWindow(win);
+  const pDays = Math.max(1, bs.days);
+  const perDay = r2(bs.B / pDays);                   // 占用口径: 各期发放合计 ÷ 区间天数
   const perDaySpend = r2(perDay * consumeShare());  // 消费口径: 与柱高/参考线同口径
   const buckets = [];
   let mode;
@@ -3490,7 +3782,7 @@ function printChartAnalysis(win, data, meta){
   }
   if(!advice.length) advice.push("各项指标平稳，保持当前节奏即可。");
   for(const s of advice) line([{t:"   · "+s, c:COLOR.gray}]);
-  line([{t:"  口径: 柱高与饼图均为消费口径; 参考线 = 本期日均发放 × "+consumePct()+"% × 桶天数; 分摊成本按落入桶内的天数计入。", c:COLOR.gray}]);
+  line([{t:"  口径: 柱高与饼图均为消费口径; 参考线 = 该窗口所在周期的日均发放 × "+consumePct()+"% × 桶天数; 分摊成本按落入桶内的天数计入。", c:COLOR.gray}]);
 }
 /* 图表输出的唯一实现(v0.0.10): chart 与 report 共用, 不在两处各画一遍。
    type = bar | pie | both；合并后的「总结与图表」固定传 both, 一次同时出柱状图和饼图。 */
@@ -4407,8 +4699,8 @@ function argCandidates(c0, slot, tokens, cur){
   }
   const typingAt = !!(cur && cur[0]==="@");
   if(cur && cur[0]==="#") return [];               // 地点自由输入, 不给候选
-  // 正在输入 @条件: 只有 list 支持关键字写法, 其余命令要么接受 ISO 日期(@YYYY-MM-DD), 要么不支持
-  if(typingAt) return (cmd==="list") ? ["@today","@period","@month"] : [];
+  // 正在输入 @条件: list / search 支持关键字写法, 其余命令要么接受 ISO 日期(@YYYY-MM-DD), 要么不支持
+  if(typingAt) return (cmd==="list"||cmd==="search") ? ["@today","@period","@month"] : [];
   if(cmd==="help"||cmd==="cls"||cmd==="undo"||cmd==="redo") return [];
   /* P2 B-20: config 的子命令/子名也给候选(旧版整体返回空, geo/geokey/ratio 补不出来) */
   if(cmd==="config"){
@@ -4484,6 +4776,8 @@ function argCandidates(c0, slot, tokens, cur){
   if(cmd==="list"){                                   // 类别/@日期/条数 顺序自由, 各槽位都给同一组候选
     return ["@today","@period","@month", ...knownCategories()];
   }
+  /* search: 条件顺序自由, 每个槽位都给「日期关键字 + 类别」(编号/金额自己敲) */
+  if(cmd==="search") return ["@today","@period","@month", ...knownCategories()];
   if(cmd==="summary"){
     if(arg===0) return ["day","week","month","cat", ...knownCategories()];
     return knownCategories();                           // 类别筛选
@@ -4603,6 +4897,30 @@ function historyDown(){ if(hIdx<0) return; hIdx++; if(hIdx>=history.length){ hId
 
 /* live clock in input prompt? keep simple */
 
+/* v0.0.13 · 工具栏搜索框: 唯一入口仍是 `search` 命令 —— 回车把内容回灌给 runCommand(),
+   解析/匹配/渲染全部复用命令实现(H5 双通道对称: 鼠标与键盘不会走出两套行为)。
+   Esc 清空并回到命令行; 搜索后焦点留在框里, 方便改条件再按回车。 */
+function bindSearch(){
+  const box = document.getElementById("searchBox");
+  if(!box) return;
+  box.addEventListener("keydown",(e)=>{
+    if(!e) return;
+    /* 中文输入法: 回车是"上屏"而不是"提交", 合成期间不能抢跑(否则搜到半个词, 且 Emoji/候选被吞)。 */
+    if(e.isComposing || e.keyCode===229) return;
+    if(e.key==="Escape"){
+      if(e.preventDefault) e.preventDefault();
+      box.value = "";
+      input.focus();
+      return;
+    }
+    if(e.key!=="Enter") return;
+    if(e.preventDefault) e.preventDefault();
+    const q = String(box.value||"").trim();
+    input.value = "";                     // 命令行走过的痕迹不留在输入行, 避免误按回车重复执行
+    runCommand(q ? ("search "+q) : "search");
+    scrollBottom();
+  });
+}
 function boot(){
   const dropped = loadState();
   /* v0.0.12: 先把上次定位的地名从独立缓存读回来(左上角立即可见、首笔即可用), 再申请一次新定位 */
@@ -4610,7 +4928,7 @@ function boot(){
   setGeoStatus(cached ? "cached" : "idle",
                cached ? (geoCache.district || districtOf(geoCache.place)) : "定位中…");
   refreshAll();               // 顶栏统计/理财条/类别下拉/左上角定位/撤销按钮 一次刷新(H4 的同一入口)
-  bindToolbar(); bindModal(); bindInput();
+  bindToolbar(); bindModal(); bindInput(); bindSearch();
   armAutoReconnect();
   if(dropped) line([{t:"⚠ 本地数据里有 "+dropped+" 条记录金额/日期损坏, 已跳过(其余记录照常加载)。", c:COLOR.yellow}]);
   // banner

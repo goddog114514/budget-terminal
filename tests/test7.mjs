@@ -52,8 +52,8 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
   eq("CH1.8 别名 charts 的参数补全与 chart 一致",
      S.argCandidates("charts", 1, ["charts"], ""), cands);
   eq("CH1.9 第二槽位仍给候选(顺序自由)", S.argCandidates("chart", 2, ["chart","week"], ""), cands);
-  eq("CH1.10 版本号已升到 v0.0.12", S.APP_VERSION, "v0.0.12");
-  ok("CH1.11 README 当前版本同步", /当前版本：\*\*v0\.0\.12\*\*/.test(readme), "");
+  eq("CH1.10 版本号已升到 v0.0.13", S.APP_VERSION, "v0.0.13");
+  ok("CH1.11 README 当前版本同步", /当前版本：\*\*v0\.0\.13\*\*/.test(readme), "");
   ok("CH1.12 README 命令表含 chart", /`chart \[/.test(readme), "");
   /* 工具栏(v0.0.10 同版迭代): 周期/日/周总结 + 图表总结 四个入口合成一个 */
   ok("CH1.13 旧的四个总结按钮与图表下拉已移除",
@@ -182,8 +182,11 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
   eq("CH5.3c 09-04 起窗口结束, 不再计入", data.buckets[5].total, 0);
   eq("CH5.4 每日参考额度 = 本期日均发放 × 消费占比",
      data.perDaySpend, S.r2(data.perDay*S.consumeShare()));
-  eq("CH5.5 本期日均发放 = 当期预算 ÷ 本期天数",
-     data.perDay, S.r2(S.effectiveBudget(S.currentPeriod())/((S.daysBetween(S.currentPeriod().start,S.currentPeriod().end)+1))));
+  /* v0.0.13: 日均基准 = 窗口覆盖的各期发放合计 ÷ 该区间天数。
+     本周 08-30~09-05 跨 8/9 月两期 → 2000 ÷ 61 天(不是单期 1000 ÷ 31); 区间内的天数才是分母。 */
+  const bs5 = S.budgetOfWindow(w.win);
+  eq("CH5.5 本期日均发放 = 覆盖区间发放合计 ÷ 区间天数(跨期按两期合计)",
+     [bs5.count, bs5.B, data.perDay], [2, 2000, S.r2(2000/61)]);
   ok("CH5.6 桶参考额度按桶天数线性放大",
      Math.abs(data.buckets[0].quota - S.r2(data.perDaySpend*data.buckets[0].days)) < 0.011,
      String(data.buckets[0].quota));
@@ -300,7 +303,7 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
   const rc = S.argCandidates("report", 1, ["report"], "");
   for(const w of ["day","week","period","month"]) ok("CH9.7 补全含 "+w, rc.includes(w), rc.join(","));
   ok("CH9.8 report 补全不含图型(固定双图)", !rc.includes("bar") && !rc.includes("pie") && !rc.includes("both"), rc.join(","));
-  eq("CH9.9 版本号随视觉改造升到 v0.0.12", S.APP_VERSION, "v0.0.12");
+  eq("CH9.9 版本号维持视觉改造后的 v0.0.13", S.APP_VERSION, "v0.0.13");
 
   /* 一次输出必须同时含总结表 / 柱状图 / 饼图 / 自动分析 / 结论 */
   const txt = runChart(S, "report week");
@@ -423,6 +426,131 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
   S.toggleDd("configDd");
   for(const fn of (d._documentListeners.click||[])) fn({ target:d.createElement("div") });
   ok("CH10.9 点空白处收起全部下拉", openIds().length===0, openIds().join(","));
+}
+
+/* ---------- 11. 预算行口径跟随窗口所在周期(v0.0.13 修复) ----------
+   缺陷: `report @2026-09` 标题写着 2026-09, 表里的「本期发放/本期消费/累计可用余额」
+   却全是今天这个周期的数字 —— printSummaryReport / chartBuckets 一律 periodSnapshot()。
+   修复后的契约: 预算行 = **窗口起点所在的记账周期**的发放与结转(历史快照), 不是当前周期;
+   窗口与该周期不完全重合时, 输出必须显式标出预算行用的是哪一段周期。 */
+{
+  /* 冻结今天 2027-08-30; 周期=自然月; 6 月起记账; 7 月单独覆盖 500(默认 1000) */
+  const seedPeriod = (settings, records)=> loadApp({ seedStorage:{ budget_term_v1: JSON.stringify(
+    { app:"budget_term", version:2, settings, seq:records.length, records }) } });
+  const RECS = [
+    {id:1, amount:200, category:"餐饮", date:"2027-07-10", note:"七月"},
+    {id:2, amount:100, category:"交通", date:"2027-08-05", note:"八月"},
+  ];
+  const S = seedPeriod({ budget:1000, periodMode:"month", monthStart:1, epoch:"2027-06-01",
+                         periodBudget:{"2027-07-01":500} }, RECS);
+  S.boot();
+  const jul = S.periodBounds("2027-07-01");
+  const aug = S.periodBounds("2027-08-01");
+
+  eq("CH11.1 periodSnapshot(7 月) 取该周期的发放覆盖", [S.periodSnapshot(jul).B, S.periodSnapshot(jul).consumption], [500, 200]);
+  eq("CH11.2 periodSnapshot() 省略参数 = 当前周期(顶栏/budget 口径不变)", S.periodSnapshot().B, 1000);
+  eq("CH11.3 periodOfWindow 取窗口起点所在周期", S.periodOfWindow(S.resolveWindow("month","2027-07",null).win).start, "2027-07-01");
+
+  /* 过去周期的余额 = 截至该周期末的发放 − 占用(不能被未来几期的发放撑大) */
+  near("CH11.4 过去周期余额 = 发放累计到该期 − 占用累计到该期末",
+       S.availableBalance(jul), S.r2(S.grantedTotalAt("2027-07-01") - S.totalChargeAt("2027-07-31")), 0.005);
+  near("CH11.5 当前周期余额保持 v0.0.12 口径(无参)",
+       S.availableBalance(), S.r2(S.grantedTotal() - S.totalCharge()), 0.005);
+  ok("CH11.6 过去周期余额不含之后的发放", S.availableBalance(jul) < S.availableBalance(),
+     S.availableBalance(jul)+" vs "+S.availableBalance());
+  near("CH11.7 未来周期不预支发放(余额 = 今天的余额)",
+       S.availableBalance(S.periodBounds("2027-12-01")), S.availableBalance(), 0.005);
+
+  /* report @过去月份: 表里的预算行必须是那个月的 */
+  const rep9 = runChart(S, "report @2027-07");
+  ok("CH11.8 report 过去月份的本期发放 = 该月预算 ¥500.00",
+     /本期发放\(基准\)\s+¥500\.00/.test(rep9), rep9.split("\n").find(l=>/本期发放/.test(l)));
+  ok("CH11.9 report 过去月份不再显示当前周期预算 ¥1000.00",
+     !/本期发放\(基准\)\s+¥1000\.00/.test(rep9), rep9.split("\n").find(l=>/本期发放/.test(l)));
+  ok("CH11.10 report 过去月份的本期消费 = 该月消费 ¥200.00",
+     /本期消费\s+¥200\.00/.test(rep9), rep9.split("\n").find(l=>/本期消费/.test(l)));
+  ok("CH11.11 report 过去月份的累计可用余额 = 该期末快照",
+     /累计可用余额\(含结转\)\s+¥1264\.71/.test(rep9), rep9.split("\n").find(l=>/累计可用余额/.test(l)));
+  ok("CH11.12 report 过去月份的结余/透支按该月算(可结转 +264.71)",
+     /本期结余\/透支\s+可结转 \+264\.71/.test(rep9), rep9.split("\n").find(l=>/本期结余/.test(l)));
+  ok("CH11.13 窗口与预算周期重合时不打口径提示(不制造多余噪音)",
+     !/预算行口径/.test(rep9), "");
+
+  /* summary 单命令走同一份实现, 不能各有一套口径 */
+  const sum9 = runChart(S, "summary @2027-07");
+  ok("CH11.14 summary 过去月份的本期发放同样按该月",
+     /本期发放\(基准\)\s+¥500\.00/.test(sum9), sum9.split("\n").find(l=>/本期发放/.test(l)));
+
+  /* 当前周期/进行中的窗口不受影响(不回归) */
+  const repNow = runChart(S, "report");
+  ok("CH11.15 report 当前周期仍是当前预算 ¥1000.00",
+     /本期发放\(基准\)\s+¥1000\.00/.test(repNow), repNow.split("\n").find(l=>/本期发放/.test(l)));
+  const repWeek = runChart(S, "report week");
+  ok("CH11.16 report week(本周 08-30~09-05) 覆盖两个周期 → 预算行按两期合计 ¥2000",
+     /本周 2027-08-30 ~ 2027-09-05/.test(repWeek)
+     && /预算行口径: 2 个记账周期合计 2027-08-01 ~ 2027-09-30\(发放\/消费\/结转均按该区间\)/.test(repWeek.replace(/\n/g," "))
+     && /本期发放\(基准\)\s+¥2000\.00/.test(repWeek),
+     repWeek.split("\n").slice(0,6).join(" | "));
+
+  /* 图表的日均参考线也必须跟着窗口覆盖的区间(否则柱高/参考线/使用率对不上) */
+  const julWin = S.resolveWindow("month","2027-07",null).win;
+  eq("CH11.17 chartBuckets 日均 = 该窗口区间发放合计 ÷ 区间天数",
+     S.chartBuckets(julWin, false, null).perDay, S.r2(500/31));
+  ok("CH11.18 report 分析的参考发放额度用该段日均 ¥16.13",
+     /日均 ¥16\.13 × 31 天/.test(rep9), rep9.split("\n").find(l=>/参考发放额度/.test(l)));
+  ok("CH11.19 当前周期的日均基准不受影响(¥1000/31)",
+     /日均 ¥32\.26 × 30 天/.test(repNow), repNow.split("\n").find(l=>/参考发放额度/.test(l)));
+
+  /* ---- 用户口径: 自然月跨两个记账周期时, 发放基准与消费都 = 两期之和 ----
+     月起日=5 → 7 月窗口 07-01~07-31 覆盖 06-05~07-04 与 07-05~08-04 两期;
+     首期按窗口起点所在周期算, 第二期接着第一期往后推。 */
+  const M = seedPeriod({ budget:1000, periodMode:"month", monthStart:5, epoch:"2027-06-05" }, [
+    {id:1, amount:100, category:"餐饮", date:"2027-06-10", note:"首期内(窗口前)"},
+    {id:2, amount:200, category:"购物", date:"2027-07-20", note:"窗口内"},
+    {id:3, amount:10,  category:"餐饮", date:"2027-07-31", note:"窗口内"},
+    {id:4, amount:50,  category:"交通", date:"2027-08-01", note:"次期内(窗口后)"},
+    {id:5, amount:30,  category:"交通", date:"2027-08-10", note:"两期之外"},
+  ]);
+  M.boot();
+  const mSpan = M.budgetOfWindow(M.resolveWindow("month","2027-07",null).win);
+  eq("CH11.20 跨两期: 区间 = 首期起点 ~ 末期终点, 期数 2",
+     [mSpan.start, mSpan.end, mSpan.count], ["2027-06-05","2027-08-04",2]);
+  eq("CH11.21 跨两期: 发放基准 = 两期发放之和", mSpan.B, 2000);
+  eq("CH11.22 跨两期: 消费 = 两期整段(不含区间外那笔)", mSpan.consumption, 360);
+  const mTxt = runChart(M, "report @2027-07");
+  ok("CH11.23 输出里本期发放 = ¥2000.00(不是单期 ¥1000.00)",
+     /本期发放\(基准\)\s+¥2000\.00/.test(mTxt) && !/本期发放\(基准\)\s+¥1000\.00/.test(mTxt),
+     mTxt.split("\n").find(l=>/本期发放/.test(l)));
+  ok("CH11.24 输出里本期消费 = 两期之和 ¥360.00(窗口总消费仍是 7 月的 ¥210.00)",
+     /本期消费\s+¥360\.00/.test(mTxt) && /窗口总消费\s+¥210\.00/.test(mTxt),
+     mTxt.split("\n").filter(l=>/本期消费|窗口总消费/.test(l)).join(" | "));
+  ok("CH11.25 输出里结余/透支按两期合计(2000 − 360÷85%)",
+     /本期结余\/透支\s+可结转 \+1576\.47/.test(mTxt), mTxt.split("\n").find(l=>/本期结余/.test(l)));
+  near("CH11.26 累计可用余额 = 两期末快照",
+       M.availableBalance(mSpan), M.r2(M.grantedTotalAt("2027-07-05") - M.totalChargeAt("2027-08-04")), 0.005);
+  ok("CH11.27 表头标出两期合计区间",
+     /预算行口径: 2 个记账周期合计 2027-06-05 ~ 2027-08-04/.test(mTxt.replace(/\n/g," ")),
+     mTxt.split("\n").slice(0,5).join(" | "));
+  eq("CH11.28 日均基准同样按两期合计 ÷ 61 天",
+     M.chartBuckets(M.resolveWindow("month","2027-07",null).win, false, null).perDay, M.r2(2000/61));
+
+  /* 15 天滚动: 一个自然月覆盖三期, 按三期合计 */
+  const R = seedPeriod({ budget:1000, periodMode:"rolling", lengthDays:15, anchor:"2027-07-01",
+                         epoch:"2027-07-01" }, RECS);
+  R.boot();
+  const cross = runChart(R, "report @2027-07");
+  ok("CH11.29 窗口≠预算区间时标出「预算行口径」, 滚动周期按覆盖期数合计",
+     /预算行口径: 3 个记账周期合计 2027-07-01 ~ 2027-08-14/.test(cross.replace(/\n/g," ")),
+     cross.split("\n").slice(0,5).join(" | "));
+
+  /* 源码级护栏: 禁止回退到"一律当前周期"/"只算首期" */
+  ok("CH11.30 printSummaryReport 用 budgetOfWindow(win) 而不是 periodSnapshot()",
+     /const st = budgetOfWindow\(win\);/.test(jsCode)
+     && !/function printSummaryReport\(win, windowName, opts\)\{[\s\S]{0,700}?periodSnapshot\(\);/.test(jsCode), "");
+  ok("CH11.31 chartBuckets 的基准来自 budgetOfWindow(win)",
+     /function chartBuckets\(win, isDay, cat\)\{[\s\S]{0,120}budgetOfWindow\(win\)/.test(jsCode), "");
+  ok("CH11.32 预算行的期数链 = 首期 + nextPeriodStart 逐期往后推",
+     /function budgetPeriodsOfWindow\(win\)\{[\s\S]{0,260}nextPeriodStart\(out\[out\.length-1\]\.start\)/.test(jsCode), "");
 }
 
 console.log("PASS " + pass + " / FAIL " + fails.length);

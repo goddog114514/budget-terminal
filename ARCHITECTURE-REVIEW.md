@@ -87,7 +87,7 @@ localStorage[budget_term_v1]  ⇄  budget_term_backup.json（FSA，带 {app,vers
 **设计基准（判断"统一"的标尺）**：单文件、零依赖、命令行 + 按钮双通道、单一可变 `state` + 纯派生计算、
 所有用户数据走 `textContent`（无注入）、中文注释 + 英文标识符。
 
-### 1.4 命令表（43 个名字 = 20 主名 + 23 别名；设置入口在 config 下）
+### 1.4 命令表（45 个名字 = 21 主名 + 24 别名；设置入口在 config 下）
 
 由代码里的 `COMMANDS` 登记表派生 —— 改命令请改登记表，别在别处抄（M1）。
 
@@ -95,16 +95,16 @@ localStorage[budget_term_v1]  ⇄  budget_term_backup.json（FSA，带 {app,vers
 help(?) (h)      查看帮助                     set            周期/投资/阈值等设置(见下)
 budget           当期预算进度                  forecast(burn)(predict)  燃尽预测
 add(a)           记一笔                        amort(amortize) 分摊成本(总价/天数/类别)
-list(ls)         消费列表(类别/@日期/@period)   del(rm)(delete)  删除
-update(edit)     修改/改地点(#-)               pay(invest)    标记已投
-place(where)     手动设置/清除地点            config set geo auto|manual  地点模式
-config set geokey <Key>  腾讯地图 Key        config set invest <比例%>  配置投资比例
+list(ls)         消费列表(类别/@日期/@period)   search(find)   查找(类别/#编号/金额/@日期)
+del(rm)(delete)  删除                          update(edit)   修改/改地点(#-)
+pay(invest)      标记已投                      place(where)   手动设置/清除地点
+config set geo auto|manual  地点模式          config set geokey <Key>  腾讯地图 Key
+config set invest <比例%>  配置投资比例       config set budget <金额> [now]  配置预算(now=仅当期)
 summary(sum)     总结(day/week/month/cat/类别)  chart(charts)(viz)  图表总结(柱状图/饼图 + 分析)
 report(overview) 总结与图表(合并入口)          export         导出 md|txt
 assets(asset)(networth)  资产看板              undo(u)        撤销
 redo             重做                          config(settings)(thresholds)(alerts)  查看配置
-cls(clear)       清屏                          config set budget <金额> [now]  配置预算(now=仅当期)
-config set invest <比例%>  配置投资比例        set            周期/阈值/年化等设置(见下)
+cls(clear)       清屏
 set 子命令: daily | period | periodstart | monthstart | weekstart | alert | rate
 注: 旧写法 set budget / set invest(consume/ratio) 仍兼容, 但 help 只推荐 config set …
 ```
@@ -127,6 +127,7 @@ set 子命令: daily | period | periodstart | monthstart | weekstart | alert | r
 | `moneyPending` / `indexPending` / `totalCharge` / `grantedTotal` / `availableBalance` / `periodSnapshot` | 934 / 935 / 1104 / 1033 / 1041 / 1110 | 池累计、占用合计（**只累计到今天**）、发放/结转/当期口径（复用 `collectWindow`） |
 | `kvColWidth` / `kvRow` | 1092 / 1102 | **统一表格渲染器（含窗口自适应列宽）** |
 | `COMMANDS` / `CMD_ALIAS` / `canonicalCmd` | 1177 / 1209 / 1217 | **命令登记表与别名解析** |
+| `dateCondOf` / `dateKeywordCond` / `parseSearchQuery` / `searchAmountHit` / `doSearch` / `bindSearch` | 2800 附近 | **查找唯一实现（v0.0.13）**：`@日期`条件由 `list`/`search` 共用；查询解析（关键词/#编号/金额/日期）、金额双口径（等值认两种、比较只按总价）、结果渲染复用 `renderRecordRow`；工具栏搜索框回车回灌 `search …` |
 | `resolveWindow` / `noCategoryHint` | 2130 附近 | **窗口解析唯一入口**：`summary` / `chart` / `report` 共用，返回 `{win,name,isDay}`；`kind="date"` 支持指定某一天 |
 | `parseChartArgs` / `chartBuckets` / `renderBarChart` / `renderPieChart` | 2190 附近 | 图表参数 / 分桶(每桶走 `collectWindow`) / 柱状图 DOM / 饼图 DOM（v0.0.10） |
 | `printChartTable` / `printChartAnalysis` / `renderChartBody` / `doChart` / `doReport` | 2380 附近 | 文本数据表 / 自动分析 / **绘图唯一实现(`chart` 与 `report` 共用)** / 两个命令入口（v0.0.10） |
@@ -346,7 +347,7 @@ v0.0.5 已把它整体移入仓库并相对化：
 
 ```
 tests/
-  run-all.mjs        全量入口：顺序跑 8 个套件 + 按 §7.2 基线校验断言数（护栏被删/改期望值也会红）
+  run-all.mjs        全量入口：顺序跑 9 个套件 + 按 §7.2 基线校验断言数（护栏被删/改期望值也会红）
   env.mjs            路径解析单一入口（仓库根 / index.html / README / 夹具）
   dom.mjs            极简 DOM stub（元素/classList/style/事件/localStorage）
   app.mjs            加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now, navigator, TMap})
@@ -354,13 +355,14 @@ tests/
   test.mjs   152 条  账本/周期/结转/投资池/导入导出/持久化/撤销重做 + **分摊成本 amort**(T28) + **分摊窗口口径**(T29) + **P2 导入提示/持久化诊断/导出转义**
   test2.mjs   55 条  端到端命令流/弹窗/备份数据冒烟/阈值与红绿黄圆点
   test3.mjs  123 条  P1 护栏（颜色令牌一致、kvRow、自适应列宽、死代码已删、响应式 CSS）+ v0.0.11 统一视觉组件 + v0.0.12 自定义类别独立色板
-  test4.mjs  121 条  M1 护栏（COMMANDS ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 双向校验 + P0 比例/金额边界 + P2 config 第四 token/help 与补全暴露）
+  test4.mjs  123 条  M1 护栏（COMMANDS ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 双向校验 + P0 比例/金额边界 + P2 config 第四 token/help 与补全暴露）
   test5.mjs   92 条  M2 护栏（语义槽位、@日期位置无关、ghost 预览）+ amort 补全与双选项卡（含 P0 分摊预览口径；`config` 不再整体返回空）
   test6.mjs   59 条  **H5 护栏**（pay full 命令 / config 按钮 / 弹窗 edit 分支可达；双通道等价；程序化入口统一提交）
-  test7.mjs  206 条  **v0.0.10 图表总结 + 合并入口护栏**（四窗口/三图型/桶金额恒等式/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/规范自检 + 同版浮层互斥 CH10）
+  test7.mjs  238 条  **v0.0.10 图表总结 + 合并入口护栏**（四窗口/三图型/桶金额恒等式/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/规范自检 + 同版浮层互斥 CH10 + v0.0.13 预算行按窗口覆盖的各期合计 CH11）
   test8.mjs  163 条  **v0.0.12 地点护栏**（字段归一化往返/place 命令/#地点/弹窗双通道/启动预热一次/记账同步写入/左上角 Canvas 准星/GCJ-02/缓存与撤销/合规源码断言/Key 打码 + 同版 P0 备注转义 + P1 Key/SDK/诊断/类别/place）
-  mutate-amort.mjs   **变异测试**: 77 组"把缺陷改回去" → 期望对应断言变红
-                     （amort 9 + H5 6 + H4 4 + 图表 5 + 合并入口 5 + 视觉 4 + 地点 13 + P0 6 + 浮层互斥 2 + P1 14 + P2 8）
+  test9.mjs   73 条  **v0.0.13 查找护栏**（关键词 类别/备注/地点 + #编号 + 金额 等值/比较/区间/分摊总价 + 日期窗口 + 多条件 AND + 非法条件/无结果 + 合计口径 + 结果行与 list 同构 + 行内按钮 + 工具栏搜索框双通道 + 日期解析共用）
+  mutate-amort.mjs   **变异测试**: 88 组"把缺陷改回去" → 期望对应断言变红
+                     （amort 9 + H5 6 + H4 4 + 图表 5 + 合并入口 5 + 视觉 4 + 地点 13 + P0 6 + 浮层互斥 2 + P1 14 + P2 8 + 查找 6 + 预算行口径 5）
   gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window/gen-h5/gen-chart.mjs   浏览器验证用页面生成器（默认输出到系统临时目录；
                                                     gen-window / gen-chart 自带 Date 桩把时钟钉在 2027-08-30，见 §7.3）
   fixtures/user_backup.json                  **全合成**账本夹具（不含任何真实账目）
@@ -379,9 +381,9 @@ tests/
 ### 7.2 跑法与验证闸门（两档）
 
 ```powershell
-# 全量（发版 / 跨模块改动）：顺序跑 8 个套件 + 基线校验，任一项失败/断言数不符即非 0 退出
+# 全量（发版 / 跨模块改动）：顺序跑 9 个套件 + 基线校验，任一项失败/断言数不符即非 0 退出
 node tests/run-all.mjs
-#   ✓ 152 / 55 / 123 / 121 / 92 / 59 / 206 / 163 → 合计 971
+#   ✓ 152 / 55 / 123 / 123 / 92 / 59 / 238 / 163 / 73 → 合计 1078
 
 # 日常小更新：只跑本次改动涉及的套件 —— 这已经满足低档闸门
 node tests/test5.mjs
@@ -405,7 +407,7 @@ $env:BT_FIXTURE="C:\...\budget_term_backup.json"; node tests/run-all.mjs
 **高档 · 发版，或改动落在共享抽象上（跨模块）**
 
 ```
-[ ] node tests/run-all.mjs  → 合计 971 PASS / 0 FAIL（152/55/123/121/92/59/206/163，且与基线一致）
+[ ] node tests/run-all.mjs  → 合计 1078 PASS / 0 FAIL（152/55/123/123/92/59/238/163/73，且与基线一致）
 [ ] 改动涉及 UI/视觉 → 浏览器确认改的那块对；**发版或专门动样式**时顺带量 1400 / 900 / 520 三档，
     scrollWidth === clientWidth（适配性是发版检查项，不是每次小更新的检查项）
 [ ] 改动涉及颜色/主题 → 探针确认 COLOR.* 与 CSS 令牌（js_* vs css_*）逐项相等
@@ -495,10 +497,10 @@ $env:BT_HTML="C:\temp\mut.html"; node tests/test5.mjs      # 必须 FAIL，且�
 ```
 
 注意用 **Node 做字面替换**（`split/join`），别用 PowerShell 的 `-replace`（它是正则，`$`/`\` 会咬人）。
-v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 组、自动校验"命中恰好一次"），
+v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑全部变异组、自动校验"命中恰好一次"），
 新增功能时**照它加一段 `MUTANTS` 就行**，别再手搓命令。
 
-已实测 84 组（脚本 `mutate-amort.mjs` 77 组 + 早期手工 7 组；其中 v0.0.12 P1 新增 14 组、P2 新增 8 组），覆盖全部 **8** 个套件：
+已实测 95 组（脚本 `mutate-amort.mjs` 88 组 + 早期手工 7 组；其中 v0.0.12 P1 新增 14 组、P2 新增 8 组、v0.0.13 查找新增 6 组、预算行口径新增 5 组），覆盖全部 **9** 个套件：
 
 | 变异体 | 套件 | 还原的缺陷 | 应变红 |
 | --- | --- | --- | --- |
@@ -613,23 +615,24 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 
 | 断言总数 | 353 | **415** | **455** | **455** | **498** | **718** | v0.0.11 相对 v0.0.10 +19：`test3.mjs` §8 统一视觉（标题/比例条/堆叠条/类别行/迷你柱）；v0.0.10 曾相对 v0.0.9 +201（`test7.mjs` 196 条 + `test4.mjs` 5 条） |
 | 变异测试组数 | 7 | 13 | **16** | **16** | **26** | **35** | v0.0.10 新增 9 组（图表 4 组 + 合并入口 4 组：`m_report_summary` / `m_report_both` / `m_report_date_modal` / `m_report_date_window`），全部被抓住 |
 
-> **v0.0.12 当前权威基线（含同版 P0 / 启动预热 / P1 / P2 四轮修复）**：`run-all.mjs` 的 `SUITES` = **971 条全绿**（152/55/123/121/92/59/206/163），
-> `mutate-amort.mjs` **77 组变异全部被抓住**（13 组地点 + 6 组 P0 + 2 组浮层互斥 + **14 组 P1 + 8 组 P2**）。上表是各版历史快照，
-> 历史时点：840/42 → 871/51 → 896/55 → 948/69 → **971/77**；一切数字以 `run-all.mjs` / `mutate-amort.mjs` 的实际输出为准。
+> **v0.0.13 当前权威基线**：`run-all.mjs` 的 `SUITES` = **1078 条全绿**（152/55/123/123/92/59/238/163/73），
+> `mutate-amort.mjs` **88 组变异全部被抓住**（13 组地点 + 6 组 P0 + 2 组浮层互斥 + 14 组 P1 + 8 组 P2 + 6 组查找 + **5 组预算行口径**）。上表是各版历史快照，
+> 历史时点：840/42 → 871/51 → 896/55 → 948/69 → 971/77 → 1046/83 → **1078/88**；一切数字以 `run-all.mjs` / `mutate-amort.mjs` 的实际输出为准。
 
 ### 8.1 测试装置自身的量化（增删护栏时同步这里与 `run-all.mjs` 的基线表）
 
-| 套件 | v0.0.5 | v0.0.6 | v0.0.8 | v0.0.9 | v0.0.10 | **v0.0.12** | 责任范围 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `test.mjs` | 78 | 110 | **138** | 138 | 138 | **152** | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + `amort`(T28) + 分摊窗口口径(T29) + P2 导入/持久化/导出（+14） |
-| `test2.mjs` | 55 | 55 | 55 | 55 | 55 | **55** | 端到端命令流/弹窗/备份冒烟/阈值与圆点 |
-| `test3.mjs` | 84 | 84 | **85** | 85 | 114 | **123** | P1 护栏：颜色令牌/`kvRow`/自适应列宽/死代码/响应式 + 统一视觉组件 + v0.0.12 自定义类别色板（+9） |
-| `test4.mjs` | 79 | 85 | 85 | 85 | 101 | **121** | M1 护栏：登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表（+2 = `place`/`where`；同版 P0 +8 = 金额/比例口径；P2 +10 = config 第四 token/help/补全） |
-| `test5.mjs` | 57 | 81 | **92** | 92 | 92 | **92** | M2 护栏：语义槽位/`@日期`/ghost + `amort` 补全与双选项卡 + 起始日精确到日（同版 P0 +1 = 预览口径；P2 断言改写至 92） |
-| `test6.mjs` | — | — | — | **43** | 59 | **59** | **H5 护栏**：双通道对称 + 程序化入口统一提交 |
-| `test7.mjs` | — | — | — | — | 197 | **206** | **v0.0.10 图表总结 + 合并入口**：四窗口/三图型/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用（同版浮层互斥 +9 = CH10） |
-| `test8.mjs` | — | — | — | — | — | **163** | **v0.0.12 地点**：字段/命令/弹窗/mock 定位/GCJ-02/统一提交点/合规断言（P0 +13 = 备注转义/异步回填；预热重构 +25；**P1 +43 = Key/SDK/诊断/类别/place**） |
-| **合计** | 353 | 415 | **455** | **498** | 756 | **971** | v0.0.12 列为 P2 修复后的**当前值**；增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
+| 套件 | v0.0.5 | v0.0.6 | v0.0.8 | v0.0.9 | v0.0.10 | v0.0.12 | **v0.0.13** | 责任范围 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `test.mjs` | 78 | 110 | **138** | 138 | 138 | 152 | **152** | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + `amort`(T28) + 分摊窗口口径(T29) + P2 导入/持久化/导出（+14） |
+| `test2.mjs` | 55 | 55 | 55 | 55 | 55 | 55 | **55** | 端到端命令流/弹窗/备份冒烟/阈值与圆点 |
+| `test3.mjs` | 84 | 84 | **85** | 85 | 114 | 123 | **123** | P1 护栏：颜色令牌/`kvRow`/自适应列宽/死代码/响应式 + 统一视觉组件 + v0.0.12 自定义类别色板（+9） |
+| `test4.mjs` | 79 | 85 | 85 | 85 | 101 | 121 | **123** | M1 护栏：登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表（v0.0.12 +2 = `place`/`where`；同版 P0 +8 = 金额/比例口径；P2 +10 = config 第四 token/help/补全；v0.0.13 +2 = `search`/`find`） |
+| `test5.mjs` | 57 | 81 | **92** | 92 | 92 | 92 | **92** | M2 护栏：语义槽位/`@日期`/ghost + `amort` 补全与双选项卡 + 起始日精确到日（同版 P0 +1 = 预览口径；P2 断言改写至 92） |
+| `test6.mjs` | — | — | — | **43** | 59 | 59 | **59** | **H5 护栏**：双通道对称 + 程序化入口统一提交 |
+| `test7.mjs` | — | — | — | — | 197 | 206 | **238** | **v0.0.10 图表总结 + 合并入口**：四窗口/三图型/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用（同版浮层互斥 +9 = CH10；**v0.0.13 +32 = 预算行按窗口覆盖的各期合计 CH11**） |
+| `test8.mjs` | — | — | — | — | — | 163 | **163** | **v0.0.12 地点**：字段/命令/弹窗/mock 定位/GCJ-02/统一提交点/合规断言（P0 +13 = 备注转义/异步回填；预热重构 +25；**P1 +43 = Key/SDK/诊断/类别/place**） |
+| `test9.mjs` | — | — | — | — | — | — | **73** | **v0.0.13 查找**：关键词（类别/备注/地点）/#编号/金额（等值/比较/区间/分摊总价）/日期窗口/AND/非法条件/无结果/合计口径/结果行与 list 同构/行内按钮/搜索框双通道 |
+| **合计** | 353 | 415 | **455** | **498** | 756 | 971 | **1078** | v0.0.13 列为**当前值**；增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
 
 ---
 
@@ -661,6 +664,23 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑 9 
 ---
 
 ## 10. 各版变更对既有结论的影响
+
+### v0.0.13：查找 `search` + 工具栏单一搜索框 —— 只读视图，不碰账本与口径
+
+新增主名 `search`（别名 `find`）与工具栏最右侧一个搜索框。**纯粹是"读视图"**：
+不改 `state`、不落盘、不压撤销栈，`amount` / 分摊口径 / `LS_KEY` / 备份头 / 精度 / 13:2 全部未动。
+
+| 既有结论 | 影响 |
+| --- | --- |
+| H4（统一提交点） | 无影响：`doSearch()` 只读 `state.records` 并输出 DOM；`test9` SR.51 断言查找前后 `records` 与 `undoDepth` 不变。行内 `[标记已投资]` / `✎ 编辑` 仍走既有提交点 |
+| H5（双通道对称） | 搜索框**不新建查询通道**：回车把内容拼成 `search …` 回灌 `runCommand()`，与命令行逐字节同输出（SR.63）。解析/匹配/渲染只有一套实现，`m_search_box` 守着"搜索框被改成丢内容的摆设" |
+| M1（命令清单单一数据源） | 扩展：`search` / `find` 只登记在 `COMMANDS`，help、别名、补全、README、§1.4 全部派生；`test4` 因新增一个主名 + 一个别名 121 → 123（M1.34 与 M1.9 各 +1） |
+| M2（补全语义槽位） | `search` 的条件顺序自由（与 `list` 同策略）：每个槽位都给「`@today`/`@period`/`@month` + 已知类别」；正在输入 `@` 时也只给这三个关键字 |
+| F1（横向重复） | **本版重点**：日期条件解析从 `filterByTokens()` 抽成 `dateCondOf()` / `dateKeywordCond()`，`list` 与 `search` 共用；`search` 不再抄一份 `@日期` 判断。`renderRecordRow(r, opts)` 只加可选高亮参数，不复制行渲染 |
+| F13 / 分摊窗口口径 | 沿用唯一入口：日期条件用 `recInWindow()`（窗口有交集即命中）、合计用 `sumRange()`（只算落在窗口内的天数）。`m_search_date_window` 还原"只按 `r.date` 命中"必须让 SR.32 变红 |
+| 新增结论：金额条件双口径 | **等值**认「每天金额」或「总价」（用户可能照抄行里的 ¥，也可能记得总价）；**比较/区间只按总价** —— 否则年付房租会因"每天 8 元"混进 `<=50` 的小额筛选。`m_search_amort_total` 守这条 |
+| 新增结论：查询不做模糊猜测 | 无法识别的 `@…` / `#abc` 进 `bad` 并给黄色提示，不会静默退化成"返回全部"（避免 `list @写错` 那类旧缺陷在查找里复发）；重复的日期/月份条件只取第一个并提示 |
+| 渲染安全 | 高亮只拆 `span`、沿用 `textContent`；不引入 `innerHTML`，用户输入（备注/地名/类别）不会被当成 HTML |
 
 ### v0.0.12：地点（自动定位 / 手动）—— 新增可选字段 + 首个外部服务
 
