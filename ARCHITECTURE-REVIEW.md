@@ -105,7 +105,7 @@ report(overview) 总结与图表(合并入口)          export         导出 md
 assets(asset)(networth)  资产看板              undo(u)        撤销
 redo             重做                          config(settings)(thresholds)(alerts)  查看配置
 cls(clear)       清屏
-set 子命令: daily | period | periodstart | monthstart | weekstart | alert | rate
+set 子命令: daily | period | periodstart | monthstart | weekstart | alert | rate | category
 注: 旧写法 set budget / set invest(consume/ratio) 仍兼容, 但 help 只推荐 config set …
 ```
 
@@ -125,6 +125,7 @@ set 子命令: daily | period | periodstart | monthstart | weekstart | alert | r
 | `periodBounds` / `currentPeriod` / `ensureEpoch` | 840 / 871 / 1002 | 周期引擎与账本起点对齐 |
 | `investAmount` / `investFull` | 951 / 987 | 池分摊、全额投资 |
 | `moneyPending` / `indexPending` / `totalCharge` / `grantedTotal` / `availableBalance` / `periodSnapshot` | 934 / 935 / 1104 / 1033 / 1041 / 1110 | 池累计、占用合计（**只累计到今天**）、发放/结转/当期口径（复用 `collectWindow`） |
+| `catPool` / `catAllocated` / `catPoolLeft` / `catBudgetRows` / `catAlertList` / `set category` | ~1550 附近 | **类别余额（信封）唯一口径来源（v0.0.14）**：总可用余额 = 当期预算 × N%、可配置余额 = 总可用 − 已配置、每类使用率（`collectWindow` 单类别）、预警阈值（与今日/周期预算同一份 `thresholds`）。顶栏、`budget`、`config`、弹窗全部复用，不再各写一遍求和 |
 | `kvColWidth` / `kvRow` | 1092 / 1102 | **统一表格渲染器（含窗口自适应列宽）** |
 | `COMMANDS` / `CMD_ALIAS` / `canonicalCmd` | 1177 / 1209 / 1217 | **命令登记表与别名解析** |
 | `dateCondOf` / `dateKeywordCond` / `parseSearchQuery` / `searchAmountHit` / `doSearch` / `bindSearch` | 2800 附近 | **查找唯一实现（v0.0.13）**：`@日期`条件由 `list`/`search` 共用；查询解析（关键词/#编号/金额/日期）、金额双口径（等值认两种、比较只按总价）、结果渲染复用 `renderRecordRow`；工具栏搜索框回车回灌 `search …` |
@@ -347,22 +348,23 @@ v0.0.5 已把它整体移入仓库并相对化：
 
 ```
 tests/
-  run-all.mjs        全量入口：顺序跑 9 个套件 + 按 §7.2 基线校验断言数（护栏被删/改期望值也会红）
+  run-all.mjs        全量入口：顺序跑 10 个套件 + 按 §7.2 基线校验断言数（护栏被删/改期望值也会红）
   env.mjs            路径解析单一入口（仓库根 / index.html / README / 夹具）
   dom.mjs            极简 DOM stub（元素/classList/style/事件/localStorage）
   app.mjs            加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now, navigator, TMap})
                      （v0.0.12 起可注入浏览器定位与腾讯地图 SDK 桩, 测试全程不发网络请求）
   test.mjs   152 条  账本/周期/结转/投资池/导入导出/持久化/撤销重做 + **分摊成本 amort**(T28) + **分摊窗口口径**(T29) + **P2 导入提示/持久化诊断/导出转义**
-  test2.mjs   55 条  端到端命令流/弹窗/备份数据冒烟/阈值与红绿黄圆点
+  test2.mjs   59 条  端到端命令流/弹窗/备份数据冒烟/阈值与红绿黄圆点 + v0.0.14 首屏自动输出预算/工具栏不再留「预算进度」按钮
   test3.mjs  123 条  P1 护栏（颜色令牌一致、kvRow、自适应列宽、死代码已删、响应式 CSS）+ v0.0.11 统一视觉组件 + v0.0.12 自定义类别独立色板
   test4.mjs  123 条  M1 护栏（COMMANDS ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 双向校验 + P0 比例/金额边界 + P2 config 第四 token/help 与补全暴露）
   test5.mjs   92 条  M2 护栏（语义槽位、@日期位置无关、ghost 预览）+ amort 补全与双选项卡（含 P0 分摊预览口径；`config` 不再整体返回空）
   test6.mjs   59 条  **H5 护栏**（pay full 命令 / config 按钮 / 弹窗 edit 分支可达；双通道等价；程序化入口统一提交）
-  test7.mjs  238 条  **v0.0.10 图表总结 + 合并入口护栏**（四窗口/三图型/桶金额恒等式/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/规范自检 + 同版浮层互斥 CH10 + v0.0.13 预算行按窗口覆盖的各期合计 CH11）
+  test7.mjs  241 条  **v0.0.10 图表总结 + 合并入口护栏**（四窗口/三图型/桶金额恒等式/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/规范自检 + 同版浮层互斥 CH10 + v0.0.13 预算行按窗口覆盖的各期合计 CH11）
   test8.mjs  163 条  **v0.0.12 地点护栏**（字段归一化往返/place 命令/#地点/弹窗双通道/启动预热一次/记账同步写入/左上角 Canvas 准星/GCJ-02/缓存与撤销/合规源码断言/Key 打码 + 同版 P0 备注转义 + P1 Key/SDK/诊断/类别/place）
+  test10.mjs  127 条  **v0.0.14 类别余额(信封)护栏**（总可用=当期预算×N%/可配置余额/set category 多类别原子性与 off·reset/超额只能减/使用率含分摊/预警阈值与"未超标不渲染"/顶栏与 budget 顺序/归一化与撤销/弹窗实时预览与单命令回灌 + **静默开关(nowarn 只关警告、不改口径)**）
   test9.mjs   73 条  **v0.0.13 查找护栏**（关键词 类别/备注/地点 + #编号 + 金额 等值/比较/区间/分摊总价 + 日期窗口 + 多条件 AND + 非法条件/无结果 + 合计口径 + 结果行与 list 同构 + 行内按钮 + 工具栏搜索框双通道 + 日期解析共用）
-  mutate-amort.mjs   **变异测试**: 88 组"把缺陷改回去" → 期望对应断言变红
-                     （amort 9 + H5 6 + H4 4 + 图表 5 + 合并入口 5 + 视觉 4 + 地点 13 + P0 6 + 浮层互斥 2 + P1 14 + P2 8 + 查找 6 + 预算行口径 5）
+  mutate-amort.mjs   **变异测试**: 105 组"把缺陷改回去" → 期望对应断言变红
+                     （amort 9 + H5 6 + H4 4 + 图表 5 + 合并入口 5 + 视觉 4 + 地点 13 + P0 6 + 浮层互斥 2 + P1 14 + P2 8 + 查找 6 + 预算行口径 5 + 类别余额 15）
   gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window/gen-h5/gen-chart.mjs   浏览器验证用页面生成器（默认输出到系统临时目录；
                                                     gen-window / gen-chart 自带 Date 桩把时钟钉在 2027-08-30，见 §7.3）
   fixtures/user_backup.json                  **全合成**账本夹具（不含任何真实账目）
@@ -381,9 +383,9 @@ tests/
 ### 7.2 跑法与验证闸门（两档）
 
 ```powershell
-# 全量（发版 / 跨模块改动）：顺序跑 9 个套件 + 基线校验，任一项失败/断言数不符即非 0 退出
+# 全量（发版 / 跨模块改动）：顺序跑 10 个套件 + 基线校验，任一项失败/断言数不符即非 0 退出
 node tests/run-all.mjs
-#   ✓ 152 / 55 / 123 / 123 / 92 / 59 / 238 / 163 / 73 → 合计 1078
+#   ✓ 152 / 59 / 123 / 123 / 92 / 59 / 241 / 163 / 73 / 127 → 合计 1212
 
 # 日常小更新：只跑本次改动涉及的套件 —— 这已经满足低档闸门
 node tests/test5.mjs
@@ -407,7 +409,7 @@ $env:BT_FIXTURE="C:\...\budget_term_backup.json"; node tests/run-all.mjs
 **高档 · 发版，或改动落在共享抽象上（跨模块）**
 
 ```
-[ ] node tests/run-all.mjs  → 合计 1078 PASS / 0 FAIL（152/55/123/123/92/59/238/163/73，且与基线一致）
+[ ] node tests/run-all.mjs  → 合计 1212 PASS / 0 FAIL（152/59/123/123/92/59/241/163/73/127，且与基线一致）
 [ ] 改动涉及 UI/视觉 → 浏览器确认改的那块对；**发版或专门动样式**时顺带量 1400 / 900 / 520 三档，
     scrollWidth === clientWidth（适配性是发版检查项，不是每次小更新的检查项）
 [ ] 改动涉及颜色/主题 → 探针确认 COLOR.* 与 CSS 令牌（js_* vs css_*）逐项相等
@@ -500,7 +502,7 @@ $env:BT_HTML="C:\temp\mut.html"; node tests/test5.mjs      # 必须 FAIL，且�
 v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑全部变异组、自动校验"命中恰好一次"），
 新增功能时**照它加一段 `MUTANTS` 就行**，别再手搓命令。
 
-已实测 95 组（脚本 `mutate-amort.mjs` 88 组 + 早期手工 7 组；其中 v0.0.12 P1 新增 14 组、P2 新增 8 组、v0.0.13 查找新增 6 组、预算行口径新增 5 组），覆盖全部 **9** 个套件：
+已实测 112 组（脚本 `mutate-amort.mjs` 105 组 + 早期手工 7 组；其中 v0.0.12 P1 新增 14 组、P2 新增 8 组、v0.0.13 查找新增 6 组、预算行口径新增 5 组、**v0.0.14 类别余额 15 组 + 导出下拉 2 组**），覆盖全部 **10** 个套件：
 
 | 变异体 | 套件 | 还原的缺陷 | 应变红 |
 | --- | --- | --- | --- |
@@ -615,9 +617,9 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑全
 | 断言总数 | 353 | **415** | **455** | **455** | **498** | **718** | v0.0.11 相对 v0.0.10 +19：`test3.mjs` §8 统一视觉（标题/比例条/堆叠条/类别行/迷你柱）；v0.0.10 曾相对 v0.0.9 +201（`test7.mjs` 196 条 + `test4.mjs` 5 条） |
 | 变异测试组数 | 7 | 13 | **16** | **16** | **26** | **35** | v0.0.10 新增 9 组（图表 4 组 + 合并入口 4 组：`m_report_summary` / `m_report_both` / `m_report_date_modal` / `m_report_date_window`），全部被抓住 |
 
-> **v0.0.13 当前权威基线**：`run-all.mjs` 的 `SUITES` = **1078 条全绿**（152/55/123/123/92/59/238/163/73），
-> `mutate-amort.mjs` **88 组变异全部被抓住**（13 组地点 + 6 组 P0 + 2 组浮层互斥 + 14 组 P1 + 8 组 P2 + 6 组查找 + **5 组预算行口径**）。上表是各版历史快照，
-> 历史时点：840/42 → 871/51 → 896/55 → 948/69 → 971/77 → 1046/83 → **1078/88**；一切数字以 `run-all.mjs` / `mutate-amort.mjs` 的实际输出为准。
+> **v0.0.14 当前权威基线**：`run-all.mjs` 的 `SUITES` = **1212 条全绿**（152/59/123/123/92/59/241/163/73/127），
+> `mutate-amort.mjs` **105 组变异全部被抓住**（13 组地点 + 6 组 P0 + 2 组浮层互斥 + 14 组 P1 + 8 组 P2 + 6 组查找 + 5 组预算行口径 + 15 组类别余额 + **2 组导出下拉**）。上表是各版历史快照，
+> 历史时点：840/42 → 871/51 → 896/55 → 948/69 → 971/77 → 1046/83 → 1078/88 → 1182/101 → 1209/103 → **1212/105**；一切数字以 `run-all.mjs` / `mutate-amort.mjs` 的实际输出为准。
 
 ### 8.1 测试装置自身的量化（增删护栏时同步这里与 `run-all.mjs` 的基线表）
 
@@ -632,7 +634,8 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑全
 | `test7.mjs` | — | — | — | — | 197 | 206 | **238** | **v0.0.10 图表总结 + 合并入口**：四窗口/三图型/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用（同版浮层互斥 +9 = CH10；**v0.0.13 +32 = 预算行按窗口覆盖的各期合计 CH11**） |
 | `test8.mjs` | — | — | — | — | — | 163 | **163** | **v0.0.12 地点**：字段/命令/弹窗/mock 定位/GCJ-02/统一提交点/合规断言（P0 +13 = 备注转义/异步回填；预热重构 +25；**P1 +43 = Key/SDK/诊断/类别/place**） |
 | `test9.mjs` | — | — | — | — | — | — | **73** | **v0.0.13 查找**：关键词（类别/备注/地点）/#编号/金额（等值/比较/区间/分摊总价）/日期窗口/AND/非法条件/无结果/合计口径/结果行与 list 同构/行内按钮/搜索框双通道 |
-| **合计** | 353 | 415 | **455** | **498** | 756 | 971 | **1078** | v0.0.13 列为**当前值**；增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
+| **合计** | 353 | 415 | **455** | **498** | 756 | 971 | **1078** | v0.0.13 列为该版时点值；增删后必须同步 `run-all.mjs` 顶部 `SUITES` 基线 |
+| `test10.mjs` | — | — | — | — | — | — | **—** | **v0.0.14 类别余额（信封）**新增 **127** 条（口径/命令原子性/超额只减/使用率含分摊/预警阈值与不渲染/顶栏顺序/归一化/弹窗实时预览/静默开关只关警告）；**当前合计 1212** |
 
 ---
 
@@ -664,6 +667,28 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑全
 ---
 
 ## 10. 各版变更对既有结论的影响
+
+### v0.0.14：类别余额（信封预算）—— 新增一份"计划"，不碰账本与占用口径
+
+新增 `settings.categoryBudget`（类别 → 已分配金额）、`set category` 子命令、「配置 ▾ → 配置类别余额」弹窗，
+以及顶栏/`budget` 的类别预警圆点。**金额口径、`amount` 语义、`LS_KEY`、备份头（`app` / `version:2`）、
+精度、13:2 投资比例、`place` 字段与定位链路全部未动**；旧备份没有该字段时由 `normalizeSettings()` 回落 `{}`，零迁移。
+
+| 既有结论 | 影响 |
+| --- | --- |
+| 预算模型（占用 = 消费 ÷ N） | **不受影响**：类别余额是"钱准备做什么"的计划，不转账、不改 `availableBalance` / `usedUnits` / 结转；`catPool()` 只是把 `当期预算 × N` 再切一刀。弹窗与命令都不写记录 |
+| H4（统一提交点） | 沿用：`doSetCategory()` 只改 `settings`，由 `runCommand` 出口 `commitIfDirty()` 落盘+刷新；弹窗保存经 `runCommand("set category …")` 回灌，不直调内部函数 |
+| H5（双通道对称） | 弹窗**不新建通道**：整张表拼成**一条** `set category a 400 b 300`（清零项显式 `off`），与命令行同一条解析；因此一次保存只有**一步撤销**（`CB11.13`/`CB5.1`） |
+| M1（命令清单单一数据源） | 作为 `set` 的**子用法**登记（`sub:true`），不新增主名/别名 → `COMMAND_NAMES`/别名表/README 命令名清单不变；help、Tab 补全（`set category <类别>` → 已知类别 + `reset`，金额槽 → `off`/常见额度）都从登记表与 `knownCategories()` 派生 |
+| F1（横向重复） | 口径只有一套：`catPool()`/`catAllocated()`/`catPoolLeft()`/`catBudgetRows()`/`catAlertList()`；顶栏圆点、`budget` 行、`config` 三行、弹窗、命令表格全部复用，不在任何地方重写"求和/取已用" |
+| F13 / 分摊窗口口径 | 已支出走 `collectWindow(p.start,p.end,类别)`（单类别筛选），分摊成本按落在本期的天数计入；`m_cat_ratio_denominator` 守着"别拿总可用余额当分母" |
+| 新增结论：**超额只能减不能加** | 已配置合计 > 总可用余额（典型：后来把预算调低）时，`set category` 只接受下调；否则账本会进入"无法收拾"的超额状态。`m_cat_reduce_only` 还原"连下调都拒"必须变红 |
+| 新增结论：**未触发预警完全不渲染** | 顶栏/`budget` 只列 `ratio ≥ 最低阈值` 的类别（同一份 `thresholds`），不显示 0%/灰点占位，也不打印"无预警"占位行。`m_cat_alert_filter` / `m_cat_header_dots` 守着 |
+| **静默开关只影响警告，不影响口径与合计** | `settings.categoryMute = {类别:true}`（缺省 = 提示）只在 `catAlertList()` 里跳过；`catBudgetRows()` 的数值/排序/占比、总可用余额与已配置合计一概不变。`set category … nowarn` 与弹窗勾选框经**同一条命令**落地；`off`/`reset` 同步删标记，`normalizeSettings()` 只保留"仍配置了额度且值为 true"的项（防止取消分配后残留）。`m_cat_mute_filter` / `m_cat_mute_command` 守着 |
+| 新增结论：类别名是用户输入 | 一律 `textContent` 渲染（弹窗顶部 summary 也不拼 HTML）、长度截断到 `CAT_NAME_MAX=60`；`GEO.57` 改为"没有非空 innerHTML 赋值"这条语义断言，比原来的计数更准 |
+| 工具栏入口收敛（二）：导出并成下拉 | 「导出 .md」「导出 .txt」合成 `#exportDd`（与「配置 ▾」同构，`data-cmd` 子项仍在菜单里），省一行宽度；`exportDd` 进 `DD_IDS`，浮层互斥/点空白收起自动覆盖。顺带把"点 data-cmd 后手写四个 `closeDd`"改成 `closeAllDd()` —— 否则新加的下拉点完不关、菜单叠在页面上。`CH10.1a–c` 与 `m_export_dd_list` / `m_toolbar_close_hardcoded` 守着 |
+| 工具栏入口收敛：去掉「预算进度」按钮 | 周期预算块在 `boot()` 第一屏已由 `showBudget()` 输出，按钮是重复入口；删除后只剩两条路径：**首屏自动** 与 **`budget` 命令**。顺带删掉无元素再触发的 `open-budget` / `open-invest` 两个 `data-cmd` 分支（死分支）。`showBudget()` 的调用点仍只有 `boot()` 与 `doBudget()`，`test2` T31.1–T31.4 守着"首屏有、按钮无、命令在"三件事 |
+| 归一化 | `normalizeSettings()` 丢弃 0/负数/非数字/空键/`r2` 后为 0 的项，数组或脏结构回落 `{}`；导入备份与启动加载同一套（`test10` CB9.3–CB9.6） |
 
 ### v0.0.13：查找 `search` + 工具栏单一搜索框 —— 只读视图，不碰账本与口径
 

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { loadApp } from "./app.mjs";
 import { doc } from "./dom.mjs";
-import { FIXTURE_PATH } from "./env.mjs";
+import { FIXTURE_PATH, HTML_PATH } from "./env.mjs";
 
 /* 默认夹具是**合成**账本(见 tests/README.md); BT_FIXTURE 可指向真实备份 */
 const fixture = JSON.parse(fs.readFileSync(FIXTURE_PATH, "utf8"));
@@ -193,6 +193,23 @@ function near(name, a, b, eps=1e-6){ ok(name, Math.abs(a-b)<=eps, "got "+a+" wan
   eq("T30.3 category defaulted", S.state.records[0].category, "交通");
   let err=null; try{ S.runCommand("list"); S.runCommand("budget"); }catch(e){ err=e.message; }
   ok("T30.4 app still works", err===null, err);
+}
+
+/* ---- T31: v0.0.14 工具栏去掉「预算进度」按钮 ----
+   需求: 周期预算已在首屏自动输出, 工具栏不再留按钮; 之后只能靠 `budget` 命令重看。
+   这里同时守住两件事: 首屏确实自带预算块(否则删按钮=入口丢失)、命令仍然可用。 */
+{
+  const html = fs.readFileSync(HTML_PATH, "utf8");
+  const S = loadApp(); S.boot();
+  const first = S.lines().join("\n");
+  ok("T31.1 boot 首屏自动输出周期预算", /▓ 周期预算/.test(first) && /本期发放/.test(first), first.slice(0,120));
+  ok("T31.2 工具栏没有「预算进度」按钮(data-cmd=\"budget\")",
+     !/data-cmd="budget"/.test(html) && !/>预算进度</.test(html));
+  S.clearTerm(); S.runCommand("budget");
+  const again = S.lines().join("\n");
+  ok("T31.3 budget 命令仍能重新输出预算块", /▓ 周期预算/.test(again) && /本期发放/.test(again), again.slice(0,120));
+  ok("T31.4 随之删掉不可达的 open-budget/open-invest 分支(无元素再发这两个值)",
+     !/c==="open-budget"/.test(html) && !/c==="open-invest"/.test(html));
 }
 
 console.log("PASS " + pass + " / FAIL " + fails.length);

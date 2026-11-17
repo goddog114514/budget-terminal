@@ -47,6 +47,13 @@ export function loadApp(opts = {}){
     /* v0.0.13: 预算行按窗口覆盖的记账周期合计(历史发放/结转快照) */
     grantedTotalAt, totalChargeAt, periodOfWindow, budgetPeriodsOfWindow, budgetOfWindow,
     effectiveBudget, hasBudgetOverride, periodSnapshot,
+    /* v0.0.14 类别余额(信封): 总量/明细/预警 + 命令与配置弹窗 */
+    catAllocMap, catAllocOf, catPool, catAllocated, catPoolLeft, catBudgetCats,
+    catBudgetRows, catAlertList, catDotLine, catBudgetTable, printCategoryBudget,
+    catMuteMap, catMuted,
+    doSetCategory, catBudgetUsage, CAT_NAME_MAX, CAT_ALLOC_OFF, CAT_ALLOC_MUTE,
+    openCatModal, closeCatModal, buildCatRows, readCatInputs, updateCatModal,
+    saveCatBudgets, clearCatBudgets, catBudgetCommand, catRowParts,
     investOf, moneyPending, indexPending, moneyInvestedTotal, indexInvestedTotal,
     investAmount, investFull, recStatus, recFullyMoney, recFullyIndex, recNoNeed,
     recDays, recTotal, recAmortized, parseDaysToken, amortSplitLine,

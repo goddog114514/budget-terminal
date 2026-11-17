@@ -272,7 +272,14 @@ function geoApp(opts={}){
   ok("GEO.54 没有硬编码可用 key", !/key=[A-Z0-9]{20,}/i.test(html));
   ok("GEO.55 逆地理编码走官方 TMap.service.Geocoder", /TMap\.service\.Geocoder\(\)\.getAddress\(/.test(html));
   ok("GEO.56 不手写 fetch / XHR 调位置服务", !/\bfetch\(|XMLHttpRequest/.test(html));
-  eq("GEO.57 innerHTML 仍恰好 4 处且都是清空", (html.match(/innerHTML/g)||[]).length, 4);
+  /* GEO.57 原本按"innerHTML 出现 N 次"计数; v0.0.14 起弹窗数量增加(类别余额), 计数本身
+     不是契约 —— 真正要守的是**没有任何非空的 innerHTML 赋值**(用户输入不进 HTML)。
+     改成按语义断言: 列出所有 `innerHTML = …` 的右值, 必须全部是空串。 */
+  {
+    const code = html.slice(html.indexOf("<script>"));
+    const rhs = [...code.matchAll(/innerHTML\s*=\s*([^;\n]*)/g)].map(m=>m[1].trim());
+    ok("GEO.57 innerHTML 只用于清空(没有非空赋值)", rhs.length>=4 && rhs.every(v=>v==='""'||v==="''"), JSON.stringify(rhs));
+  }
   ok("GEO.58 外部地名只用 textContent 渲染(Canvas 段走 appendChild)",
      /sp\.textContent = s\.t/.test(html) && /if\(s\.node\)\{ div\.appendChild\(s\.node\)/.test(html) &&
      /geoPlaceSegs\(r\.place/.test(html));

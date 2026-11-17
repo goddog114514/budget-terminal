@@ -93,10 +93,12 @@
   .geo-badge.off .geo-txt,.geo-badge.unsupported .geo-txt,.geo-badge.idle .geo-txt{color:var(--gray);}
   /* 行内地点图标: 与左上角 badge 共用同一套 Canvas 准星绘制(makeGeoIcon 用, 不是 Emoji) */
   .geo-ic{width:16px;height:16px;display:inline-block;vertical-align:-3px;flex:0 0 auto;}
-  /* 右上角 今日/周期 预算指示: 红黄绿"实心圆点", 不闪烁 */
+  /* 右上角 今日/周期 预算指示: 红黄绿"实心圆点", 不闪烁。
+     v0.0.14: 类别余额超额时也会插到这里(在今日/周期预算**之前**), 多项可横向列出 —— 
+     窄屏放不下时自动换行, 不再把顶栏撑出横向滚动条。 */
   .mini-alert{
     font-size:12px;border:1px solid var(--border);padding:2px 8px;border-radius:3px;
-    display:flex;gap:16px;align-items:center;white-space:nowrap;
+    display:flex;gap:6px 14px;align-items:center;white-space:nowrap;flex-wrap:wrap;max-width:100%;
   }
   .dotbox{display:inline-flex;align-items:center;gap:3px;}
   .dotbox .dlabel{color:var(--gray);}
@@ -279,6 +281,42 @@
   .cat-track i{display:block;height:100%;border-radius:0;}
   .cat-pc{color:var(--green);text-align:right;}
   .cat-amt{color:var(--gray);text-align:right;}
+  /* ---- v0.0.14 类别余额(信封预算) ---- */
+  /* 命令输出: 类别 / 已分配 / 已支出 / 剩余 / 使用率 —— 五列网格(中文名按列对齐, 不靠空格凑) */
+  .cb-table{display:flex;flex-direction:column;gap:2px;margin:6px 0 8px;max-width:680px;font-size:12.5px;}
+  .cb-tr{display:grid;grid-template-columns:minmax(4em,1fr) 7.6em 7.6em 7.6em 4.8em;gap:10px;align-items:center;}
+  .cb-tr.hd{color:var(--gray);font-size:11.5px;border-bottom:1px solid var(--border);padding-bottom:3px;margin-bottom:2px;}
+  .cb-tr.ft{color:var(--white);border-top:1px solid var(--border);padding-top:3px;margin-top:2px;}
+  .cb-nm{display:inline-flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cb-sw{width:8px;height:8px;flex:0 0 auto;display:inline-block;}
+  .cb-num{text-align:right;color:var(--white);}
+  .cb-num.dim{color:var(--gray);}
+  .cb-pc{text-align:right;}
+  /* 配置弹窗: 一行一个类别, 输入框后是浅色"可配置余额", 行尾是该类别余额占比 */
+  #catModal{width:min(640px,94vw);}
+  #catModal h3{margin-bottom:10px;}
+  #catModal .cmeta{color:var(--gray);font-size:12px;line-height:1.8;margin-bottom:10px;}
+  #catModal .cmeta b{color:var(--pure);font-weight:normal;}
+  #catModal .cmeta .warn{color:var(--yellow);}
+  #catModal .crows{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
+  #catModal .crow{display:grid;grid-template-columns:10px 5.6em 14px 118px minmax(0,1fr) 4.4em;gap:9px;align-items:center;}
+  #catModal .crow .cnm{color:var(--white);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #catModal .csw{width:8px;height:8px;display:block;border-radius:0;}
+  #catModal .crow input{padding:4px 8px;font-size:13px;color-scheme:dark;}
+  /* 提示超额开关: 不要让 #catModal input 的 width:100% 把它撑满一列 */
+  #catModal .crow input.cwarn{width:13px;height:13px;padding:0;accent-color:var(--green);border:none;background:none;cursor:pointer;}
+  /* 低透明度: 实时可配置余额(总可用余额 − 已配置类别余额) */
+  #catModal .cleft{color:var(--white);opacity:.38;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #catModal .cleft.neg{color:var(--red);opacity:.95;}
+  #catModal .cpc{color:var(--cyan);opacity:.72;font-size:11.5px;text-align:right;white-space:nowrap;}
+  #catModal .hint{color:var(--gray);font-size:12px;margin-top:12px;line-height:1.6;}
+  #catModal .hint.bad{color:var(--yellow);}
+  #c_save{color:var(--green);border-color:var(--green);}
+  #c_save:hover{background:rgba(61,255,122,.1);}
+  #c_cancel{color:var(--red);border-color:var(--red);}
+  #c_cancel:hover{background:rgba(255,77,94,.1);}
+  #c_clear{color:var(--gray);border-color:var(--gray);}
+  #c_clear:hover{background:rgba(93,107,98,.18);}
 
   /* ---- input ---- */
   footer{
@@ -302,20 +340,20 @@
   #ghost.show{opacity:1;}
 
   /* ---- modal forms (auxiliary) ---- */
-  #modalWrap,#budgetWrap,#investWrap,#dateWrap,#geoWrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:20;}
-  #modalWrap.open,#budgetWrap.open,#investWrap.open,#dateWrap.open,#geoWrap.open{display:flex;}
-  #modal,#budgetModal,#investModal,#dateModal,#geoModal{
+  #modalWrap,#budgetWrap,#investWrap,#dateWrap,#geoWrap,#catWrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:20;}
+  #modalWrap.open,#budgetWrap.open,#investWrap.open,#dateWrap.open,#geoWrap.open,#catWrap.open{display:flex;}
+  #modal,#budgetModal,#investModal,#dateModal,#geoModal,#catModal{
     width:min(560px,94vw);max-height:90vh;overflow:auto;
     background:var(--panel-2);border:1px solid var(--green);border-radius:6px;padding:18px 20px;
     box-shadow:0 0 30px rgba(61,255,122,.15);
   }
-  #modal h3,#budgetModal h3,#investModal h3,#dateModal h3,#geoModal h3{color:var(--cyan);font-size:15px;letter-spacing:1px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;}
-  #modal label,#budgetModal label,#investModal label,#dateModal label,#geoModal label{display:block;color:var(--gray);font-size:12px;margin:10px 0 4px;}
-  #modal input,#modal select,#budgetModal input,#investModal input,#dateModal input,#geoModal input{
+  #modal h3,#budgetModal h3,#investModal h3,#dateModal h3,#geoModal h3,#catModal h3{color:var(--cyan);font-size:15px;letter-spacing:1px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;}
+  #modal label,#budgetModal label,#investModal label,#dateModal label,#geoModal label,#catModal label{display:block;color:var(--gray);font-size:12px;margin:10px 0 4px;}
+  #modal input,#modal select,#budgetModal input,#investModal input,#dateModal input,#geoModal input,#catModal input{
     width:100%;background:var(--field);border:1px solid var(--border);color:var(--white);
     font-family:inherit;font-size:14px;padding:6px 8px;border-radius:3px;outline:none;
   }
-  #modal input:focus,#modal select:focus,#budgetModal input:focus,#investModal input:focus,#dateModal input:focus,#geoModal input:focus{border-color:var(--green);}
+  #modal input:focus,#modal select:focus,#budgetModal input:focus,#investModal input:focus,#dateModal input:focus,#geoModal input:focus,#catModal input:focus{border-color:var(--green);}
   #geoModal .seg{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
   #geoModal .seg button.on{color:var(--green);border-color:var(--green);background:rgba(61,255,122,.1);}
   #geoModal hr{border:none;border-top:1px solid var(--border);margin:18px 0 4px;}
@@ -380,15 +418,18 @@
 <header id="statusbar"></header>
 <nav class="toolbar">
   <button data-cmd="help">[F1] 帮助</button>
-  <button data-cmd="budget">预算进度</button>
+  <!-- v0.0.14: 工具栏不再留「预算进度」按钮 —— 周期预算在 boot() 的首屏由 showBudget() 自动输出,
+       之后只能用 `budget` 命令重看(toolbar 只是辅助入口, 不再重复一个"已经一直看得见"的视图)。 -->
   <!-- v0.0.11: 「配置预算」「配置投资比例」收进同一个「配置 ▾」下拉, 两个子项各自弹窗,
-       弹窗提交时回灌 config 命令(config set budget / config set invest), 输出即当前配置表。 -->
+       弹窗提交时回灌 config 命令(config set budget / config set invest)。
+       v0.0.14: 设置项里再加「配置类别余额」(回灌 set category 命令)。 -->
   <span class="dd" id="configDd">
     <button id="btnConfigDd" class="accent" type="button">配置 ▾</button>
     <div class="dd-menu" id="configDdMenu">
       <span class="dd-hint">设置项</span>
       <button type="button" data-config="budget">配置预算</button>
       <button type="button" data-config="invest">配置投资比例</button>
+      <button type="button" data-config="category">配置类别余额</button>
     </div>
   </span>
   <button data-cmd="forecast">燃尽预测</button>
@@ -430,8 +471,16 @@
   <button data-cmd="config">当前配置</button>
   <button id="btnUndo" data-cmd="undo" disabled>↩ 撤销</button>
   <button id="btnRedo" data-cmd="redo" disabled>↪ 重做</button>
-  <button data-cmd="export md">导出 .md</button>
-  <button data-cmd="export txt">导出 .txt</button>
+  <!-- v0.0.14: 两个「导出 .md / .txt」并成「导出 ▾」下拉(与「配置 ▾」同一套 dd 结构),
+       省一行宽度; 两个子项仍各回灌 export 命令(鼠标与键盘同一条通道)。 -->
+  <span class="dd" id="exportDd">
+    <button id="btnExportDd" class="accent" type="button">导出 ▾</button>
+    <div class="dd-menu" id="exportDdMenu">
+      <span class="dd-hint">导出报告</span>
+      <button type="button" data-cmd="export md">导出 .md</button>
+      <button type="button" data-cmd="export txt">导出 .txt</button>
+    </div>
+  </span>
   <button data-cmd="backup-download">备份 .json</button>
   <button data-cmd="restore-file">导入 .json…</button>
   <button id="btnAutosave" data-cmd="autosave-dir" class="accent">存到本地目录: 关</button>
@@ -552,6 +601,25 @@
   </div>
 </div>
 
+<!-- v0.0.14 类别余额(信封预算): 配置 ▾ → 「配置类别余额」。
+     每个类别一个数字输入框, 输入框后用低透明度字体显示**实时可配置余额**
+     (= 总可用余额 − 已配置类别余额), 末尾显示该类别余额占总可用余额的实时占比。
+     类别名后的勾选框(默认勾选) = 是否提示该类别超额; 取消后该类别完全静默(只影响警告)。
+     保存时整张表回灌一条 `set category a 400 b 300 c 200 nowarn` 命令(单次撤销步, 与命令行同一通道)。 -->
+<div id="catWrap">
+  <div id="catModal">
+    <h3>配置类别余额 — 钱准备做什么</h3>
+    <div class="cmeta" id="c_meta"></div>
+    <div class="crows" id="c_rows"></div>
+    <div class="hint" id="c_hint"></div>
+    <div class="mbtns">
+      <button id="c_clear" type="button">全部清除</button>
+      <button id="c_cancel" type="button">取消</button>
+      <button id="c_save" type="button">保存</button>
+    </div>
+  </div>
+</div>
+
 <div id="dateWrap">
   <div id="dateModal">
     <h3 id="d_title">按日期 / 月份查看消费</h3>
@@ -585,7 +653,7 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.13";         // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.0.14";         // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
 /* ---- 地点 (v0.0.12) · 合规边界 ----
    只用腾讯地图 JSAPI GL + service 库。本应用是"本地双击"的单文件应用, 属非默认场景:
@@ -625,6 +693,16 @@ const IDX_RATE  = 0.02;               // 基准: 其中指数基金占比(占总
 const INVEST_MONEY_LOT = 100;         // 货币基金每次投入额(触发阈值)
 const INVEST_INDEX_LOT = 20;          // 指数基金每次投入额(触发阈值)
 const DEFAULT_CATEGORIES = ["餐饮","交通","购物","娱乐","居住","医疗","教育","人情","旅行","其他"];
+/* v0.0.14 类别余额(信封预算):
+   总可用余额 = 当期预算 × 可消费比例(consumeShare, 默认 85%) —— 与"占用 = 消费 ÷ N"是同一把尺子,
+   所以每个类别再被 `已分配` 切分时, 单元格里装的是**消费额度**(元), 使用率 = 已消费 ÷ 已分配。
+   配置类别余额**不转账**, 只是给每个类别一个天花板; 已配置合计不得超过总可用余额。
+   CAT_NAME_MAX: 类别名长度上限(与地点 60 同一思路, 防脏数据把配置页/顶栏撑爆)。
+   取 60 而不是更小, 是为了让"能记账的类别名"都能配额度 —— 记账侧 validateCategory 不截断,
+   若这里截断就会生成一个永远匹配不上记录名的幽灵键。 */
+const CAT_NAME_MAX = 60;
+const CAT_ALLOC_OFF = ["off","clear","-","0","none","取消","清除"];   // set category <类别> <这些> = 取消该类别
+const CAT_ALLOC_MUTE = ["nowarn","silent","静默"];                     // 金额后的可选标记 = 该类别不提示超额
 /* 图表总结: 柱状图上限桶数 / 绘图区像素高(与 CSS .chart-bars 的 218px - 24px 预留标签高度对应)
    柱数有上限, 保证长窗口在窄屏下也能完整显示。 */
 const CHART_MAX_BUCKETS = 12;
@@ -700,6 +778,8 @@ function defaultSettings(){
            periodMode:"month", lengthDays:15, anchor:null, epoch:null,
            consumeShare:CONSUME_SHARE, rateMoney:0.02, rateIndex:0.08, periodBudget:{},
            dailyBudget:null,                 // 手动设置的"每日可用余额"(null = 未设置)
+           categoryBudget:{},                // v0.0.14 类别余额(信封): {类别: 已分配金额}
+           categoryMute:{},                  // v0.0.14 静默开关: {类别:true} = 该类别不产生超额警告(缺省 = 提示)
            geoMode:"auto", geoKey:"" };    // 地点: auto=add 时自动定位 / manual=全手动; key 只存本机
 }
 function loadState(){
@@ -743,6 +823,29 @@ function normalizeSettings(raw){
     }
   }
   s.periodBudget = pb;
+  /* v0.0.14 类别余额: 只保留"类别名非空且 ≤ CAT_NAME_MAX + 金额 r2 后仍 >0"的项。
+     手改坏的/旧备份里的 0、负数、字符串金额一律丢弃 —— 否则"已配置合计"会被 NaN 污染。 */
+  const cb = {};
+  if(s.categoryBudget && typeof s.categoryBudget==="object" && !Array.isArray(s.categoryBudget)){
+    for(const k in s.categoryBudget){
+      const nm = String(k).trim().slice(0, CAT_NAME_MAX);
+      const v = Number(s.categoryBudget[k]);
+      if(nm && isFinite(v) && v>0 && r2(v)>0) cb[nm] = r2(v);
+    }
+  }
+  s.categoryBudget = cb;
+  /* v0.0.14 静默开关: {类别:true} = 该类别不再产生超额警告。
+     只保留"值 truthy 且类别仍在 categoryBudget 里"的项 —— 取消分配后残留的静默标记不能活下去
+     (否则下次重新配置该类别会莫名其妙不报警)。类别名与 categoryBudget 同一套 trim/截断规则。 */
+  const cm = {};
+  if(s.categoryMute && typeof s.categoryMute==="object" && !Array.isArray(s.categoryMute)){
+    for(const k in s.categoryMute){
+      if(!s.categoryMute[k]) continue;
+      const nm = String(k).trim().slice(0, CAT_NAME_MAX);
+      if(nm && Object.prototype.hasOwnProperty.call(cb, nm)) cm[nm] = true;
+    }
+  }
+  s.categoryMute = cm;
   if(!(typeof s.dailyBudget==="number" && isFinite(s.dailyBudget) && s.dailyBudget>0 && r2(s.dailyBudget)>0)) s.dailyBudget = null;
   if(s.geoMode!=="auto" && s.geoMode!=="manual") s.geoMode = def.geoMode;
   /* P1 B-12: 与 config set geokey 共用 normalizeGeoKey() 唯一入口 ——
@@ -1475,6 +1578,73 @@ function periodSnapshot(p){
            mm, idx, invest, usedUnits, ratio };
 }
 
+/* ====================== 类别余额 / 信封预算 (v0.0.14) ======================
+   "账户余额"回答钱在哪里, "类别余额"回答钱准备做什么: 把**当期可消费额度**
+   (当期预算 × N%)切给若干类别。切分只是计划, 不转账、不动可用余额、不影响占用口径 —— 
+   所以这里所有的数字都是**消费口径**(元), 不与"占用 = 消费 ÷ N"混用。
+   存续: settings.categoryBudget = {类别: 已分配金额}, 跨期沿用(和默认预算一样是"配置"),
+        使用量按**当前周期**重新统计; 备份/导入/撤销都跟着 settings 走。
+        静默开关 settings.categoryMute = {类别:true} 只影响警告(catAlertList), 不进金额口径。 */
+function catAllocMap(){ return (state && state.settings && state.settings.categoryBudget) || {}; }
+function catAllocOf(cat){ const v = catAllocMap()[cat]; return (typeof v==="number" && isFinite(v) && v>0) ? v : 0; }
+/* v0.0.14 静默开关: 只关掉"该类别超额的警告", 不改金额/排序/占比/合计 */
+function catMuteMap(){ return (state && state.settings && state.settings.categoryMute) || {}; }
+function catMuted(cat){ return catMuteMap()[cat] === true; }
+/* 总可用余额 = 当期预算 × 可消费比例(默认 85%) */
+function catPool(p){ p = p || currentPeriod(); return r2(effectiveBudget(p) * consumeShare()); }
+/* 已配置类别余额合计 */
+function catAllocated(){
+  const m = catAllocMap(); let s = 0;
+  for(const k in m){ const v = Number(m[k]); if(isFinite(v) && v>0) s += v; }
+  return r2(s);
+}
+/* 可配置余额 = 总可用余额 − 已配置类别余额(UI 输入框后的浅色实时数字就是它) */
+function catPoolLeft(p){ return r2(catPool(p) - catAllocated()); }
+/* 参与配置的类别 = 已知类别(默认 10 类 + 记录里的自定义类别) ∪ 已配置但暂无记录的类别
+   —— 后者不能漏, 否则"配置了却看不到"会变成一笔无法取消的幽灵额度。 */
+function catBudgetCats(){
+  const out = knownCategories().slice();
+  for(const k in catAllocMap()) if(!out.includes(k)) out.push(k);
+  return out;
+}
+/* 当前周期每个已配置类别的 已分配/已消费/剩余/使用率/占比。
+   已消费走 collectWindow(单类别) —— 分摊成本按"落在本期内的天数"计入, 与 summary/budget 同口径。 */
+function catBudgetRows(p){
+  p = p || currentPeriod();
+  const pool = catPool(p), out = [];
+  for(const c of catBudgetCats()){
+    const alloc = catAllocOf(c);
+    if(!(alloc > 0)) continue;
+    const spent = collectWindow(p.start, p.end, c).total;
+    out.push({ cat:c, alloc, spent, left:r2(alloc-spent),
+               ratio: spent/alloc, share: pool>0 ? alloc/pool : 0 });
+  }
+  return out.sort((a,b)=> (b.ratio-a.ratio) || (b.alloc-a.alloc) || (a.cat<b.cat?-1:1));
+}
+/* 触发预警的类别: 使用率达到**最低阈值**(即将超额)或**最高阈值**(已超额)才返回;
+   未触发的类别**完全不出现**(顶栏/预算页都不留空位)。阈值与今日/周期预算同一份 settings.thresholds。
+   静默类别(勾选框取消)即使达到阈值也不返回 —— 顶栏与 budget 都复用本函数, 所以只过滤这一处。 */
+function catAlertList(p){
+  const th = [...state.settings.thresholds].sort((a,b)=>a-b);
+  const warn = th.length ? th[0] : 80, over = th.length ? th[th.length-1] : 100;
+  const out = [];
+  for(const r of catBudgetRows(p)){
+    if(catMuted(r.cat)) continue;
+    const pc = r.ratio*100;
+    if(!(pc >= warn)) continue;
+    const isOver = pc >= over;
+    out.push({ cat:r.cat, ratio:r.ratio, pct:pc, over:isOver,
+               cls: isOver ? "r" : "y",
+               dot: isOver ? COLOR.red : COLOR.yellow,
+               text: pc.toFixed(0)+"%" });
+  }
+  return out;
+}
+/* 终端文本版: 与 dotLine 同构(标签 + 实心圆点 + 比例), 只用在"已触发"的类别上 */
+function catDotLine(a){
+  return [{t:a.cat+"：", c:COLOR.gray}, {t:"●", c:a.dot}, {t:a.text, c:COLOR.white}];
+}
+
 /* =========================== rendering helpers ========================== */
 const term = document.getElementById("term");
 const catlistEl = document.getElementById("catlist");
@@ -1882,6 +2052,7 @@ const COMMANDS = [
   { n:["set"], sub:true,                           u:"set weekstart <mon|sun>",         d:"周总结起始日(周一/周日)" },
   { n:["set"], sub:true,                           u:"set alert <p1,p2..>",             d:"自定义预警阈值(百分比), 默认 80,100" },
   { n:["set"], sub:true,                           u:"set rate <money|index> <%>",      d:"设置基金年化(收益模拟用), 例 set rate index 8" },
+  { n:["set"], sub:true,                           u:"set category <类别> <金额> [nowarn]",      d:"类别余额(信封): 把当期可消费额度(预算×85%)分给类别, 如 set category 餐饮 400 交通 300; 金额后加 nowarn|静默 = 该类别不提示超额; off 取消该类别, reset 全清" },
   { n:["budget"],                                  u:"budget",                          d:"当前周期预算进度(含进度条)" },
   { n:["budget"], sub:true,                        u:"budget set <金额>",                d:"只调整当前周期的预算, 例 budget set 1200" },
   { n:["budget"], sub:true,                        u:"budget default <金额>",            d:"调整默认预算(以后各期), budget reset 取消当期覆盖" },
@@ -2124,6 +2295,7 @@ function configUsage(){
   line([{t:"      config set consume|ratio|share <消费占比>   如 config set ratio 0.85 (与 set ratio 同解释)", c:COLOR.yellow}]);
   line([{t:"      config set geo auto|manual        地点: 自动填充地址 / 全手动(不填则空)", c:COLOR.yellow}]);
   line([{t:"      config set geokey <你的Key>|off   腾讯地图 Key; off 清空(代码不预置 key)", c:COLOR.yellow}]);
+  line([{t:"      (类别余额用 set category —— 它属于 set 的子项, 不在 config 下)", c:COLOR.gray}]);
 }
 function doConfig(tokens){
   const sub = (tokens[0]||"").toLowerCase();
@@ -2198,7 +2370,10 @@ function doConfig(tokens){
 /* ------------------------------- set ----------------------------------- */
 function doSet(tokens){
   const sub = (tokens[0]||"").toLowerCase();
-  if(sub==="budget"){
+  if(sub==="category" || sub==="cat" || sub==="categories"){
+    /* v0.0.14 类别余额(信封预算): 与其它子项一样走 mutate → 一次撤销步 */
+    doSetCategory(tokens.slice(1));
+  } else if(sub==="budget"){
     const n = parseAmount(tokens[1]);
     if(n==null){ line([{t:"用法: set budget <金额>  例 set budget 1000 (金额需 ≥ ¥0.01 且为有限数)",c:COLOR.yellow}]); return; }
     state.settings.budget = n;
@@ -2358,8 +2533,10 @@ function showBudget(){
     line([{t:"✓ 本期可结转 ¥"+money(-carry),c:COLOR.green}]);
   }
   line([{t:aw.t,c:aw.c,cls:"glow"}]);
-  // 红黄绿实心圆点: 今日预算(需手动设每日额度) + 周期预算
+  /* 红黄绿实心圆点: 类别余额(仅已触发预警的类别, 未超额完全不显示) → 今日预算 → 周期预算。
+     v0.0.14: 类别超额要先于整体预算被看到, 所以排在「今日/周期预算」**之前**。 */
   const ts = todaySnapshot();
+  for(const a of catAlertList(p)) line(catDotLine(a));
   line(dotLine("今日预算", ratioDot(ts.ratio)));
   line(dotLine("周期预算", ratioDot(st.ratio)));
   blank();
@@ -2370,6 +2547,151 @@ function showBudget(){
   }
   showForecastLine();
   blank();
+}
+
+/* ====================== 类别余额(命令层, v0.0.14) ======================
+   set category                     查看类别余额表
+   set category 餐饮 400 交通 300    一次配置多个类别(原子: 任一对不合法则整体不改)
+   set category 餐饮 400 nowarn     只对"该类别超额提示"静默(nowarn|silent|静默); 不写 = 恢复提示
+   set category 餐饮 off            取消该类别(同时清掉静默标记);  set category reset 全部清除
+   约束: 已配置合计 ≤ 总可用余额(当期预算 × N%)。已经超额的账本(例如后来调低了预算)
+         只能往下调 —— total ≤ 当前合计时放行, 否则拒绝, 避免"越改越超"。 */
+function catBudgetUsage(){
+  line([{t:"用法: set category                     查看类别余额(总可用/已配置/可配置 + 每类使用率)", c:COLOR.yellow}]);
+  line([{t:"      set category <类别> <金额> [nowarn] [...]   例 set category 餐饮 400 交通 300", c:COLOR.yellow}]);
+  line([{t:"      nowarn|silent|静默 = 该类别不提示超额;  off 取消该类别;  reset = 全部清除", c:COLOR.yellow}]);
+}
+/* 五列网格: 类别 / 已分配 / 已支出 / 剩余可用 / 使用率。
+   用 DOM 网格而不是空格对齐 —— 中文类别是双宽字符, padEnd 对不齐(全站表格同理)。 */
+function catBudgetTable(rows){
+  const wrap = document.createElement("div"); wrap.className = "l cb-table";
+  const cell = (txt, cls, color)=>{
+    const s = document.createElement("span");
+    s.className = "cb-"+cls;
+    if(color) s.style.color = color;
+    s.textContent = txt;
+    return s;
+  };
+  const head = document.createElement("div"); head.className = "cb-tr hd";
+  head.append(cell("类别","nm"), cell("已分配","num"), cell("已支出","num"),
+              cell("剩余可用","num"), cell("使用率","pc"));
+  wrap.appendChild(head);
+  let ta = 0, ts = 0;
+  for(const r of rows){
+    ta += r.alloc; ts += r.spent;
+    const tr = document.createElement("div"); tr.className = "cb-tr"; tr.dataset.cat = r.cat;
+    const nm = document.createElement("span"); nm.className = "cb-nm";
+    const sw = document.createElement("i"); sw.className = "cb-sw"; sw.style.background = catColor(r.cat);
+    const tx = document.createElement("span"); tx.textContent = r.cat;
+    nm.append(sw, tx);
+    /* 静默类别: 名字后加浅色标记, 使用率用灰色(不按警告色) —— 让"为什么这里不亮圆点"看得出来 */
+    if(catMuted(r.cat)){
+      const mt = document.createElement("span");
+      mt.textContent = "静默";
+      mt.style.color = COLOR.gray; mt.style.fontSize = "11px";
+      nm.append(mt);
+    }
+    tr.append(nm,
+             cell("¥"+money(r.alloc), "num"),
+             cell("¥"+money(r.spent), "num"),
+             cell("¥"+money(r.left), "num", r.left<0 ? COLOR.red : COLOR.white),
+             cell((r.ratio*100).toFixed(1)+"%", "pc",
+                  catMuted(r.cat) ? COLOR.gray : LEVEL_COLOR[barLevel(r.ratio)]));
+    wrap.appendChild(tr);
+  }
+  const ft = document.createElement("div"); ft.className = "cb-tr ft";
+  ft.append(cell("合计","nm"), cell("¥"+money(r2(ta)),"num"), cell("¥"+money(r2(ts)),"num"),
+            cell("¥"+money(r2(ta-ts)),"num"), cell("","pc"));
+  wrap.appendChild(ft);
+  term.appendChild(wrap);
+  return wrap;
+}
+function printCategoryBudget(){
+  const p = currentPeriod();
+  const pool = catPool(p), alloc = catAllocated(), left = catPoolLeft(p);
+  const rows = catBudgetRows(p);
+  const al = catAlertList(p);
+  blank();
+  sectionHead("类别余额", p.label);
+  kvRow("总可用余额", [
+    {t:"¥"+money(pool), c:COLOR.pure, cls:"glow"},
+    {t:"   (当期预算 ¥"+money(effectiveBudget(p))+" × 消费 "+consumePct()+"%)", c:COLOR.gray}
+  ], 0);
+  kvRow("已配置", [
+    {t:"¥"+money(alloc), c:COLOR.pure},
+    {t:"   ("+rows.length+" 个类别)", c:COLOR.gray}
+  ], 0);
+  kvRow("可配置余额", "¥"+money(left), 0, left<0 ? COLOR.red : COLOR.green, true);
+  if(rows.length) catBudgetTable(rows);
+  else line([{t:"  还没有配置类别余额 —— 例: set category 餐饮 400 交通 300", c:COLOR.gray}]);
+  if(rows.length){
+    line([{t:"  使用率 = 已消费 ÷ 已分配; 已消费按本期统计(分摊成本按落在本期的天数计入)", c:COLOR.gray}]);
+    if(al.length) for(const a of al) line(catDotLine(a));
+    else line([{t:"✓ 所有已配置类别都在阈值内", c:COLOR.green}]);
+  }
+  blank();
+}
+function doSetCategory(args){
+  const toks = args.map(t=>String(t));
+  const first = (toks[0]||"").toLowerCase();
+  /* 单 token 才是"查看/全清": `set category list 100` 是给名为 list 的类别配额度, 不吞掉参数 */
+  if(!toks.length || (toks.length===1 && (first==="list" || first==="show" || first==="ls"))){ printCategoryBudget(); return; }
+  if(toks.length===1 && (first==="reset" || first==="clearall" || first==="all")){
+    state.settings.categoryBudget = {};
+    state.settings.categoryMute = {};          // 全清: 静默标记一并清掉
+    line([{t:"✓ 已清空全部类别余额", c:COLOR.green}]);
+    printCategoryBudget();
+    return;
+  }
+  /* 先整表算完再落 state: 任何一对不合法都不改, 不会出现"改了一半"的中间态。
+     可变长参数对: <类别> <金额> [nowarn|silent|静默] —— 第三个 token 是可选标记, 不写 = 恢复提示。 */
+  const cur = catAllocated();
+  const next = Object.assign({}, catAllocMap());
+  const nextMute = Object.assign({}, catMuteMap());
+  const changed = [];
+  let muteDirty = false;
+  for(let i=0;i<toks.length;){
+    const cat = toks[i].trim();
+    const raw = toks[i+1];
+    if(!cat || raw==null){ catBudgetUsage(); return; }
+    /* 超长类别名不静默截断: 截断会造出匹配不上记录名的幽灵键(记账侧同样没有长度上限) */
+    if(cat.length > CAT_NAME_MAX){
+      line([{t:"✗ 类别名过长("+cat.length+" > "+CAT_NAME_MAX+" 字符): "+cat.slice(0,16)+"…", c:COLOR.yellow}]);
+      return;
+    }
+    const mark = (toks[i+2]!=null) ? String(toks[i+2]).toLowerCase() : "";
+    const mute = CAT_ALLOC_MUTE.includes(mark);
+    const step = mute ? 3 : 2;
+    if(CAT_ALLOC_OFF.includes(String(raw).toLowerCase())){
+      /* 取消分配必须同步删掉静默标记, 否则下次重新配置会"继承"静默、该报的警不报了 */
+      if(nextMute[cat]!=null){ delete nextMute[cat]; muteDirty = true; }
+      if(next[cat]!=null){ delete next[cat]; changed.push(cat); }
+      i += step; continue;
+    }
+    const amt = parseAmount(raw);
+    if(amt==null){
+      line([{t:"✗ 「"+cat+"」的金额无效: "+raw+"   (需 ≥ ¥0.01 的有限数; 取消该类别写 off)", c:COLOR.yellow}]);
+      return;
+    }
+    next[cat] = amt; changed.push(cat);
+    if(mute){ if(nextMute[cat]!==true){ nextMute[cat] = true; muteDirty = true; } }
+    else if(nextMute[cat]!=null){ delete nextMute[cat]; muteDirty = true; }
+    i += step;
+  }
+  if(!changed.length && !muteDirty){ printCategoryBudget(); return; }
+  let total = 0; for(const k in next) total += next[k]; total = r2(total);
+  const pool = catPool();
+  if(total > pool + 0.005 && total > cur + 0.005){
+    line([{t:"✗ 已配置合计 ¥"+money(total)+" 超过总可用余额 ¥"+money(pool), c:COLOR.red, cls:"glow"}]);
+    line([{t:"  总可用余额 = 当期预算 ¥"+money(effectiveBudget(currentPeriod()))+" × 消费 "+consumePct()
+          +"%; 先减少其它类别, 或用 config set budget 调高预算", c:COLOR.gray}]);
+    return;
+  }
+  state.settings.categoryBudget = next;
+  state.settings.categoryMute = nextMute;
+  line([{t:"✓ 已更新类别余额: "+changed.join("、"), c:COLOR.green}]);
+  if(total > pool + 0.005) line([{t:"⚠ 已配置合计比总可用余额多 ¥"+money(r2(total-pool))+" (只能下调, 请尽快减回额度内)", c:COLOR.yellow}]);
+  printCategoryBudget();
 }
 
 /* ===================== 地点 place (v0.0.12) =====================
@@ -3946,6 +4268,14 @@ function showSettings(){
   const sp = rateSplit();
   kv("消费/投资比例", "消费 "+consumePct()+"%  |  投资 "+invPct()+"%  (货币 "+r2(sp.mm*100)+"% + 指数 "+r2(sp.idx*100)+"%)");
   kv("换算(占用)", "占用 = 消费 ÷ "+consumePct()+"%   (config set invest 15 / config set consume 85 可调)");
+  /* v0.0.14 类别余额: 设置页给三个总数 + 明细(每类 已分配 + 实时使用率), 不用打开弹窗也能核对 */
+  const cbp = catPool(cp), cba = catAllocated(), cbl = catPoolLeft(cp);
+  const cbRows = catBudgetRows(cp);
+  kv("类别余额(总可用)", "¥"+money(cbp)+"   = 当期预算 ¥"+money(effectiveBudget(cp))+" × 消费 "+consumePct()+"%");
+  kv("类别余额(已/可配置)", "已配置 ¥"+money(cba)+"   |   可配置 ¥"+money(cbl)+(cbl<0?"   (已超出, 请下调)":""));
+  kv("类别余额(明细)", cbRows.length
+      ? cbRows.map(r=>r.cat+" ¥"+money(r.alloc)+" 已用"+(r.ratio*100).toFixed(0)+"%").join("  ·  ")
+      : "未配置 → set category <类别> <金额> (或「配置 ▾ → 配置类别余额」)");
   kv("地点模式", s.geoMode==="auto" ? "自动填充地址 (仅 add · 只存行政区名)" : "全手动 (不填则空)");
   kv("腾讯地图 Key", s.geoKey ? (maskGeoKey(s.geoKey)+"   (已配置, 仅存本机)") : "未配置 → config set geokey <Key>");
   kv("当前定位", geoCache.place ? (geoCache.place+"   ["+geoStatus.text+"]") : ("尚未定位  ["+geoStatus.text+"]"));
@@ -4112,9 +4442,12 @@ function refreshHeader(){
     d.append(kk,vv); bar.appendChild(d);
   }
   const gap=document.createElement("div"); gap.className="spacer"; bar.appendChild(gap);
-  // 右上角: 今日预算 / 周期预算 的红黄绿"实心圆点"指示 (说明在前, 不闪烁)
+  // 右上角: 类别余额(仅已触发预警的类别) → 今日预算 → 周期预算 的红黄绿"实心圆点"指示
   const ts = todaySnapshot();
   const al=document.createElement("div"); al.className="mini-alert";
+  /* v0.0.14: 类别超额/即将超额时, 在「今日预算 / 周期预算」**之前**列出同类圆点与比例;
+     未触发的类别完全不渲染(不留空位、不显示 0%), 多项时横向排开。 */
+  for(const a of catAlertList(st.p)) al.appendChild(dotPair(a.cat, {cls:a.cls, dot:a.dot, text:a.text}));
   al.appendChild(dotPair("今日预算", ratioDot(ts.ratio)));
   al.appendChild(dotPair("周期预算", ratioDot(st.ratio)));
   bar.appendChild(al);
@@ -4310,6 +4643,128 @@ function openInvestModal(){
   document.getElementById("i_pct").focus();
 }
 function closeInvestModal(){ document.getElementById("investWrap").classList.remove("open"); }
+/* ---- 配置类别余额弹窗(v0.0.14) ----
+   每行: [色块] 类别 [提示超额勾选] [数字输入] [浅色: 可配置余额] [占比]
+   · 勾选框(默认勾选) = 该类别是否提示超额; 取消后顶栏/budget 不再出现它, 明细里标「静默」;
+   · 输入框后的浅色数字 = 总可用余额 − 已配置类别余额(按当前输入实时算) —— 就是"还能再分多少";
+   · 行尾占比 = 该类别余额 ÷ 总可用余额, 随输入即时刷新;
+   · 两者都只在内存里算, 不落盘、不改 state; 保存时整张表回灌**一条** `set category …` 命令,
+     与命令行同一通道(H5), 因此是一步撤销。 */
+function catRowParts(row){
+  const o = { warn:null, input:null, left:null, pc:null };
+  for(const n of row.children){
+    const c = String((n && n.className) || "");
+    if(c.indexOf("cwarn")>=0) o.warn = n;
+    else if(c.indexOf("camt")>=0) o.input = n;
+    else if(c.indexOf("cleft")>=0) o.left = n;
+    else if(c.indexOf("cpc")>=0) o.pc = n;
+  }
+  return o;
+}
+function buildCatRows(){
+  const host = document.getElementById("c_rows");
+  if(!host) return null;
+  host.innerHTML = "";
+  for(const cat of catBudgetCats()){
+    const row = document.createElement("div"); row.className = "crow"; row.dataset.cat = cat;
+    const sw = document.createElement("i"); sw.className = "csw"; sw.style.background = catColor(cat);
+    const nm = document.createElement("span"); nm.className = "cnm"; nm.textContent = cat;
+    /* 默认勾选 = 提示超额; 取消 = 该类别完全静默(只影响警告, 不影响金额) */
+    const wn = document.createElement("input");
+    wn.type = "checkbox"; wn.className = "cwarn"; wn.title = "提示该类别超额";
+    wn.checked = !catMuted(cat);
+    const inp = document.createElement("input");
+    inp.type = "number"; inp.className = "camt"; inp.min = "0"; inp.step = "0.01";
+    inp.placeholder = "0"; inp.value = catAllocOf(cat) || "";
+    inp.dataset.cat = cat;
+    inp.addEventListener("input", updateCatModal);
+    inp.addEventListener("keydown", (e)=>{ if(e && e.key==="Enter"){ if(e.preventDefault) e.preventDefault(); saveCatBudgets(); } });
+    const lf = document.createElement("span"); lf.className = "cleft";
+    const pc = document.createElement("span"); pc.className = "cpc";
+    row.append(sw, nm, wn, inp, lf, pc);
+    host.appendChild(row);
+  }
+  return host;
+}
+function readCatInputs(){
+  const host = document.getElementById("c_rows");
+  const out = [];
+  if(!host) return out;
+  for(const row of host.children){
+    const parts = catRowParts(row);
+    const v = input2num(parts.input && parts.input.value);
+    /* 勾选框缺失时按"提示超额"处理(缺省语义); 取消勾选才静默 */
+    out.push({ cat: row.dataset.cat, row, parts, value: (v!=null && v>0) ? r2(v) : 0,
+               mute: !!(parts.warn && !parts.warn.checked) });
+  }
+  return out;
+}
+function updateCatModal(){
+  const p = currentPeriod();
+  const pool = catPool(p);
+  const items = readCatInputs();
+  let sum = 0; for(const it of items) sum += it.value;
+  sum = r2(sum);
+  const left = r2(pool - sum);
+  for(const it of items){
+    if(it.parts.left){
+      it.parts.left.textContent = "可配置 ¥"+money(left);
+      if(it.parts.left.classList) it.parts.left.classList.toggle("neg", left < 0);
+    }
+    if(it.parts.pc) it.parts.pc.textContent = pool>0 ? ((it.value/pool)*100).toFixed(1)+"%" : "—";
+  }
+  const meta = document.getElementById("c_meta");
+  if(meta){
+    meta.innerHTML = "";                 // 一律 textContent: 类别名是用户输入, 不进 innerHTML
+    const put = (t, c)=>{ const s=document.createElement("span"); s.textContent=t; if(c) s.style.color=c; meta.appendChild(s); };
+    put("当期预算 ¥"+money(effectiveBudget(p))+" × 消费 "+consumePct()+"%  =  总可用余额 ");
+    put("¥"+money(pool), COLOR.pure);
+    put("     已配置 "); put("¥"+money(sum), COLOR.pure);
+    put("     可配置 "); put("¥"+money(left), left<0?COLOR.red:COLOR.green);
+  }
+  const hint = document.getElementById("c_hint");
+  if(hint){
+    hint.className = "hint" + (left<0 ? " bad" : "");
+    hint.textContent = left<0
+      ? ("已配置合计 ¥"+money(sum)+" 超出总可用余额 ¥"+money(pool)+" 共 ¥"+money(-left)+"；请先下调其它类别再保存（已经超额度时只能减、不能加）。")
+      : ("输入框后的浅色数字 = 实时可配置余额（总可用余额 − 已配置类别余额）；行尾 = 该类别余额占总可用余额的比例。保存按整张表一次性提交，可一步撤销。");
+  }
+  return { pool, sum, left, items };
+}
+function openCatModal(){
+  buildCatRows();
+  updateCatModal();
+  openOverlay("catWrap");
+  const host = document.getElementById("c_rows");
+  const first = host && host.children && host.children[0];
+  if(first){
+    const parts = catRowParts(first);
+    if(parts.input && parts.input.focus) parts.input.focus();
+  }
+}
+function closeCatModal(){ document.getElementById("catWrap").classList.remove("open"); }
+/* 保存: 整表拼成一条命令 —— 清零的类别显式发 off(否则旧额度残留), 未勾选「提示超额」的带 nowarn */
+function catBudgetCommand(){
+  const parts = ["set category"];
+  for(const it of readCatInputs()){
+    if(it.value>0) parts.push(quote(it.cat)+" "+it.value+(it.mute ? " nowarn" : ""));
+    else if(catAllocOf(it.cat)>0) parts.push(quote(it.cat)+" off");
+  }
+  return parts.length>1 ? parts.join(" ") : "set category reset";
+}
+function saveCatBudgets(){
+  const st = updateCatModal();
+  if(st.left < 0 && st.sum > catAllocated() + 0.005){
+    const hint = document.getElementById("c_hint");
+    if(hint){ hint.className="hint bad";
+      hint.textContent = "已配置合计 ¥"+money(st.sum)+" 超过总可用余额 ¥"+money(st.pool)+"，请先下调其它类别。"; }
+    return;
+  }
+  const cmd = catBudgetCommand();
+  closeCatModal();
+  runCommand(cmd);
+}
+function clearCatBudgets(){ closeCatModal(); runCommand("set category reset"); }
 /* 输入即预览: 消费占比 / 换算 / 会重算历史记录(与 setInvestPct 同一套规则, 用临时计算, 不落盘) */
 function updateInvestHint(){
   const el = document.getElementById("i_hint");
@@ -4426,8 +4881,8 @@ function alertModal(msg){ const old=document.getElementById("btnSubmit").textCon
         不会执行 → 多个下拉/弹窗同时叠在页面上(互相遮挡)。
    规则: 全局同时最多一个浮层 open —— 打开任一下拉/弹窗前, 先关掉其它所有浮层。
    下拉与弹窗都走这两个入口, 不再各写一份 close 清单(F1 横向重复)。 */
-const DD_IDS = ["listDd","reportDd","configDd","geoDd"];
-const MODAL_IDS = ["modalWrap","budgetWrap","investWrap","dateWrap","geoWrap"];
+const DD_IDS = ["listDd","reportDd","configDd","geoDd","exportDd"];
+const MODAL_IDS = ["modalWrap","budgetWrap","investWrap","dateWrap","geoWrap","catWrap"];
 function closeAllOverlays(except){
   for(const id of DD_IDS.concat(MODAL_IDS)){
     if(id===except) continue;
@@ -4453,10 +4908,12 @@ function bindToolbar(){
     b.addEventListener("click",(ev)=>{
       // 范围下拉: 「消费列表」与「总结与图表」共用同一套 data-range + 菜单处理
       if(b.dataset && b.dataset.range!==undefined){ onRangeMenuItem(b.dataset.range, b.dataset.rangeTarget); return; }
-      // 「配置 ▾」下拉的两个子项: 各自开自己的弹窗(弹窗提交再回灌 config 命令)
+      // 「配置 ▾」下拉的子项: 各自开自己的弹窗(弹窗提交再回灌 config / set 命令)
       if(b.dataset && b.dataset.config!==undefined){
         closeDd("configDd");
-        if(b.dataset.config==="invest") openInvestModal(); else openBudgetModal();
+        if(b.dataset.config==="invest") openInvestModal();
+        else if(b.dataset.config==="category") openCatModal();
+        else openBudgetModal();
         return;
       }
       /* v0.0.12 「地点 ▾」: 模式项回灌 config 命令, 第三项开设置弹窗(弹窗再回灌命令) */
@@ -4473,12 +4930,15 @@ function bindToolbar(){
       if(b.id==="btnReportDd"){ toggleDd("reportDd", ev); return; }
       if(b.id==="btnConfigDd"){ toggleDd("configDd", ev); return; }
       if(b.id==="btnGeoDd"){ toggleDd("geoDd", ev); return; }
+      if(b.id==="btnExportDd"){ toggleDd("exportDd", ev); return; }
       const c=b.dataset.cmd;
       if(!c) return;
-      closeDd("listDd"); closeDd("reportDd"); closeDd("configDd"); closeDd("geoDd");
+      /* 点了任何 data-cmd 按钮都收起**全部**下拉(清单走 DD_IDS 单一来源) ——
+         以前这里是四个 closeDd 的硬编码清单, 新增「导出 ▾」时就会漏关、菜单叠在页面上。 */
+      closeAllDd();
       if(c==="open-add"){ openAdd(); return; }
-      if(c==="open-budget"){ openBudgetModal(); return; }
-      if(c==="open-invest"){ openInvestModal(); return; }
+      /* open-budget / open-invest 两个 data-cmd 分支已删: 配置预算/投资比例现在只从「配置 ▾」
+         的两个 data-config 子项进入(它们直接调 openBudgetModal/openInvestModal), 没有元素再发这两个值。 */
       if(c==="backup-download"){ doBackupDownload(); return; }
       if(c==="restore-file"){ document.getElementById("fileImport").click(); return; }
       if(c==="autosave-dir"){ doAutosaveToggle(); return; }
@@ -4672,6 +5132,12 @@ function bindModal(){
   document.getElementById("geoWrap").addEventListener("click",(e)=>{ if(e.target.id==="geoWrap") closeGeoModal(); });
   document.getElementById("g_key").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveGeoKey(); });
   document.getElementById("g_place").addEventListener("keydown",(e)=>{ if(e.key==="Enter") submitGeoPlace(); });
+  /* v0.0.14 配置类别余额: 三个按钮 + 点遮罩关闭(输入框的 Enter 在 buildCatRows 里逐行绑定,
+     因为行是随类别动态生成的) */
+  document.getElementById("c_save").addEventListener("click", saveCatBudgets);
+  document.getElementById("c_cancel").addEventListener("click", closeCatModal);
+  document.getElementById("c_clear").addEventListener("click", clearCatBudgets);
+  document.getElementById("catWrap").addEventListener("click",(e)=>{ if(e.target.id==="catWrap") closeCatModal(); });
 }
 /* ===================== Tab 命令补全 ===================== */
 /* M1: 补全词同样由 COMMANDS 派生(主名在前, 别名在后), 不再手抄一份 */
@@ -4726,9 +5192,10 @@ function argCandidates(c0, slot, tokens, cur){
     return [];
   }
   if(cmd==="set"){
-    if(arg===0) return ["budget","daily","invest","consume","ratio","period","periodstart","monthstart","weekstart","alert","rate"];
+    if(arg===0) return ["budget","daily","invest","consume","ratio","period","periodstart","monthstart","weekstart","alert","rate","category"];
     if(arg===1){
       const sub=(tokens[1]||"").toLowerCase();
+      if(sub==="category"||sub==="cat") return ["reset", ...knownCategories()];
       if(sub==="daily") return ["off","50","100","150","200"];
       if(sub==="invest") return ["15","10","20","5"];
       if(sub==="consume"||sub==="ratio") return ["85","90","80","0.85"];
@@ -4741,6 +5208,7 @@ function argCandidates(c0, slot, tokens, cur){
     if(arg===2){
       const sub=(tokens[1]||"").toLowerCase();
       if(sub==="rate") return ["2","3","8","10"];
+      if(sub==="category"||sub==="cat") return ["off","200","300","400","500"];
     }
     return [];
   }
