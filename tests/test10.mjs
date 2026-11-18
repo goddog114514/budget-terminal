@@ -356,10 +356,10 @@ function alertBoxes(S){
 /* ---------- 12. 文档同步 ---------- */
 {
   ok("CB12.1 README 记录 set category", /`set category/.test(readme), "");
-  ok("CB12.2 README 当前版本 = v0.0.14", /当前版本：\*\*v0\.0\.14\*\*/.test(readme), "");
+  ok("CB12.2 README 当前版本 = v0.0.15", /当前版本：\*\*v0\.0\.15\*\*/.test(readme), "");
   ok("CB12.3 README 有类别余额章节", /类别余额/.test(readme), "");
-  ok("CB12.4 版本号 v0.0.14", S_version(), "");
-  function S_version(){ const S = loadApp(); return S.APP_VERSION === "v0.0.14"; }
+  ok("CB12.4 版本号 v0.0.15", S_version(), "");
+  function S_version(){ const S = loadApp(); return S.APP_VERSION === "v0.0.15"; }
 }
 
 /* ---------- 13. 静默开关: 只关掉该类别的超额警告, 不动金额/排序/合计 ---------- */

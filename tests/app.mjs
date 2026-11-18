@@ -11,7 +11,8 @@ export function loadApp(opts = {}){
   if(!m) throw new Error("no <script> block found");
   const code = m[1];
 
-  const localStorage = makeLocalStorage(opts.seedStorage || {});
+  /* opts.storageQuota(字符数) 用于模拟 localStorage 写满: 见 test13 容量/落盘专项 */
+  const localStorage = makeLocalStorage(opts.seedStorage || {}, { quota: opts.storageQuota });
   const window = {
     _listeners: {},
     addEventListener(t,fn){ (this._listeners[t]=this._listeners[t]||[]).push(fn); },
@@ -76,6 +77,16 @@ export function loadApp(opts = {}){
     get dateModalTarget(){ return dateModalTarget; },
     doConfig, openBudgetModal, closeBudgetModal, applyBudget,
     openInvestModal, closeInvestModal, saveInvest, updateInvestHint, INVEST_MAX_PCT,
+    /* v0.0.15 周期设置: setter 单一入口 + 「配置周期」弹窗(天数由起止日自动算) */
+    periodSetDays, periodSetStart, periodSetEnd, periodSetRange, periodErrText, periodRangeCheck,
+    periodDaysBetween, monthPeriodBounds, periodStartOf, PERIOD_DAYS_MIN, PERIOD_DAYS_MAX, PERIOD_RANGE_MAX,
+    openPeriodModal, closePeriodModal, savePeriodModal, updatePeriodModal, setPeriodModalMode,
+    periodModalCheck, periodModalMsg,
+    get periodModalMode(){ return periodModalMode; },
+    /* v0.0.15 经常性支出: 计算入口(预览/提交共用) + 命令 + 弹窗选项卡 */
+    doRecur, recurPlan, recurDates, recurEndDate, recurStep, addMonthsClamped,
+    parseRecurUnit, parseRecurSpan, recurEveryLabel, RECUR_UNITS, RECUR_MAX_COUNT,
+    updateRecurHint, submitRecur, MODAL_PANELS,
     buildReportText, serializeState, restoreFromText, recomputeAllInvest,
     doInvestFull, undo, redo, applyState,
     consumeShare, investShare, rateSplit, consumePct, invPct, mmPct, idxPct,
@@ -127,6 +138,10 @@ export function loadApp(opts = {}){
                       undefined, nav, FakeDate, opts.TMap);
   api.__doc = doc;
   api.__storage = localStorage;
+  /* 模拟"写满 → 清理 → 恢复"的容量变化(test13) */
+  api.setStorageQuota = q => localStorage._setQuota(q);
+  api.storageUsage = () => localStorage._usage();
+  api.storageQuota = () => localStorage._quota();
   api.__window = window;
   api.__logs = out;
   api.lines = () => dumpLines(api.term);

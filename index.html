@@ -340,22 +340,34 @@
   #ghost.show{opacity:1;}
 
   /* ---- modal forms (auxiliary) ---- */
-  #modalWrap,#budgetWrap,#investWrap,#dateWrap,#geoWrap,#catWrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:20;}
-  #modalWrap.open,#budgetWrap.open,#investWrap.open,#dateWrap.open,#geoWrap.open,#catWrap.open{display:flex;}
-  #modal,#budgetModal,#investModal,#dateModal,#geoModal,#catModal{
+  #modalWrap,#budgetWrap,#investWrap,#dateWrap,#geoWrap,#catWrap,#periodWrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:20;}
+  #modalWrap.open,#budgetWrap.open,#investWrap.open,#dateWrap.open,#geoWrap.open,#catWrap.open,#periodWrap.open{display:flex;}
+  #modal,#budgetModal,#investModal,#dateModal,#geoModal,#catModal,#periodModal{
     width:min(560px,94vw);max-height:90vh;overflow:auto;
     background:var(--panel-2);border:1px solid var(--green);border-radius:6px;padding:18px 20px;
     box-shadow:0 0 30px rgba(61,255,122,.15);
   }
-  #modal h3,#budgetModal h3,#investModal h3,#dateModal h3,#geoModal h3,#catModal h3{color:var(--cyan);font-size:15px;letter-spacing:1px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;}
-  #modal label,#budgetModal label,#investModal label,#dateModal label,#geoModal label,#catModal label{display:block;color:var(--gray);font-size:12px;margin:10px 0 4px;}
-  #modal input,#modal select,#budgetModal input,#investModal input,#dateModal input,#geoModal input,#catModal input{
+  #modal h3,#budgetModal h3,#investModal h3,#dateModal h3,#geoModal h3,#catModal h3,#periodModal h3{color:var(--cyan);font-size:15px;letter-spacing:1px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;}
+  #modal label,#budgetModal label,#investModal label,#dateModal label,#geoModal label,#catModal label,#periodModal label{display:block;color:var(--gray);font-size:12px;margin:10px 0 4px;}
+  #modal input,#modal select,#budgetModal input,#investModal input,#dateModal input,#geoModal input,#catModal input,#periodModal input{
     width:100%;background:var(--field);border:1px solid var(--border);color:var(--white);
     font-family:inherit;font-size:14px;padding:6px 8px;border-radius:3px;outline:none;
   }
-  #modal input:focus,#modal select:focus,#budgetModal input:focus,#investModal input:focus,#dateModal input:focus,#geoModal input:focus,#catModal input:focus{border-color:var(--green);}
-  #geoModal .seg{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
-  #geoModal .seg button.on{color:var(--green);border-color:var(--green);background:rgba(61,255,122,.1);}
+  #modal input:focus,#modal select:focus,#budgetModal input:focus,#investModal input:focus,#dateModal input:focus,#geoModal input:focus,#catModal input:focus,#periodModal input:focus{border-color:var(--green);}
+  #geoModal .seg,#periodModal .seg{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  /* 分段按钮的**基态**: 以前只写了 .on, 未选中的那个落到浏览器默认的白底黑字(在近黑弹窗上抢眼) */
+  #geoModal .seg button,#periodModal .seg button{
+    font-family:inherit;font-size:13px;padding:5px 14px;cursor:pointer;border-radius:3px;
+    border:1px solid var(--border);background:transparent;color:var(--gray);
+  }
+  #geoModal .seg button:hover,#periodModal .seg button:hover{border-color:var(--green);color:var(--green);}
+  #geoModal .seg button.on,#periodModal .seg button.on{color:var(--green);border-color:var(--green);background:rgba(61,255,122,.1);}
+  /* 配置周期: 起止日只读时(按月模式)仍要看清数字, 用低透明度提示不可编辑 */
+  #periodModal input:disabled{opacity:.55;}
+  #periodModal .pmeta{color:var(--cyan);font-size:12px;margin-top:12px;line-height:1.6;word-break:break-word;}
+  #periodModal .hint{color:var(--gray);font-size:12px;margin-top:8px;line-height:1.6;white-space:pre-wrap;}
+  #periodModal .hint.bad{color:var(--yellow);}
+  #periodModal label .fmt{color:var(--faint);font-size:11px;margin-left:6px;letter-spacing:.5px;}
   #geoModal hr{border:none;border-top:1px solid var(--border);margin:18px 0 4px;}
   #geoModal .hint{color:var(--gray);font-size:12px;margin-top:10px;line-height:1.6;white-space:pre-wrap;}
   .mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap;}
@@ -368,6 +380,11 @@
   #i_save:hover{background:rgba(61,255,122,.1);}
   #i_cancel{color:var(--red);border-color:var(--red);}
   #i_cancel:hover{background:rgba(255,77,94,.1);}
+  /* 配置周期弹窗按钮 */
+  #p_save{color:var(--green);border-color:var(--green);}
+  #p_save:hover{background:rgba(61,255,122,.1);}
+  #p_cancel{color:var(--red);border-color:var(--red);}
+  #p_cancel:hover{background:rgba(255,77,94,.1);}
   #btnSubmit:hover,#b_current:hover{background:rgba(61,255,122,.1);}
   #btnCancel:hover,#b_cancel:hover{background:rgba(255,77,94,.1);}
   #b_default:hover{background:rgba(77,232,255,.1);}
@@ -379,7 +396,7 @@
   #d_cancel{color:var(--red);border-color:var(--red);}
   #d_cancel:hover{background:rgba(255,77,94,.1);}
   /* 输入框的日历/微调图标在暗色下也需要提亮 */
-  #modal input,#budgetModal input,#investModal input,#dateModal input,#geoModal input{color-scheme:dark;}
+  #modal input,#budgetModal input,#investModal input,#dateModal input,#geoModal input,#catModal input,#periodModal input{color-scheme:dark;}
   #budgetModal .hint,#investModal .hint{color:var(--gray);font-size:12px;margin-top:12px;line-height:1.6;}
   #g_save,#g_place_save{color:var(--green);border-color:var(--green);}
   #g_cancel{color:var(--red);border-color:var(--red);}
@@ -392,9 +409,15 @@
   }
   #modal .mtabs .mtab:hover{border-color:var(--green);color:var(--green);}
   #modal .mtabs .mtab.on{color:var(--green);border-color:var(--green);background:rgba(61,255,122,.1);}
-  #modal .mhint{color:var(--gray);font-size:12px;margin-top:10px;line-height:1.6;word-break:break-word;}
+  #modal .mhint{color:var(--gray);font-size:12px;margin-top:10px;line-height:1.6;word-break:break-word;white-space:pre-wrap;}
   #modal .mhint.bad{color:var(--yellow);}
   #modal .mpanel.hide{display:none;}
+  /* 经常性支出: 「持续时间 + 单位」同一行; 「自动分摊」勾选行不要竖排大间距 */
+  #modal .frow{display:flex;gap:8px;align-items:stretch;}
+  #modal .frow > input{flex:1 1 120px;min-width:0;}
+  #modal .frow > select{flex:0 0 96px;width:96px;}
+  #modal label.chk{display:flex;align-items:center;gap:8px;color:var(--white);font-size:13px;margin-top:12px;line-height:1.5;}
+  #modal label.chk input{width:auto;flex:0 0 auto;margin:0;}
 
   /* ---- 「手动输日期」弹窗: 日期/月份统一为 ISO 文本 + 原生选择器辅助按钮 ---- */
   #dateModal label .fmt{color:var(--faint);font-size:11px;margin-left:6px;letter-spacing:.5px;}
@@ -422,11 +445,13 @@
        之后只能用 `budget` 命令重看(toolbar 只是辅助入口, 不再重复一个"已经一直看得见"的视图)。 -->
   <!-- v0.0.11: 「配置预算」「配置投资比例」收进同一个「配置 ▾」下拉, 两个子项各自弹窗,
        弹窗提交时回灌 config 命令(config set budget / config set invest)。
-       v0.0.14: 设置项里再加「配置类别余额」(回灌 set category 命令)。 -->
+       v0.0.14: 设置项里再加「配置类别余额」(回灌 set category 命令)。
+       v0.0.15: 再加「配置周期」(回灌 config set period / periodstart / periodend 命令)。 -->
   <span class="dd" id="configDd">
     <button id="btnConfigDd" class="accent" type="button">配置 ▾</button>
     <div class="dd-menu" id="configDdMenu">
       <span class="dd-hint">设置项</span>
+      <button type="button" data-config="period">配置周期</button>
       <button type="button" data-config="budget">配置预算</button>
       <button type="button" data-config="invest">配置投资比例</button>
       <button type="button" data-config="category">配置类别余额</button>
@@ -509,6 +534,7 @@
     <div class="mtabs" id="mTabs" role="tablist">
       <button type="button" class="mtab on" data-mtab="add">单笔消费</button>
       <button type="button" class="mtab" data-mtab="amort">分摊成本</button>
+      <button type="button" class="mtab" data-mtab="recur">经常性支出</button>
     </div>
     <!-- 单笔消费: 原来的 add 表单(id 不变, Tab 顺序与既有用法保持) -->
     <div class="mpanel" id="mp_add">
@@ -533,6 +559,35 @@
       <label>地点 (选填) — 分摊成本不会自动定位，需要就手填</label>
       <input id="fa_place" placeholder="如 广东省深圳市南山区">
       <div class="mhint" id="fa_hint"></div>
+    </div>
+    <!-- 经常性支出(v0.0.15): 每 <频率> 扣一次, 持续 <N>日/周/周期/月。
+         默认生成 N 笔独立记录; 勾选「自动分摊」则只记 1 笔分摊成本(总价摊到整个持续期)。 -->
+    <div class="mpanel hide" id="mp_recur">
+      <label>每次金额 (元) — 每次扣多少，如每月房租 100</label>
+      <input id="fr_amt" type="number" step="0.01" min="0.01" placeholder="如 100">
+      <label>类别</label>
+      <input id="fr_cat" list="catlist" placeholder="如 房租 / 会员 / 订阅 ...">
+      <label>起始日期 — 第一次扣款的日期(精确到日)</label><input id="fr_date" type="date">
+      <label>持续时间 — 这段支出持续多久</label>
+      <div class="frow">
+        <input id="fr_dur" type="number" min="1" step="1" placeholder="如 12">
+        <select id="fr_dur_unit">
+          <option value="month">月</option>
+          <option value="week">周</option>
+          <option value="day">日</option>
+          <option value="period">周期</option>
+        </select>
+      </div>
+      <label>频率 — 多久扣一次</label>
+      <select id="fr_freq">
+        <option value="month">每月</option>
+        <option value="week">每周</option>
+        <option value="day">每日</option>
+        <option value="period">每周期（按记账周期）</option>
+      </select>
+      <label class="chk"><input id="fr_split" type="checkbox"> 自动分摊成本到每天（把「每次金额 × 次数」摊到整个持续期）</label>
+      <label>备注</label><input id="fr_note" placeholder="可选，如 房租 / 视频会员">
+      <div class="mhint" id="fr_hint"></div>
     </div>
     <div class="mbtns">
       <button id="btnCancel">取消</button>
@@ -571,6 +626,31 @@
     <div class="mbtns">
       <button id="i_cancel">取消</button>
       <button id="i_save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- v0.0.15 配置周期: 「配置 ▾ → 配置周期」。
+     · 只填起止日期 —— 周期天数(滚动长度)由日期自动算出并实时显示, 不单独填, 避免"天数与日期打架";
+     · 按月模式把起止日交回 monthStart 规则(输入框只读), 保存回灌 `config set period natural`;
+     · 自定义模式保存回灌**一条** `config set period <起> <止>`, 与命令行同一条通道、一步撤销。 -->
+<div id="periodWrap">
+  <div id="periodModal">
+    <h3>配置周期 — 本期从哪天到哪天</h3>
+    <label>周期模式</label>
+    <div class="seg">
+      <button type="button" id="p_mode_month">按月</button>
+      <button type="button" id="p_mode_rolling">自定义日期</button>
+    </div>
+    <label>本期起始日 <span class="fmt">YYYY-MM-DD</span></label>
+    <input id="p_start" type="date">
+    <label>本期截止日 <span class="fmt">YYYY-MM-DD</span> — 下一期从次日开始</label>
+    <input id="p_end" type="date">
+    <div class="pmeta" id="p_meta"></div>
+    <div class="hint" id="p_hint"></div>
+    <div class="mbtns">
+      <button id="p_cancel" type="button">取消</button>
+      <button id="p_save" type="button">保存</button>
     </div>
   </div>
 </div>
@@ -653,7 +733,7 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.14";         // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.0.15";         // 版本号(与 git tag 对应)
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
 /* ---- 地点 (v0.0.12) · 合规边界 ----
    只用腾讯地图 JSAPI GL + service 库。本应用是"本地双击"的单文件应用, 属非默认场景:
@@ -809,7 +889,9 @@ function normalizeSettings(raw){
   s.thresholds = [...new Set(th)].sort((a,b)=>a-b);
   if(!s.thresholds.length) s.thresholds = def.thresholds.slice();
   if(s.periodMode!=="month" && s.periodMode!=="rolling") s.periodMode = def.periodMode;
-  if(!(Number.isInteger(s.lengthDays) && s.lengthDays>=2 && s.lengthDays<=90)) s.lengthDays = def.lengthDays;
+  /* v0.0.15: 上限放宽到 PERIOD_RANGE_MAX —— config set period <起> <止> / periodend 可以设半年、一年为一期,
+     旧上限 90 会让这种周期"存得住、重启回落成 15 天"。 */
+  if(!(Number.isInteger(s.lengthDays) && s.lengthDays>=PERIOD_DAYS_MIN && s.lengthDays<=PERIOD_RANGE_MAX)) s.lengthDays = def.lengthDays;
   if(!isYMDish(s.anchor)) s.anchor = null;
   if(!isYMDish(s.epoch))  s.epoch  = null;
   if(!(typeof s.consumeShare==="number" && isFinite(s.consumeShare) && s.consumeShare>=0.5 && s.consumeShare<=1)) s.consumeShare = def.consumeShare;
@@ -1219,20 +1301,28 @@ function addDaysYMD(s, delta){
   return mkYMD(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate());
 }
 function periodBounds(dateStr){
-  const mode = state.settings.periodMode;
-  if(mode === "rolling"){
-    const L = state.settings.lengthDays || 15;
-    let A = state.settings.anchor;
-    if(!A){ A = dateStr; state.settings.anchor = A; }      // anchor falls back to queried date
-    // k 允许为负: 锚点之前的日期也落在同一条 (A + n×L) 网格上。
-    // 修复: 旧实现把 A 直接钳到 dateStr, 使"锚点之前"的周期起点跟着查询日期漂移,
-    // 于是发放链(periodStartsUpTo)会与真实周期起点错位。
-    const k = Math.floor(daysBetween(A, dateStr) / L);
-    const start = addDaysYMD(A, k*L);
-    const end   = addDaysYMD(start, L-1);
-    return { start, end, label: start+" ~ "+end, mode:"rolling", len:L };
-  }
-  // default: monthly
+  if(state.settings.periodMode !== "rolling") return monthPeriodBounds(dateStr);
+  // 兜底: 滚动模式缺锚点时把当次日期落成锚点(保持旧行为 —— 否则历史窗口会各用各的锚点, 网格漂移)
+  if(!state.settings.anchor) state.settings.anchor = dateStr;
+  const L = state.settings.lengthDays || 15;
+  const start = periodStartOf(dateStr);
+  const end   = addDaysYMD(start, L-1);
+  return { start, end, label: start+" ~ "+end, mode:"rolling", len:L };
+}
+/* 周期网格的**纯计算**入口: 包含 dateStr 的那一期起点。
+   k 允许为负: 锚点之前的日期也落在同一条 (A + n×L) 网格上 —— 旧实现把 A 直接钳到 dateStr,
+   使"锚点之前"的周期起点跟着查询日期漂移, 发放链(periodStartsUpTo)会与真实周期起点错位。
+   注意: 这里**不写 settings**(预览/计划计算不允许产生副作用); 需要落锚点的调用方走 periodBounds()。 */
+function periodStartOf(dateStr){
+  if(state.settings.periodMode !== "rolling") return monthPeriodBounds(dateStr).start;
+  const L = state.settings.lengthDays || 15;
+  const A = state.settings.anchor || dateStr;
+  return addDaysYMD(A, Math.floor(daysBetween(A, dateStr)/L)*L);
+}
+/* 按月规则的本期边界(与 periodMode 无关, 只看 monthStart)。
+   v0.0.15 抽出: 「配置周期」弹窗在按月模式下要预览起止日, 而那时 periodMode 可能还是 rolling ——
+   不能借 periodBounds() 顺手改设置, 也不能再抄一份月边界算法。 */
+function monthPeriodBounds(dateStr){
   const P = parseYMD(dateStr);
   const ms = state.settings.monthStart;          // 1..28
   let startY, startM;
@@ -2044,10 +2134,8 @@ const input = document.getElementById("cmdline");
         sub = true 表示这只是主命令的子用法(只出现在 help, 不参与别名与补全)。 */
 const COMMANDS = [
   { n:["help","?","h"],                            u:"help",                            d:"查看帮助" },
-  { n:["set"],                                     u:"set <子项> <值>",                  d:"周期/阈值/年化等细项设置(用法见下); 预算与投资比例请用 config set budget|invest" },
+  { n:["set"],                                     u:"set <子项> <值>",                  d:"阈值/年化/每日额度等细项设置(用法见下); 预算·投资比例·周期请用 config set …" },
   { n:["set"], sub:true,                           u:"set daily <金额>",                d:"手动设置每日可用余额(今日预算红黄绿提示), 如 set daily 100; off=取消" },
-  { n:["set"], sub:true,                           u:"set period <N天>",                d:"滚动N天周期结算预算, 如 set period 15;  natural 回到按月" },
-  { n:["set"], sub:true,                           u:"set periodstart <日期>",           d:"设滚动周期起点(锚点), 例 set periodstart 2027-08-04" },
   { n:["set"], sub:true,                           u:"set monthstart <1-28>",           d:"(按月模式)起始日; 1=自然月; 15=每月15日起" },
   { n:["set"], sub:true,                           u:"set weekstart <mon|sun>",         d:"周总结起始日(周一/周日)" },
   { n:["set"], sub:true,                           u:"set alert <p1,p2..>",             d:"自定义预警阈值(百分比), 默认 80,100" },
@@ -2059,6 +2147,7 @@ const COMMANDS = [
   { n:["forecast","burn","predict"],               u:"forecast",                        d:"燃尽预测: 按日均消费预测期末结余/超支与每日可花" },
   { n:["add","a"],                                 u:"add <金额> <类别> [备注..] [@日期] [#地点]", d:"add 50 餐饮 午餐  或  add @2025-03-05 300 购物 外套; 自动模式会填行政区地名" },
   { n:["amort","amortize"],                        u:"amort <总价> <天数> <类别> [备注..] [@开始日期] [#地点]", d:"分摊成本: 总价按天数摊到每天, 投资只按总价记一次, 如 amort 3000 365 房租 年付 (天数可写 12月); 不自动定位" },
+  { n:["recur","repeat"],                          u:"recur <金额> <类别> <持续> <频率> [@起始日] [分摊] [备注..]", d:"经常性支出: 每<频率>付一次, 持续一段; 默认生成多笔记录, 加「分摊」记一笔分摊成本, 如 recur 100 房租 12月 月 @2027-09-01" },
   { n:["list","ls"],                               u:"list [类别X] [@日期/月份]",         d:"消费列表: list 餐饮 / list @2027-08-18 / list @2027-08 / list @today|@period|@month" },
   { n:["search","find"],                           u:"search <关键词|#编号|金额|@日期>",  d:"查找记录: 类别/备注/地点关键词、#编号、金额(=50 / >100 / 100-200)、@日期或月份; 多个条件同时满足" },
   { n:["del","rm","delete"],                       u:"del <id>",                        d:"删除指定记录(id 见 list)" },
@@ -2078,6 +2167,10 @@ const COMMANDS = [
   { n:["undo","u"],                                u:"undo",                            d:"撤销上一次数据改动 (Ctrl+Z)" },
   { n:["redo"],                                    u:"redo",                            d:"重做上一次被撤销的改动 (Ctrl+Y)" },
   { n:["config","settings","thresholds","alerts"],  u:"config",                          d:"查看当前配置(阈值/比例/版本号等); 设置入口见下" },
+  { n:["config"], sub:true,                        u:"config set period <N天>",          d:"滚动N天周期结算预算, 如 config set period 15;  natural 回到按月" },
+  { n:["config"], sub:true,                        u:"config set period <起> <止>",       d:"直接指定本期起止日, 天数自动算出, 如 config set period 2027-08-04 2027-08-18" },
+  { n:["config"], sub:true,                        u:"config set periodstart <日期>",     d:"设滚动周期起点(锚点), 例 config set periodstart 2027-08-04" },
+  { n:["config"], sub:true,                        u:"config set periodend <日期>",       d:"设当前周期的截止日(天数自动回算), 例 config set periodend 2027-09-02" },
   { n:["config"], sub:true,                        u:"config set budget <金额>",         d:"设置默认周期预算(各期生效), 例 config set budget 1200" },
   { n:["config"], sub:true,                        u:"config set budget <金额> now",     d:"只改当前周期的预算, 例 config set budget 1200 now (等价弹窗「应用于当期」)" },
   { n:["config"], sub:true,                        u:"config set invest <投资比例%>",    d:"设置投资比例(消费占比=1-投资比例), 例 config set invest 15; 范围 0~50%" },
@@ -2231,6 +2324,7 @@ function dispatch(cmd, tokens){
     case "forecast": doForecast(); break;
     case "add":      doAdd(tokens); break;
     case "amort":    doAmort(tokens); break;
+    case "recur":    doRecur(tokens); break;
     case "list":     doList(tokens); break;
     case "search":   doSearch(tokens); break;
     case "del":      doDelete(tokens); break;
@@ -2273,6 +2367,87 @@ function setPeriodBudget(n){
   state.settings.periodBudget[p.start] = v;
   return true;
 }
+/* ---------------------- 周期设置的唯一入口 (v0.0.15) ----------------------
+   以前周期只能从命令行改(`set period` / `set periodstart`), 界面上的「配置」页看不到也改不了;
+   现在命令与「配置 ▾ → 配置周期」弹窗共用下面这几个 setter, 天数(lengthDays)一律由起止日期推导:
+     · periodSetDays(n)         → 滚动 N 天(N 只接受 2~90, 快捷写法)
+     · periodSetStart(起)       → 只移动锚点, 天数不变 → 截止日自动顺延
+     · periodSetEnd(止)         → 以当前周期的起点为锚, 天数 = 止−起+1 自动回算
+     · periodSetRange(起, 止)    → 起止都指定, 天数同样自动回算(弹窗走这条)
+   monthPeriodBounds() 是"按月规则"的纯算法入口(见周期引擎), 不依赖 periodMode。 */
+const PERIOD_DAYS_MIN = 2;      // 周期最少 2 天(1 天等于自然日, 没有周期意义)
+const PERIOD_DAYS_MAX = 90;     // "N 天"快捷写法上限(与历史文档一致)
+const PERIOD_RANGE_MAX = 366;   // 直接指定起止日时的上限(支持半年/一年为一期)
+function periodDaysBetween(startStr, endStr){ return daysBetween(startStr, endStr) + 1; }
+function periodSetDays(n){
+  if(n==null || !Number.isInteger(n) || n<PERIOD_DAYS_MIN || n>PERIOD_DAYS_MAX) return { ok:false, reason:"days" };
+  state.settings.periodMode = "rolling";
+  state.settings.lengthDays = n;
+  state.settings.anchor = state.settings.anchor || todayYMD();   // 起点缺省=今天起算新一期
+  ensureEpoch();
+  return { ok:true, period:currentPeriod() };
+}
+function periodSetMonth(){
+  state.settings.periodMode = "month";
+  ensureEpoch();
+  return { ok:true, period:currentPeriod() };
+}
+function periodSetStart(dateStr){
+  const d = repairDate(dateStr);
+  if(!d) return { ok:false, reason:"date" };
+  state.settings.periodMode = "rolling";
+  state.settings.anchor = d;
+  ensureEpoch();
+  return { ok:true, anchor:d, period:currentPeriod() };
+}
+function periodSetEnd(dateStr){
+  const end = repairDate(dateStr);
+  if(!end) return { ok:false, reason:"date" };
+  const start = currentPeriod().start;          // 改之前先取"本期起点"(按月/滚动都适用)
+  const days = periodDaysBetween(start, end);
+  if(days < PERIOD_DAYS_MIN) return { ok:false, reason:"order", start, end };
+  if(days > PERIOD_RANGE_MAX) return { ok:false, reason:"long", start, end, days };
+  if(end < todayYMD()) return { ok:false, reason:"past", start, end };
+  state.settings.periodMode = "rolling";
+  state.settings.anchor = start;
+  state.settings.lengthDays = days;
+  ensureEpoch();
+  return { ok:true, start, end, days, period:currentPeriod() };
+}
+/* 起止日区间的**唯一校验入口**(命令与「配置周期」弹窗共用, 避免两份规则各说各话):
+   日期真实可解析、2~366 天、区间必须包含今天(否则设的不是"当前周期")。 */
+function periodRangeCheck(startStr, endStr){
+  const start = repairDate(startStr), end = repairDate(endStr);
+  if(!start) return { ok:false, reason:"date", which:"start" };
+  if(!end)   return { ok:false, reason:"date", which:"end" };
+  const days = periodDaysBetween(start, end);
+  if(days < PERIOD_DAYS_MIN) return { ok:false, reason:"order", start, end };
+  if(days > PERIOD_RANGE_MAX) return { ok:false, reason:"long", start, end, days };
+  const t = todayYMD();
+  if(t < start || t > end) return { ok:false, reason:"outside", start, end, today:t };
+  return { ok:true, start, end, days };
+}
+/* 起止都指定: 通过校验后写入锚点与天数(天数由日期推导, 不接受外部传值) */
+function periodSetRange(startStr, endStr){
+  const r = periodRangeCheck(startStr, endStr);
+  if(!r.ok) return r;
+  state.settings.periodMode = "rolling";
+  state.settings.anchor = r.start;
+  state.settings.lengthDays = r.days;
+  ensureEpoch();
+  return Object.assign({}, r, { period:currentPeriod() });
+}
+/* setter 失败原因 → 用户可读的一句话(命令与弹窗共用, 避免两处文案漂移) */
+function periodErrText(r){
+  if(!r || r.ok) return "";
+  if(r.reason==="days")  return "用法: 天数需为 "+PERIOD_DAYS_MIN+"~"+PERIOD_DAYS_MAX+" 的整数, 例 config set period 15";
+  if(r.reason==="date")  return "日期无效: 请按 YYYY-MM-DD 填写真实存在的日期, 如 2027-08-18";
+  if(r.reason==="order") return "截止日必须比起始日至少晚 1 天 (本期最少 "+PERIOD_DAYS_MIN+" 天)";
+  if(r.reason==="long")  return "周期过长: 一期最多 "+PERIOD_RANGE_MAX+" 天 (当前 "+(r.days||"?")+" 天)";
+  if(r.reason==="past")  return "截止日不能早于今天 ("+todayYMD()+"); 本期必须包含今天";
+  if(r.reason==="outside") return "起止日必须包含今天 ("+r.today+"), 否则指定的不是当前周期";
+  return "周期设置失败";
+}
 /* 投资比例: pct 允许 0~50; asInvest=false 时按"消费占比"解释(也接受 0.85 小数写法) */
 const INVEST_MAX_PCT = 50;
 function setInvestPct(pct, asInvest){
@@ -2290,18 +2465,61 @@ function setInvestPct(pct, asInvest){
 }
 function configUsage(){
   line([{t:"用法: config   查看当前配置", c:COLOR.yellow}]);
+  line([{t:"      config set period <N天>            滚动 N 天一期; natural 回到按月", c:COLOR.yellow}]);
+  line([{t:"      config set period <起> <止>         直接指定本期起止日, 天数自动算出", c:COLOR.yellow}]);
+  line([{t:"      config set periodstart <日期>       设滚动周期起点(锚点)", c:COLOR.yellow}]);
+  line([{t:"      config set periodend <日期>         设本期截止日(天数自动回算)", c:COLOR.yellow}]);
   line([{t:"      config set budget <金额> [now]    设默认预算 / 加 now 只改当前周期", c:COLOR.yellow}]);
   line([{t:"      config set invest <投资比例%>      如 config set invest 15 (消费占比=85%)", c:COLOR.yellow}]);
   line([{t:"      config set consume|ratio|share <消费占比>   如 config set ratio 0.85 (与 set ratio 同解释)", c:COLOR.yellow}]);
   line([{t:"      config set geo auto|manual        地点: 自动填充地址 / 全手动(不填则空)", c:COLOR.yellow}]);
   line([{t:"      config set geokey <你的Key>|off   腾讯地图 Key; off 清空(代码不预置 key)", c:COLOR.yellow}]);
-  line([{t:"      (类别余额用 set category —— 它属于 set 的子项, 不在 config 下)", c:COLOR.gray}]);
+  line([{t:"      (每日额度用 set daily; 类别余额用 set category —— 它们不在 config 下)", c:COLOR.gray}]);
 }
 function doConfig(tokens){
   const sub = (tokens[0]||"").toLowerCase();
   if(!sub || sub==="show" || sub==="view" || sub==="list"){ showSettings(); return; }
   if(sub!=="set"){ configUsage(); return; }
   const what = (tokens[1]||"").toLowerCase();
+  /* v0.0.15 周期设置从 set 收进 config:
+       config set period <N天> | natural       滚动 N 天 / 回到按月
+       config set period <起> <止>              直接指定本期起止日(天数自动算出)
+       config set periodstart <日期>            设滚动锚点(只改起点, 天数不变)
+       config set periodend <日期>              设本期截止日(天数自动回算)
+     成功后与其它 config set 一样直接输出当前配置表, 不另写确认文案。 */
+  if(what==="period"||what==="cycle"||what==="length"){
+    const v = (tokens[2]||"").toLowerCase();
+    const usage = "用法: config set period <N天>  例 config set period 15\n"
+                + "      config set period natural            回到按月周期\n"
+                + "      config set period <起> <止>           直接指定本期起止日, 天数自动算出\n"
+                + "                                           例 config set period "+todayYMD()+" "+addDaysYMD(todayYMD(),29);
+    if(v==="natural"||v==="month"||v==="月"||v==="自然月"){
+      if(tokens.length>3){ line([{t:"多余参数: natural 后面不需要再写日期", c:COLOR.yellow}]); return; }
+      periodSetMonth(); showSettings(); return;
+    }
+    if(tokens.length===4){
+      const r = periodSetRange(tokens[2], tokens[3]);
+      if(!r.ok){ line([{t:periodErrText(r), c:COLOR.yellow}]); return; }
+      showSettings(); return;
+    }
+    if(tokens.length>4){ line([{t:usage, c:COLOR.yellow}]); return; }
+    const n = numeric(tokens[2]);
+    const r = periodSetDays(n);
+    if(!r.ok){ line([{t:usage, c:COLOR.yellow}]); return; }
+    showSettings(); return;
+  }
+  if(what==="periodstart"||what==="anchor"){
+    if(!tokens[2]){ line([{t:"用法: config set periodstart <YYYY-MM-DD>   例 config set periodstart 2027-08-04", c:COLOR.yellow}]); return; }
+    const r = periodSetStart(tokens[2]);
+    if(!r.ok){ line([{t:periodErrText(r), c:COLOR.yellow}]); return; }
+    showSettings(); return;
+  }
+  if(what==="periodend"||what==="periodstop"){
+    if(!tokens[2]){ line([{t:"用法: config set periodend <YYYY-MM-DD>   例 config set periodend 2027-09-02 (天数自动回算)", c:COLOR.yellow}]); return; }
+    const r = periodSetEnd(tokens[2]);
+    if(!r.ok){ line([{t:periodErrText(r), c:COLOR.yellow}]); return; }
+    showSettings(); return;
+  }
   if(what==="budget"){
     const n = parseAmount(tokens[2]);
     const when = (tokens[3]||"").toLowerCase();
@@ -2390,26 +2608,35 @@ function doSet(tokens){
     const p = currentPeriod();
     line([{t:"✓ 切换为按月周期, 起始日 "+(d===1?"自然月":"每月 "+d+" 日")+"。当前周期: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]);
   } else if(sub==="period"||sub==="cycle"||sub==="length"){
-    // set period 15        → 滚动 15 天周期
-    // set period natural|month → 回到按月周期
+    /* 旧写法(兼容保留): set period 15 / set period natural
+       推荐写法: config set period … —— 两者走同一个 periodSetDays/periodSetMonth。 */
     const v=(tokens[1]||"").toLowerCase();
     const n = numeric(tokens[1]);
-    if(v==="natural"||v==="month"||v==="月"||v==="自然月"){ state.settings.periodMode="month"; ensureEpoch(); const p=currentPeriod(); line([{t:"✓ 已切回按月周期, 当前: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]); return; }
-    if(n==null || !Number.isInteger(n) || n<2 || n>90){ line([{t:"用法: set period <N天>  例 set period 15  → 每15天滚动一期;  set period natural 回到自然月",c:COLOR.yellow}]); return; }
-    state.settings.periodMode="rolling";
-    state.settings.lengthDays=n;
-    // 起点：若尚未设 anchor 或想在今天重启，则从今天起算新一期
-    state.settings.anchor = state.settings.anchor || todayYMD();
-    ensureEpoch();
-    const p = currentPeriod();
-    line([{t:"✓ 已切换为滚动 "+n+" 天周期, 从 "+state.settings.anchor+" 起每 "+n+" 天滚动结算。当前期: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]);
+    if(v==="natural"||v==="month"||v==="月"||v==="自然月"){
+      periodSetMonth(); const p=currentPeriod();
+      line([{t:"✓ 已切回按月周期, 当前: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]);
+      return;
+    }
+    if(tokens.length===3){                        // 旧命令也支持 set period <起> <止>
+      const r = periodSetRange(tokens[1], tokens[2]);
+      if(!r.ok){ line([{t:periodErrText(r),c:COLOR.yellow}]); return; }
+      line([{t:"✓ 周期已设为 ",c:COLOR.green},{t:r.period.label,c:COLOR.cyan},
+            {t:"  (共 "+r.days+" 天, 天数按起止日自动计算)",c:COLOR.gray}]);
+      return;
+    }
+    const r = periodSetDays(n);
+    if(!r.ok){ line([{t:"用法: config set period <N天>  例 config set period 15  → 每15天滚动一期;  config set period natural 回到自然月",c:COLOR.yellow}]); return; }
+    line([{t:"✓ 已切换为滚动 "+state.settings.lengthDays+" 天周期, 从 "+state.settings.anchor+" 起每 "+state.settings.lengthDays+" 天滚动结算。当前期: ",c:COLOR.green},{t:r.period.label,c:COLOR.cyan}]);
   } else if(sub==="periodstart"||sub==="anchor"){
-    const d = cleanDateStr(tokens[1]);
-    if(!d){ line([{t:"用法: set periodstart <YYYY-MM-DD>  设滚动周期起点(锚点)",c:COLOR.yellow}]); return; }
-    state.settings.periodMode = state.settings.periodMode || "rolling";
-    state.settings.anchor = d; ensureEpoch();
-    const p = currentPeriod();
-    line([{t:"✓ 滚动周期起点设为 "+d+"。当前期: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]);
+    if(!tokens[1]){ line([{t:"用法: config set periodstart <YYYY-MM-DD>  设滚动周期起点(锚点)",c:COLOR.yellow}]); return; }
+    const r = periodSetStart(tokens[1]);
+    if(!r.ok){ line([{t:periodErrText(r),c:COLOR.yellow}]); return; }
+    line([{t:"✓ 滚动周期起点设为 "+r.anchor+"。当前期: ",c:COLOR.green},{t:r.period.label,c:COLOR.cyan}]);
+  } else if(sub==="periodend"||sub==="periodstop"){
+    if(!tokens[1]){ line([{t:"用法: config set periodend <YYYY-MM-DD>  设本期截止日(天数自动回算)",c:COLOR.yellow}]); return; }
+    const r = periodSetEnd(tokens[1]);
+    if(!r.ok){ line([{t:periodErrText(r),c:COLOR.yellow}]); return; }
+    line([{t:"✓ 本期截止日设为 "+r.end+"  (共 "+r.days+" 天, 天数自动计算)。当前期: ",c:COLOR.green},{t:r.period.label,c:COLOR.cyan}]);
   } else if(sub==="weekstart"){
     const v=(tokens[1]||"").toLowerCase();
     if(v==="mon"||v==="周一"||v==="一") state.settings.weekStart="mon";
@@ -2465,8 +2692,8 @@ function doSet(tokens){
       line(dotLine("今日预算", ratioDot(ts.ratio)));
     }
   } else {
-    line([{t:"set 支持: daily <每日可用余额> | period <N天> | periodstart <日期> | monthstart | weekstart | alert | rate",c:COLOR.yellow}]);
-    line([{t:"预算 / 投资比例请用: config set budget <金额> [now]  或  config set invest <比例%>",c:COLOR.gray}]);
+    line([{t:"set 支持: daily <每日可用余额> | monthstart <1-28> | weekstart <mon|sun> | alert <阈值> | rate <money|index> <年化%> | category <类别> <金额>",c:COLOR.yellow}]);
+    line([{t:"预算 / 投资比例 / 周期请用: config set budget <金额> [now]  ·  config set invest <比例%>  ·  config set period <N天>",c:COLOR.gray}]);
   }
 }
 
@@ -3207,6 +3434,175 @@ function doAmort(tokens){
         {t:"  + 应投指数 ",c:COLOR.gray},{t:"¥"+money(rec.idx),c:COLOR.index},
         {t:"  = ",c:COLOR.gray},{t:"¥"+money(rec.mm+rec.idx),c:COLOR.green},
         {t:"   每天占用 ¥"+money(rec.amount/consumeShare()),c:COLOR.gray}]);
+  const st = periodSnapshot();
+  const aw = alertWord(st.ratio);
+  if(aw.t!=="预算内 ✓"){
+    line([{t:"⚠ 本期占用 ",c:COLOR.yellow},{t:"¥"+money(st.usedUnits),c:COLOR.yellow,cls:"glow"},
+          {t:" / 发放 ¥"+money(st.B),c:COLOR.white},{t:"   "+aw.t,c:aw.c,cls:"glow"}]);
+  }
+}
+
+/* ============================ recur (经常性支出) ============================
+   v0.0.15: 一次录入"每隔一段时间付一次、持续一段时间"的支出(房租/会员/订阅/话费…)。
+   两种落账方式(用户勾选「自动分摊成本到每天」决定):
+     · 不分摊 → 生成 **N 笔独立记录**(每笔 = 一次扣款, 日期 = 各扣款日) —— 与 add 完全同构,
+       所以列表/搜索/总结/每日预算/投资池/导出**不需要任何特判**;
+     · 分摊   → 生成 **1 笔分摊成本**(总价 = 每次金额 × 次数, 摊到整个持续期), 投资只按总价记一次。
+   为什么生成记录, 而不是"一条记录 + 展开逻辑": 领域不变量 §2.5 规定 amount 是"该记的那一天/那一笔的
+   消费额", 让一条记录代表多天多笔会击穿所有窗口统计的唯一入口(recAmountInRange 等) ——
+   生成记录把复杂度关在录入这一层。代价: 生成后每笔可单独编辑/删除(它们本来就是独立账目),
+   撤销时整批一起回退(runCommand 的 mutate 只压一步)。
+   单位口径: 日/周 = 固定天数(1/7); 月 = 日历月(31 号遇到小月取月末, 从起始日直算不累积漂移);
+   周期 = 记账周期, 沿真实周期边界推进(nextPeriodStart), 改周期规则后**已生成的记录不变**。 */
+const RECUR_MAX_COUNT = 500;      // 一次生成的扣款笔数上限(每日 × 一年 = 365, 再留余量)
+const RECUR_UNITS = { day:"日", week:"周", period:"周期", month:"月" };
+function recurUnitLabel(u){ return RECUR_UNITS[u] || "?"; }
+function recurEveryLabel(u){ return "每"+recurUnitLabel(u); }
+/* 单个单位词 → key: 日/周/周期/月(也认 d/w/p/m 与英文单词; 前缀「每」忽略) */
+function parseRecurUnit(t){
+  const s = String(t==null?"":t).trim().toLowerCase().replace(/^每/,"");
+  if(/^(d|day|days|日|天)$/.test(s)) return "day";
+  if(/^(w|week|weeks|周)$/.test(s)) return "week";
+  if(/^(p|period|periods|周期|期)$/.test(s)) return "period";
+  if(/^(m|mo|mon|month|months|月)$/.test(s)) return "month";
+  return null;
+}
+/* 持续时长词 → {n, unit}: 12月 / 6周 / 90日 / 3周期 (也认 12个月) */
+function parseRecurSpan(t){
+  const s = String(t==null?"":t).trim().toLowerCase();
+  const m = /^(\d+)\s*个?\s*(d|day|days|日|天|w|week|weeks|周|m|mo|mon|month|months|月|p|period|periods|周期|期)$/.exec(s);
+  if(!m) return null;
+  const unit = parseRecurUnit(m[2]);
+  const n = +m[1];
+  if(!unit || !(Number.isInteger(n) && n>=1)) return null;
+  return { n, unit };
+}
+/* 按日历月加 n 个月; 日超过目标月天数时取月末。**从起始日直算** —— 不逐月累加,
+   否则 1 月 31 日会漂成 2 月 28 日 → 3 月 28 日。 */
+function addMonthsClamped(dateStr, n){
+  const p = parseYMD(dateStr);
+  const t = addMonths(p.y, p.m, n);
+  return mkYMD(t.y, t.m, Math.min(p.d, lastDay(t.y, t.m)));
+}
+/* 持续期最后一天(含): 日/周按天数, 月按日历月, 周期按记账周期边界 */
+function recurEndDate(startStr, span){
+  if(span.unit==="day")  return addDaysYMD(startStr, span.n-1);
+  if(span.unit==="week") return addDaysYMD(startStr, span.n*7-1);
+  if(span.unit==="month") return addDaysYMD(addMonthsClamped(startStr, span.n), -1);
+  let s = periodStartOf(startStr);                 // 周期: 本期 + 之后 N-1 期
+  for(let i=0;i<span.n;i++) s = nextPeriodStart(s);
+  return addDaysYMD(s, -1);
+}
+/* 第 k 个扣款日: **从起始日直算**(不逐次推进) —— 逐月推进会让 1/31 漂成 2/28 → 3/28;
+   按 k 重算才能得到 1/31, 2/28, 3/31, 4/30 这种"月末夹取但不漂移"的序列。
+   周期单位必须逐步沿周期边界走(第 2 笔起落在下一期首日)。 */
+function recurStep(startStr, unit, k){
+  if(unit==="day")   return addDaysYMD(startStr, k);
+  if(unit==="week")  return addDaysYMD(startStr, k*7);
+  if(unit==="month") return addMonthsClamped(startStr, k);
+  let d = startStr;
+  for(let i=0;i<k;i++) d = nextPeriodStart(d);
+  return d;
+}
+/* 扣款日: start, start+step, … 直到超出 end(含 end) */
+function recurDates(startStr, endStr, freqUnit){
+  const out = [];
+  for(let k=0; k<=RECUR_MAX_COUNT; k++){
+    const d = recurStep(startStr, freqUnit, k);
+    if(d > endStr) break;
+    out.push(d);
+  }
+  return out;
+}
+/* 经常性支出的**唯一计算入口**(命令、弹窗预览、弹窗提交共用, 避免"预览说 A、提交成 B")。
+   纯函数: 只读 settings(不落锚点、不改 state)。返回 {ok:true, ...} 或 {ok:false, msg}。 */
+function recurPlan(o){
+  const amount = (typeof o.amount==="number" && isFinite(o.amount) && o.amount>0) ? r2(o.amount) : null;
+  if(amount==null || !(amount>0)) return { ok:false, msg:"每次金额需为大于 0 的数字" };
+  const n = o.durValue;
+  if(!Number.isInteger(n) || n<1) return { ok:false, msg:"持续时间需为 ≥1 的整数" };
+  if(!RECUR_UNITS[o.durUnit] || !RECUR_UNITS[o.freq]) return { ok:false, msg:"单位只支持 日 / 周 / 周期 / 月" };
+  const start = repairDate(o.start);
+  if(!start) return { ok:false, msg:"起始日期无效: 请按 YYYY-MM-DD 填写真实存在的日期" };
+  const end  = recurEndDate(start, { n, unit:o.durUnit });
+  const days = daysBetween(start, end) + 1;
+  if(!(days>=1)) return { ok:false, msg:"持续期计算异常(请检查起始日/持续时长)" };
+  if(days > AMORT_MAX_DAYS) return { ok:false, msg:"持续期过长: 最多 "+AMORT_MAX_DAYS+" 天(当前 "+days+" 天)" };
+  const dates = recurDates(start, end, o.freq);
+  if(!dates.length) return { ok:false, msg:"没有产生扣款日(检查起始日/持续/频率)" };
+  if(dates.length > RECUR_MAX_COUNT){
+    return { ok:false, msg:"一次最多生成 "+RECUR_MAX_COUNT+" 笔(当前 "+dates.length+" 笔); 请缩短持续期, 或勾选「分摊」只记一笔" };
+  }
+  const total = r2(amount * dates.length);
+  const wantSplit = !!o.split;
+  const split = wantSplit && days >= AMORT_MIN_DAYS;
+  const daily = split ? r2(total/days) : null;
+  if(split && !(daily>0)){
+    return { ok:false, msg:"总价 ¥"+money(total)+" 摊到 "+days+" 天每天不足 ¥0.01; 请加大金额或取消分摊" };
+  }
+  return { ok:true, amount, start, end, days, dates, count:dates.length, total,
+           wantSplit, split, splitFallback:(wantSplit && !split), daily,
+           freq:o.freq, durValue:n, durUnit:o.durUnit };
+}
+function recurUsage(){
+  return "用法: recur <金额> <类别> <持续> <频率> [@起始日] [分摊] [备注..]\n"
+       + "  例 recur 100 房租 12月 月 @2027-09-01 房租     每月 ¥100, 持续 12 个月 → 生成 12 笔\n"
+       + "     recur 100 房租 12月 月 @2027-09-01 分摊     同上, 只记 1 笔分摊成本(总价摊到每天)\n"
+       + "  持续: <N>日 | <N>周 | <N>周期 | <N>月    频率: 日 | 周 | 周期 | 月(周期=记账周期)";
+}
+function doRecur(tokens){
+  if(tokens.length < 4){ line([{t:recurUsage(),c:COLOR.yellow}]); return; }
+  const {tokens:rest, date:rawDate, place:rawPlace} = splitRecordArgs(tokens);
+  const amt = numeric(rest[0]);
+  const cat = validateCategory(rest[1]);
+  if(!cat) return;
+  const span = parseRecurSpan(rest[2]);
+  if(!span){ line([{t:"持续时长无效: 写成 <N>日 / <N>周 / <N>周期 / <N>月, 如 12月",c:COLOR.yellow}]); return; }
+  const freq = parseRecurUnit(rest[3]);
+  if(!freq){ line([{t:"频率无效: 日 | 周 | 周期 | 月, 如 月",c:COLOR.yellow}]); return; }
+  /* 「分摊」是**开关词**, 位置自由(在备注里也认); 剩余词拼成备注。只认这两个词, 免得把
+     备注里的普通英文单词(daily / amort)误当开关。 */
+  const isSplitTok = (t)=>/^(分摊|split|均摊)$/i.test(String(t));
+  const split = rest.slice(4).some(isSplitTok);
+  const note = rest.slice(4).filter(t=>!isSplitTok(t)).join(" ");
+  const date = cleanDateStr(rawDate);
+  if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
+  if(amt==null || !(r2(amt)>0)){ line([{t:"金额无效。例 recur 100 房租 12月 月 @2027-09-01",c:COLOR.yellow}]); return; }
+  const plan = recurPlan({ amount:amt, durValue:span.n, durUnit:span.unit, freq, start:date, split });
+  if(!plan.ok){ line([{t:plan.msg,c:COLOR.yellow}]); return; }
+  const place = (rawPlace==null) ? "" : ((rawPlace==="-"||rawPlace==="off") ? "" : normalizePlace(rawPlace));
+  const catTxt = plan.count+" 笔";
+  if(plan.split){
+    const rec = makeRecord(plan.total, cat, note, plan.start, plan.days);
+    rec.place = place;
+    state.records.push(rec);
+    line([{t:"✓ 已记入经常性支出(分摊成本) #",c:COLOR.green},{t:rec.id,c:COLOR.pure,cls:"hl"},
+          {t:"  "+cat+" ",c:catColor(cat)},{t:"总价 ¥"+money(recTotal(rec)),c:COLOR.pure},
+          {t:"   ("+recurEveryLabel(plan.freq)+" ¥"+money(plan.amount)+" × "+plan.count+" 次)",c:COLOR.gray}]);
+    line([{t:"  期间 "+plan.start+" ~ "+plan.end+" ("+plan.days+" 天)",c:COLOR.gray},
+          {t:"  →  每天 ¥"+money(rec.amount),c:COLOR.pure,cls:"hl"},
+          {t:"   投资按总价记一次: 货币 ¥"+money(rec.mm)+" + 指数 ¥"+money(rec.idx),c:COLOR.gray}]);
+  } else {
+    const made = [];
+    for(const d of plan.dates){
+      const rec = makeRecord(plan.amount, cat, note, d);
+      rec.place = place;
+      state.records.push(rec);
+      made.push(rec);
+    }
+    let mm=0, idx=0;
+    for(const r of made){ mm += r.mm; idx += r.idx; }
+    line([{t:"✓ 已记入 "+catTxt+"经常性支出 ",c:COLOR.green},
+          {t:cat+" ",c:catColor(cat)},
+          {t:recurEveryLabel(plan.freq)+" ¥"+money(plan.amount),c:COLOR.pure},
+          {t:"   期间 "+plan.start+" ~ "+plan.end+" ("+plan.days+" 天)",c:COLOR.gray}]);
+    line([{t:"  编号 #"+made[0].id+" ~ #"+made[made.length-1].id+"   合计 ¥"+money(plan.total),c:COLOR.pure},
+          {t:"   应投货币 ¥"+money(r2(mm))+" + 指数 ¥"+money(r2(idx)),c:COLOR.gray}]);
+    const shown = plan.dates.slice(0,6).join(", ");
+    line([{t:"  扣款日: "+shown+(plan.dates.length>6?(" … 共 "+plan.dates.length+" 个扣款日"):""),c:COLOR.gray}]);
+    if(plan.splitFallback)
+      line([{t:"  ※ 持续期只有 "+plan.days+" 天, 无法分摊, 已按每笔独立记账。",c:COLOR.yellow}]);
+  }
   const st = periodSnapshot();
   const aw = alertWord(st.ratio);
   if(aw.t!=="预算内 ✓"){
@@ -4259,7 +4655,8 @@ function showSettings(){
   const cp = currentPeriod();
   kv("当期预算", hasBudgetOverride(cp) ? ("¥"+money(effectiveBudget(cp))+"  (自定义, 默认 ¥"+money(s.budget)+")")
                                        : ("¥"+money(effectiveBudget(cp))+"  (跟随默认)"));
-  kv("周期模式", modeDesc);
+  kv("周期模式", modeDesc+"   (配置 ▾ → 配置周期 可改)");
+  kv("当前周期", cp.label+"   共 "+periodDayCount(cp)+" 天   (截止日: config set periodend <日期>)");
   kv("周起始日", s.weekStart==="mon"?"周一":"周日");
   const dbv = (typeof s.dailyBudget==="number" && s.dailyBudget>0) ? ("¥"+money(s.dailyBudget)) : "未设置";
   kv("每日可用余额", dbv+"   (set daily <金额> 可改)");
@@ -4506,28 +4903,32 @@ function invCluster(kind){
 }
 function scrollBottom(){ term.scrollTop = term.scrollHeight; }
 
-/* modal for add/edit —— 上半部两个选项卡: 单笔消费(add) / 分摊成本(amort) */
+/* modal for add/edit —— 上半部三个选项卡: 单笔消费(add) / 分摊成本(amort) / 经常性支出(recur) */
 let modalMode = "add"; let modalId=null;   // "add" | "edit"(列表行 ✎ 编辑; update 命令的 UI 入口)
-let modalTab = "add";                 // 当前选项卡: "add" | "amort"
+let modalTab = "add";                 // 当前选项卡: "add" | "amort" | "recur"
+const MODAL_PANELS = { add:"mp_add", amort:"mp_amort", recur:"mp_recur" };
+const MODAL_TITLES = { add:"记一笔消费", amort:"记一笔分摊成本", recur:"记一笔经常性支出" };
 /* 编辑模式只走「单笔消费」表单(提交成 update 命令), 所以隐藏选项卡, 免得在"编辑一条旧记录"时
-   切到分摊面板反而新建一条 amort(假编辑)。 */
+   切到分摊/经常性面板反而新建一条记录(假编辑)。 */
 function setModalTabsVisible(v){
   const t = document.getElementById("mTabs");
   if(t && t.style) t.style.display = v ? "" : "none";
 }
 function setModalTab(tab){
-  modalTab = (tab==="amort" && modalMode!=="edit") ? "amort" : "add";
-  const panel = document.getElementById(modalTab==="amort" ? "mp_amort" : "mp_add");
-  const other = document.getElementById(modalTab==="amort" ? "mp_add"   : "mp_amort");
-  if(panel) panel.classList.remove("hide");
-  if(other) other.classList.add("hide");
+  modalTab = (MODAL_PANELS[tab] && modalMode!=="edit") ? tab : "add";
+  /* 单一的显隐入口: 新增选项卡只需往 MODAL_PANELS 里加一行(以前是两个面板各写一份 toggle) */
+  for(const key in MODAL_PANELS){
+    const el = document.getElementById(MODAL_PANELS[key]);
+    if(el) el.classList.toggle("hide", key !== modalTab);
+  }
   document.querySelectorAll("#modal .mtabs .mtab").forEach(b=>{
     b.classList.toggle("on", b.dataset && b.dataset.mtab === modalTab);
   });
   document.getElementById("mTitle").textContent = (modalMode==="edit")
     ? ("编辑记录 #"+modalId)
-    : ((modalTab==="amort") ? "记一笔分摊成本" : "记一笔消费");
+    : (MODAL_TITLES[modalTab] || MODAL_TITLES.add);
   updateAmortHint();
+  updateRecurHint();
 }
 /* 分摊预览: 总价 ÷ 天数 = 每天; 非法输入用黄色说明原因并阻止提交(输入框加 input 监听, 实时更新) */
 function updateAmortHint(){
@@ -4568,6 +4969,34 @@ function updateAmortHint(){
   s += "\n应投按总价一次记入: 货币 ¥"+money(inv.mm)+" + 指数 ¥"+money(inv.idx);
   el.className="mhint"; el.textContent=s;
 }
+/* 经常性支出预览: 与提交共用 recurPlan() —— 次数/总价/结束日/是否分摊都在同一处算,
+   输入非法用黄色说明并阻止提交(与分摊选项卡同一套交互)。 */
+function updateRecurHint(){
+  const el = document.getElementById("fr_hint");
+  if(!el) return;
+  if(modalTab!=="recur"){ el.className="mhint"; el.textContent=""; return; }
+  const amt  = input2num(document.getElementById("fr_amt").value);
+  const durV = input2num(document.getElementById("fr_dur").value);
+  const durU = document.getElementById("fr_dur_unit").value;
+  const freq = document.getElementById("fr_freq").value;
+  const split = !!document.getElementById("fr_split").checked;
+  const picked = amortPickDate(document.getElementById("fr_date").value);
+  if(amt==null || durV==null || !picked){
+    el.className="mhint";
+    el.textContent="填「每次金额 + 起始日期 + 持续时间」后显示：共几笔、总价、结束日期、扣款日；勾选「自动分摊」则只记一笔。";
+    return;
+  }
+  const plan = recurPlan({ amount:amt, durValue:durV, durUnit:durU, freq, start:picked.date, split });
+  if(!plan.ok){ el.className="mhint bad"; el.textContent=plan.msg; return; }
+  let s = recurEveryLabel(plan.freq)+" ¥"+money(plan.amount)+" × "+plan.count+" 笔 = 总价 ¥"+money(plan.total);
+  s += "\n期间 "+plan.start+" ~ "+plan.end+"（共 "+plan.days+" 天）";
+  s += plan.split
+    ? ("\n→ 自动分摊到每天 ¥"+money(plan.daily)+"/天（投资按总价记一次，不再分摊）")
+    : ("\n→ 按扣款日各记一笔（共 "+plan.count+" 笔）");
+  s += "\n扣款日: "+plan.dates.slice(0,8).join(", ")+(plan.dates.length>8?" …":"");
+  if(plan.splitFallback) s += "\n※ 持续期只有 "+plan.days+" 天，无法分摊，将按单笔记账。";
+  el.className="mhint"; el.textContent=s;
+}
 /* 分摊起始日期的唯一解析入口(预览与提交共用, 避免"预览说 A、提交成 B"):
     空值 / 原生 date 控件给的 YYYY-MM-DD / 手输的 2027/8/5 等宽容写法 → 统一成 {date,blank};
     无法解析返回 null(调用方必须提示, 不得静默回落到今天 —— 见 HANDOVER B6)。 */
@@ -4585,7 +5014,15 @@ function openAdd(){ modalMode="add"; modalId=null;
   document.getElementById("fa_total").value=""; document.getElementById("fa_days").value="";
   document.getElementById("fa_note").value=""; document.getElementById("fa_place").value=""; document.getElementById("fa_cat").value="";
   document.getElementById("fa_date").value=todayYMD();   // 精确到日(以前给的是 YYYY-MM)
-  setModalTabsVisible(true);           // 新增模式: 两个选项卡都在
+  /* 经常性支出(v0.0.15): 默认"12 个月、每月一次、不分摊"—— 最常见的订阅/房租口径 */
+  document.getElementById("fr_amt").value=""; document.getElementById("fr_cat").value="";
+  document.getElementById("fr_date").value=todayYMD();
+  document.getElementById("fr_dur").value="12";
+  document.getElementById("fr_dur_unit").value="month";
+  document.getElementById("fr_freq").value="month";
+  document.getElementById("fr_split").checked=false;
+  document.getElementById("fr_note").value="";
+  setModalTabsVisible(true);           // 新增模式: 三个选项卡都在
   setModalTab("add");                  // 每次打开都回到最常用的"单笔消费"
   openOverlay("modalWrap");
   document.getElementById("f_amt").focus();
@@ -4643,6 +5080,73 @@ function openInvestModal(){
   document.getElementById("i_pct").focus();
 }
 function closeInvestModal(){ document.getElementById("investWrap").classList.remove("open"); }
+/* ---- 配置周期弹窗(v0.0.15) ----
+   与「配置预算 / 配置投资比例 / 配置类别余额」并列在「配置 ▾」里。
+   · 起止日期是唯一输入: 周期天数 = 截止日 − 起始日 + 1, 输入即算、即时显示(不另设"天数"输入框);
+   · 按月模式把起止日交回 monthStart 规则(输入框只读), 保存回灌 `config set period natural`;
+   · 自定义模式保存回灌**一条** `config set period <起> <止>` —— 与命令行同一条通道, 一步撤销。
+   校验复用 periodSetRange 的规则(2~366 天、必须包含今天), 提示文案走 periodErrText。 */
+let periodModalMode = "rolling";
+/* 弹窗只负责"从输入框取两个日期", 校验规则一律走 periodRangeCheck()(与命令行同一份) */
+function periodModalCheck(){
+  return periodRangeCheck(document.getElementById("p_start").value, document.getElementById("p_end").value);
+}
+function periodModalMsg(r){
+  if(r && r.reason==="date")
+    return "请填完整日期: "+(r.which==="start"?"本期起始日":"本期截止日")+" (YYYY-MM-DD, 或点右侧日历选)";
+  return periodErrText(r);
+}
+/* 只重画提示, 不覆盖输入框内容 —— 用户正在敲日期时不能被"自动回填"打断 */
+function updatePeriodModal(){
+  const monthMode = (periodModalMode==="month");
+  const sEl = document.getElementById("p_start"), eEl = document.getElementById("p_end");
+  sEl.disabled = monthMode; eEl.disabled = monthMode;
+  document.getElementById("p_mode_month").classList.toggle("on", monthMode);
+  document.getElementById("p_mode_rolling").classList.toggle("on", !monthMode);
+  const meta = document.getElementById("p_meta"), hint = document.getElementById("p_hint");
+  if(monthMode){
+    const mp = monthPeriodBounds(todayYMD());
+    meta.textContent = "本期 "+mp.start+" ~ "+mp.end+" · 共 "+periodDayCount(mp)+" 天 · 下一期 "+addDaysYMD(mp.end,1)+" 起";
+    hint.className = "hint";
+    hint.textContent = "按月模式: 每期从每月 "+(state.settings.monthStart===1?"1 日(自然月)":state.settings.monthStart+" 日")+
+      " 起, 起止日由月起始日决定(要改月起始日: config set monthstart <1-28>)。保存后回到按月周期。";
+    return;
+  }
+  const r = periodModalCheck();
+  if(r.ok){
+    meta.textContent = "本期 "+r.start+" ~ "+r.end+" · 共 "+r.days+" 天 · 下一期 "+addDaysYMD(r.end,1)+" 起";
+    hint.className = "hint";
+    hint.textContent = "周期天数由起止日自动计算并同步: 保存后本期为 "+r.days+" 天, 之后每 "+r.days+" 天滚动一期。";
+    return;
+  }
+  meta.textContent = "—";
+  hint.className = "hint bad";
+  hint.textContent = periodModalMsg(r);
+}
+function setPeriodModalMode(mode){
+  periodModalMode = (mode==="month") ? "month" : "rolling";
+  /* 切换模式时按"当前真实周期"重新回填, 不保留上一次的临时输入(避免把半月输入带进按月模式) */
+  const p = currentPeriod();
+  document.getElementById("p_start").value = p.start;
+  document.getElementById("p_end").value = p.end;
+  updatePeriodModal();
+}
+function openPeriodModal(){
+  periodModalMode = (state.settings.periodMode==="rolling") ? "rolling" : "month";
+  const p = currentPeriod();
+  document.getElementById("p_start").value = p.start;
+  document.getElementById("p_end").value = p.end;
+  updatePeriodModal();
+  openOverlay("periodWrap");
+}
+function closePeriodModal(){ document.getElementById("periodWrap").classList.remove("open"); }
+function savePeriodModal(){
+  if(periodModalMode==="month"){ closePeriodModal(); runCommand("config set period natural"); return; }
+  const r = periodModalCheck();
+  if(!r.ok){ updatePeriodModal(); return; }              // 校验失败: 提示留在弹窗里, 不关窗、不落数据
+  closePeriodModal();
+  runCommand("config set period "+r.start+" "+r.end);
+}
 /* ---- 配置类别余额弹窗(v0.0.14) ----
    每行: [色块] 类别 [提示超额勾选] [数字输入] [浅色: 可配置余额] [占比]
    · 勾选框(默认勾选) = 该类别是否提示超额; 取消后顶栏/budget 不再出现它, 明细里标「静默」;
@@ -4831,6 +5335,7 @@ function applyBudget(kind){
 function closeModal(){ document.getElementById("modalWrap").classList.remove("open"); }
 function submitModal(){
   if(modalTab==="amort"){ submitAmort(); return; }
+  if(modalTab==="recur"){ submitRecur(); return; }
   const amt=input2num(document.getElementById("f_amt").value);
   const cat=document.getElementById("f_cat").value.trim();
   const date=document.getElementById("f_date").value||todayYMD();
@@ -4872,8 +5377,28 @@ function submitAmort(){
   input.value = cmd; input.focus();
   runCommand(cmd);
 }
-function input2num(v){ const n=parseFloat(String(v).replace(/,/g,"")); return isNaN(n)?null:n; }
-function quote(s){ return '"'+String(s).replace(/\\/g,"\\\\").replace(/"/g,'\\"')+'"'; }
+/* 经常性支出选项卡的提交: 与命令行同一条通道(拼 recur 命令回灌 runCommand),
+   因此与键盘输入完全等价 —— 校验失败不关窗、不落数据; 成功则由 runCommand 一次提交/一步撤销。 */
+function submitRecur(){
+  const amt = input2num(document.getElementById("fr_amt").value);
+  const cat = document.getElementById("fr_cat").value.trim();
+  const durV = input2num(document.getElementById("fr_dur").value);
+  const durU = document.getElementById("fr_dur_unit").value;
+  const freq = document.getElementById("fr_freq").value;
+  const split = !!document.getElementById("fr_split").checked;
+  const note = document.getElementById("fr_note").value.trim();
+  const picked = amortPickDate(document.getElementById("fr_date").value);
+  if(!cat){ alertModal("请输入类别，如 房租 / 会员"); return; }
+  if(!picked){ alertModal("起始日期需为 YYYY-MM-DD 的合法日期"); return; }
+  const plan = recurPlan({ amount:amt, durValue:durV, durUnit:durU, freq, start:picked.date, split });
+  if(!plan.ok){ alertModal(plan.msg); return; }
+  closeModal();
+  const cmd = "recur "+plan.amount+" "+cat+" "+(plan.durValue+RECUR_UNITS[plan.durUnit])+" "+RECUR_UNITS[plan.freq]
+            + " @"+plan.start + (split ? " 分摊" : "") + (note ? " "+quoteNote(note) : "");
+  input.value = cmd; input.focus();
+  runCommand(cmd);
+}
+function input2num(v){ const n=parseFloat(String(v).replace(/,/g,"")); return isNaN(n)?null:n; }function quote(s){ return '"'+String(s).replace(/\\/g,"\\\\").replace(/"/g,'\\"')+'"'; }
 function alertModal(msg){ const old=document.getElementById("btnSubmit").textContent; document.getElementById("btnSubmit").textContent=msg; setTimeout(()=>{document.getElementById("btnSubmit").textContent="确认";},1400); }
 
 /* ---- 浮层互斥(v0.0.12 同版修复) ----
@@ -4882,7 +5407,7 @@ function alertModal(msg){ const old=document.getElementById("btnSubmit").textCon
    规则: 全局同时最多一个浮层 open —— 打开任一下拉/弹窗前, 先关掉其它所有浮层。
    下拉与弹窗都走这两个入口, 不再各写一份 close 清单(F1 横向重复)。 */
 const DD_IDS = ["listDd","reportDd","configDd","geoDd","exportDd"];
-const MODAL_IDS = ["modalWrap","budgetWrap","investWrap","dateWrap","geoWrap","catWrap"];
+const MODAL_IDS = ["modalWrap","budgetWrap","investWrap","dateWrap","geoWrap","catWrap","periodWrap"];
 function closeAllOverlays(except){
   for(const id of DD_IDS.concat(MODAL_IDS)){
     if(id===except) continue;
@@ -4913,6 +5438,7 @@ function bindToolbar(){
         closeDd("configDd");
         if(b.dataset.config==="invest") openInvestModal();
         else if(b.dataset.config==="category") openCatModal();
+        else if(b.dataset.config==="period") openPeriodModal();
         else openBudgetModal();
         return;
       }
@@ -5087,6 +5613,21 @@ function bindModal(){
   ["fa_total","fa_days","fa_date"].forEach(id=>{
     const el=document.getElementById(id); if(el) el.addEventListener("input",updateAmortHint);
   });
+  /* 经常性支出: 金额/持续/起始日/分摊勾选 输入即重算; 两个下拉用 change; Enter 提交 */
+  ["fr_amt","fr_dur","fr_date"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener("input",updateRecurHint);
+  });
+  ["fr_dur_unit","fr_freq"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener("change",updateRecurHint);
+  });
+  const frSplit = document.getElementById("fr_split");
+  if(frSplit) frSplit.addEventListener("change",updateRecurHint);
+  ["fr_amt","fr_dur","fr_cat","fr_date","fr_note"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener("keydown",(e)=>{ if(e.key==="Enter") submitModal(); });
+  });
   [document.getElementById("fa_total"),document.getElementById("fa_days"),document.getElementById("fa_cat"),
    document.getElementById("fa_note"),document.getElementById("fa_place")]
     .forEach(el=>el.addEventListener("keydown",(e)=>{ if(e.key==="Enter") submitModal(); }));
@@ -5107,6 +5648,18 @@ function bindModal(){
   document.getElementById("investWrap").addEventListener("click",(e)=>{ if(e.target.id==="investWrap") closeInvestModal(); });
   document.getElementById("i_pct").addEventListener("input",updateInvestHint);   // 输入即预览消费/投资占比
   document.getElementById("i_pct").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveInvest(); });
+  // 配置周期弹窗(v0.0.15): 起止日输入即算天数; 保存回灌 config set period <起> <止>
+  document.getElementById("p_cancel").addEventListener("click",closePeriodModal);
+  document.getElementById("p_save").addEventListener("click",savePeriodModal);
+  document.getElementById("p_mode_month").addEventListener("click",()=>setPeriodModalMode("month"));
+  document.getElementById("p_mode_rolling").addEventListener("click",()=>setPeriodModalMode("rolling"));
+  document.getElementById("periodWrap").addEventListener("click",(e)=>{ if(e.target.id==="periodWrap") closePeriodModal(); });
+  ["p_start","p_end"].forEach(id=>{
+    const el = document.getElementById(id);
+    el.addEventListener("input", updatePeriodModal);
+    el.addEventListener("change", updatePeriodModal);        // 原生日历选完只发 change
+    el.addEventListener("keydown",(e)=>{ if(e.key==="Enter") savePeriodModal(); });
+  });
   // 按日期/月份查看弹窗(日期/月份统一为 ISO 文本 + 原生选择器)
   document.getElementById("d_cancel").addEventListener("click",closeDateModal);
   document.getElementById("d_ok").addEventListener("click",applyDateModal);
@@ -5171,16 +5724,22 @@ function argCandidates(c0, slot, tokens, cur){
   /* P2 B-20: config 的子命令/子名也给候选(旧版整体返回空, geo/geokey/ratio 补不出来) */
   if(cmd==="config"){
     if(arg===0) return ["set"];
-    if(arg===1) return ["budget","invest","consume","ratio","share","geo","geokey"];
+    if(arg===1) return ["period","periodstart","periodend","budget","invest","consume","ratio","share","geo","geokey"];
     if(arg===2){
       const sub=(tokens[2]||"").toLowerCase();   // 子名槽: tokens[1]="set", tokens[2]=子名
       if(sub==="budget") return ["800","1000","1200","1500"];
       if(sub==="invest"||sub==="consume"||sub==="ratio"||sub==="share") return ["15","85","0.85","0.9"];
       if(sub==="geo") return ["auto","manual"];
+      /* v0.0.15: 周期三种写法都给候选 —— 天数快捷 / natural / 起止日(取当前与 15 天后做示例) */
+      if(sub==="period") return ["natural","15","14","7","30","90",todayYMD()];
+      if(sub==="periodstart") return [todayYMD(), addDaysYMD(todayYMD(),-14)];
+      if(sub==="periodend") return [addDaysYMD(todayYMD(),14), addDaysYMD(todayYMD(),29)];
       return [];
     }
     if(arg===3){
-      if((tokens[2]||"").toLowerCase()==="budget") return ["now"];
+      const sub=(tokens[2]||"").toLowerCase();
+      if(sub==="budget") return ["now"];
+      if(sub==="period") return [addDaysYMD(todayYMD(),29), addDaysYMD(todayYMD(),14)];
       return [];
     }
     return [];
@@ -5222,6 +5781,13 @@ function argCandidates(c0, slot, tokens, cur){
     if(arg===2) return knownCategories();
     if(arg===1) return ["30","90","180","365","12月"];
     return [];
+  }
+  /* recur <金额> <类别> <持续> <频率> [@起始日] [分摊] [备注]: 持续/频率各给一组单位候选 */
+  if(cmd==="recur"){
+    if(arg===1) return knownCategories();
+    if(arg===2) return ["12月","6月","3周期","4周","30日"];
+    if(arg===3) return ["月","周","周期","日"];
+    return ["分摊"];
   }
   /* update <id> <金额> <类别> [备注..] [@日期]: 修复前类别被放在金额位(slot 2), 类别位(slot 3)返回空 */
   if(cmd==="update"){

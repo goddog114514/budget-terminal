@@ -269,7 +269,7 @@ const S = loadApp(); S.boot();
   eq("M1.40 架构文件 §1.4 列出了全部别名", aliasMissing, []);
 
   // 反向: 块里的命令名不得是"已删除的命令"(白名单 = 登记表 + set 子命令关键字)
-  const subs = ["budget","daily","invest","consume","ratio","period","periodstart","monthstart",
+  const subs = ["budget","daily","invest","consume","ratio","period","periodstart","periodend","monthstart",
                 "weekstart","alert","rate","natural","off","mon","sun","money","index","md","txt",
                 "day","week","month","cat","today","now",
                 /* v0.0.12 地点: §1.4 新增两行里的子命令关键字 */

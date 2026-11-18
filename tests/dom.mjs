@@ -69,14 +69,36 @@ export const doc = {
   body: new El("body"),
 };
 
-export function makeLocalStorage(seed){
+/* 真实浏览器有配额(Edge/Chrome file:// 实测 5,241,856 字符 ≈ 5 MiB 计费), 超了 setItem 抛
+   QuotaExceededError。装置默认不限配额(既有套件不需要), 传 opts.quota(字符数) 才模拟。
+   计量口径与 Chromium 一致: **键 + 值** 的字符数累加; 覆盖同一键时先扣除旧值。 */
+export function makeLocalStorage(seed, opts){
   const map = new Map(Object.entries(seed||{}));
+  let quota = (opts && opts.quota != null) ? opts.quota : Infinity;
+  const sizeOf = (k,v) => String(k).length + String(v).length;
+  const usage = (replaceKey, replaceVal) => {
+    let n = 0;
+    for(const [k,v] of map){ if(replaceKey !== undefined && k === replaceKey) continue; n += sizeOf(k,v); }
+    if(replaceKey !== undefined) n += sizeOf(replaceKey, replaceVal);
+    return n;
+  };
   return {
     getItem: k => (map.has(k)? map.get(k) : null),
-    setItem: (k,v) => { map.set(k, String(v)); },
+    setItem: (k,v) => {
+      v = String(v);
+      if(usage(k, v) > quota){
+        const e = new Error("Failed to execute 'setItem' on 'Storage': Setting the value of '"+k+"' exceeded the quota.");
+        e.name = "QuotaExceededError";
+        throw e;
+      }
+      map.set(k, v);
+    },
     removeItem: k => { map.delete(k); },
     clear: () => map.clear(),
     _dump: () => Object.fromEntries(map),
+    _usage: () => usage(),
+    _quota: () => quota,
+    _setQuota: q => { quota = (q == null ? Infinity : q); },
   };
 }
 
