@@ -23,23 +23,35 @@ export class El {
     this.disabled = false;
     this.title = "";
     this.type = "";
-    this.id = "";
+    this._id = "";
     this._events = {};
+    this.__parent = null;
   }
+  /* id 是 getElementById() 的唯一依据: 动态生成的节点(设置页卡片槽位、钱包卡片里的按钮)
+     在真实 DOM 里能被 getElementById 找到, 桩里也必须能 —— 否则测试只能看到"另建的空白节点",
+     测不到真实挂载关系。 */
+  get id(){ return this._id; }
+  set id(v){ this._id = String(v==null?"":v); if(this._id) ids.set(this._id, this); }
   get textContent(){
     if(this.children.length) return this.children.map(c=>c.textContent).join("");
     return this._text;
   }
   set textContent(v){ this.children = []; this._text = String(v==null?"":v); }
   set innerHTML(v){
-    if(v===""||v==null){ this.children = []; this._text=""; return; }
+    if(v===""||v==null){ for(const c of this.children) c.__parent = null; this.children = []; this._text=""; return; }
+    for(const c of this.children) c.__parent = null;
     this.children = []; this._text = String(v);
   }
   get innerHTML(){ return this.textContent; }
-  appendChild(c){ this.children.push(c); return c; }
-  append(...cs){ for(const c of cs) this.children.push(c); }
-  removeChild(c){ this.children = this.children.filter(x=>x!==c); }
-  remove(){}
+  /* 与真实 DOM 一致: 插入会把节点从原父节点上摘下来(设置页的"面板搬进卡片 / 搬回遮罩层"靠这一点) */
+  _adopt(c){ if(c && c.__parent && c.__parent !== this) c.__parent.removeChild(c); if(c) c.__parent = this; }
+  appendChild(c){
+    if(c && c.__parent === this) this.children = this.children.filter(x=>x!==c);   // 同父再插 = 移到末尾, 不重复
+    this._adopt(c); this.children.push(c); return c;
+  }
+  append(...cs){ for(const c of cs) this.appendChild(c); }
+  removeChild(c){ this.children = this.children.filter(x=>x!==c); if(c && c.__parent===this) c.__parent=null; }
+  remove(){ if(this.__parent) this.__parent.removeChild(this); }
   addEventListener(t,fn){ (this._events[t] = this._events[t]||[]).push(fn); }
   removeEventListener(t,fn){ if(this._events[t]) this._events[t] = this._events[t].filter(f=>f!==fn); }
   dispatch(t,ev){ for(const fn of (this._events[t]||[])) fn(ev||{}); }

@@ -87,6 +87,20 @@ export function loadApp(opts = {}){
     doRecur, recurPlan, recurDates, recurEndDate, recurStep, addMonthsClamped,
     parseRecurUnit, parseRecurSpan, recurEveryLabel, RECUR_UNITS, RECUR_MAX_COUNT,
     updateRecurHint, submitRecur, MODAL_PANELS,
+    /* v0.1.0 钱包: 口径单一入口 / 归一化 / 命令 / 参数解析 */
+    doWallet, walletRows, walletBalance, walletLedger, walletBudgetCompare, walletSpendMap,
+    walletOpsSum, walletPaidSum, defaultWallet, findWalletByName, pickWalletId, walletNameOf,
+    normalizeWallets, ensureWallets, cleanWalletName, nextWalletId, printWallets, printWalletLog,
+    findWalletToken, findMarkedToken, quoteWallet, WALLET_NAME_MAX, DEFAULT_WALLET_NAME,
+    /* v0.1.0 三页外壳 + 钱包页 + 「记一笔」支付钱包下拉 */
+    showPage, renderWalletPage, buildWalletCard, buildWalletNewCard, openWalletForm,
+    afterPageCommand, clearPageEcho, bindPages, HOME_IDS, PAGE_IDS, PAGE_KEYS,
+    refreshWalletSelects, setWalletSelect, modalWalletPart, WALLET_SELECTS,
+    get currentPage(){ return currentPage; },
+    /* v0.1.0 设置页: 表单 DOM 共享挂载 + 回填 + 月起始日收进 config */
+    mountSettingsCards, unmountSettingsCards, fillSettingsCards, buildSettingsCards, SETTING_CARDS,
+    settingsHint, settingsRow, saveMonthStartRow, saveAlertRow, saveRateRow, monthStartSet,
+    fillBudgetModal, fillPeriodModal, fillInvestModal, fillCatModal, fillGeoModal,
     buildReportText, serializeState, restoreFromText, recomputeAllInvest,
     doInvestFull, undo, redo, applyState,
     consumeShare, investShare, rateSplit, consumePct, invPct, mmPct, idxPct,

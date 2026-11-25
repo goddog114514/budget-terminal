@@ -188,12 +188,13 @@ function eq(name, a, b){ ok(name, JSON.stringify(a)===JSON.stringify(b), "got " 
   ok("H5.43 doInvestFull 之后结果已落盘(非命令入口也走 commit)", invested > 0, String(invested));
 }
 
-/* ---------- 16. 「配置 ▾」下拉: 配置预算 / 配置投资比例 两个 UI 通道 ---------- */
+/* ---------- 16. 配置入口收进「设置」页(v0.1.0): 主页工具栏不再有「配置 ▾」 ---------- */
 {
-  ok("H5.44 工具栏有「配置 ▾」下拉容器", /id="configDd"/.test(html), "");
-  ok("H5.45 下拉里有「配置预算」", /data-config="budget"[^>]*>配置预算/.test(html), "");
-  ok("H5.46 下拉里有「配置投资比例」", /data-config="invest"[^>]*>配置投资比例/.test(html), "");
-  ok("H5.47 投资比例弹窗存在", /id="investModal"/.test(html) && /id="i_pct"/.test(html), "");
+  ok("H5.44 主页工具栏不再有「配置 ▾」下拉容器", !/id="configDd"/.test(html), "");
+  ok("H5.45 主页工具栏里没有任何 data-config 入口", !/data-config=/.test(html), "");
+  ok("H5.46 配置功能没丢: 设置页有周期预算/周期持续时间/投资比例/类别余额四张卡",
+     /title:"周期预算"/.test(html) && /title:"周期持续时间"/.test(html) && /title:"投资比例"/.test(html) && /title:"类别余额"/.test(html), "");
+  ok("H5.47 投资比例面板存在(设置页「投资比例」卡挂载它)", /id="investModal"/.test(html) && /id="i_pct"/.test(html), "");
 
   const S = loadApp(); S.boot();
   /* 预算弹窗: 默认 / 当期 都回灌 config 命令(输出即配置表) */

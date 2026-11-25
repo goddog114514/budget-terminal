@@ -342,8 +342,9 @@ function alertBoxes(S){
      JSON.stringify(S.state.settings.categoryBudget)==="{}" && !S.__doc.getElementById("catWrap").classList.contains("open"));
 }
 {
-  /* 入口: 工具栏「配置 ▾」里必须有这一项, 且与其它浮层互斥 */
-  ok("CB11.19 配置 ▾ 下拉里有「配置类别余额」按钮", /data-config="category"/.test(html) && /配置类别余额/.test(html));
+  /* 入口(v0.1.0): 主页「配置 ▾」已移除; 类别余额在「设置」页的卡片里(挂载同一个面板), 且与其它浮层互斥 */
+  ok("CB11.19 类别余额入口在设置页(主页工具栏不再有 data-config 菜单)",
+     /key:"category", title:"类别余额"/.test(html) && !/data-config=/.test(html));
   ok("CB11.20 类别弹窗进 MODAL_IDS(浮层互斥/点空白关闭共用一份清单)", /MODAL_IDS\s*=\s*\[[^\]]*"catWrap"/.test(html));
   const S = mk();
   S.openBudgetModal();
@@ -356,10 +357,10 @@ function alertBoxes(S){
 /* ---------- 12. 文档同步 ---------- */
 {
   ok("CB12.1 README 记录 set category", /`set category/.test(readme), "");
-  ok("CB12.2 README 当前版本 = v0.0.15", /当前版本：\*\*v0\.0\.15\*\*/.test(readme), "");
+  ok("CB12.2 README 当前版本 = v0.1.0", /当前版本：\*\*v0\.1\.0\*\*/.test(readme), "");
   ok("CB12.3 README 有类别余额章节", /类别余额/.test(readme), "");
-  ok("CB12.4 版本号 v0.0.15", S_version(), "");
-  function S_version(){ const S = loadApp(); return S.APP_VERSION === "v0.0.15"; }
+  ok("CB12.4 版本号 v0.1.0", S_version(), "");
+  function S_version(){ const S = loadApp(); return S.APP_VERSION === "v0.1.0"; }
 }
 
 /* ---------- 13. 静默开关: 只关掉该类别的超额警告, 不动金额/排序/合计 ---------- */

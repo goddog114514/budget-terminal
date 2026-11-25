@@ -435,40 +435,134 @@
   #dateModal .dpreview{color:var(--cyan);font-size:12px;margin-top:10px;min-height:1.2em;word-break:break-all;}
   #dateModal .hint{color:var(--gray);font-size:12px;margin-top:10px;line-height:1.6;}
   #dateModal .hint.bad{color:var(--yellow);}
+
+  /* ---- v0.1.0 三页外壳: 页面导航 / 钱包页 / 设置页 / 终端回显 ----
+     主页的顶层元素不动(只是多了一个 .page-hide 开关); 另两页是独立 <main>, 各自滚动。
+     视觉沿用整站语言: 近黑面板 + 1px 暗边框 + 直角方块 + 等宽字体; 颜色一律取主题令牌。 */
+  nav.pages{
+    flex:0 0 auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+    padding:5px 14px;background:var(--panel-3);border-bottom:1px solid var(--border);font-size:12.5px;
+  }
+  nav.pages .pg{
+    font-family:inherit;font-size:12.5px;padding:4px 14px;cursor:pointer;border-radius:3px;letter-spacing:.5px;
+    border:1px solid var(--border);background:transparent;color:var(--gray);
+  }
+  nav.pages .pg:hover{border-color:var(--green);color:var(--green);}
+  nav.pages .pg.on{color:var(--green);border-color:var(--green);background:rgba(61,255,122,.1);}
+  nav.pages .pg-hint{margin-left:auto;color:var(--faint);font-size:11.5px;}
+  /* !important: header / nav.toolbar 自己带 display:flex, 会盖掉原生 [hidden], 所以统一用类来收起 */
+  .page-hide{display:none !important;}
+  .page{flex:1 1 auto;min-height:0;overflow-y:auto;padding:12px 14px 18px;font-size:13.5px;line-height:1.5;}
+  .page::-webkit-scrollbar{width:10px;}
+  .page::-webkit-scrollbar-thumb{background:var(--chart-axis);border-radius:6px;}
+  .pg-title{display:flex;align-items:baseline;gap:4px 12px;flex-wrap:wrap;margin:0 0 10px 2px;}
+  .pg-title .pg-name{color:var(--cyan);font-size:15px;letter-spacing:1px;}
+  .pg-title .pg-sub{color:var(--gray);font-size:12px;}
+  .page .pbtn{
+    font-family:inherit;font-size:12px;padding:4px 10px;cursor:pointer;border-radius:3px;
+    border:1px solid var(--border);background:transparent;color:var(--green);white-space:nowrap;
+  }
+  .page .pbtn:hover{background:rgba(61,255,122,.08);border-color:var(--green);color:var(--white);}
+  .page .pbtn.accent:hover{border-color:var(--cyan);color:var(--cyan);}
+  .page .pbtn.danger:hover{border-color:var(--red);color:var(--red);}
+  /* 删除按钮的两步确认: 第一次点变红「确认删除?」, 再点才真的执行 */
+  .page .pbtn.armed{border-color:var(--red);color:var(--red);background:rgba(255,77,94,.12);}
+  .page .seg button{
+    font-family:inherit;font-size:13px;padding:5px 14px;cursor:pointer;border-radius:3px;
+    border:1px solid var(--border);background:transparent;color:var(--gray);
+  }
+  .page .seg button:hover{border-color:var(--green);color:var(--green);}
+  .page .seg button.on{color:var(--green);border-color:var(--green);background:rgba(61,255,122,.1);}
+  /* 钱包页 */
+  .wsum{display:flex;gap:10px 30px;flex-wrap:wrap;align-items:stretch;border:1px solid var(--border);
+    background:var(--panel);border-radius:4px;padding:10px 14px;margin:8px 0 6px;}
+  .wsum .ws{display:flex;flex-direction:column;gap:2px;min-width:9em;}
+  .wsum .ws .k{color:var(--gray);font-size:11px;}
+  .wsum .ws .v{font-size:15px;font-weight:bold;letter-spacing:.3px;}
+  .wsum .ws .s{color:var(--gray);font-size:11.5px;}
+  .wk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:12px;margin:10px 0 4px;}
+  .wcard{border:1px solid var(--border);background:var(--panel);border-radius:4px;padding:12px 14px;min-width:0;}
+  .wcard.default{border-color:var(--green-dim);}
+  .wcard.new{border-style:dashed;margin-top:12px;}
+  .wcard-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:22px;}
+  .wcard-h .wname{color:var(--white);font-size:15px;font-weight:bold;word-break:break-all;}
+  .wcard-h .wtag{color:var(--green);border:1px solid var(--green-dim);border-radius:2px;padding:0 6px;font-size:11px;white-space:nowrap;}
+  .wcard-h .wsub{margin-left:auto;color:var(--gray);font-size:11.5px;white-space:nowrap;}
+  .wbal{font-size:22px;font-weight:bold;letter-spacing:.5px;margin:8px 0 0;}
+  .wbal.neg{text-shadow:0 0 8px currentColor;}
+  .wnote{color:var(--gray);font-size:12px;margin-top:2px;}
+  .wbtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .wcard .hbar-wrap{max-width:none;}
+  .wform{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+  .wform .wf{display:flex;align-items:center;gap:6px;flex:1 1 190px;min-width:0;}
+  .wform .wf label{color:var(--gray);font-size:12px;white-space:nowrap;}
+  .wform input{
+    flex:1 1 80px;min-width:0;background:var(--field);border:1px solid var(--border);color:var(--white);
+    font-family:inherit;font-size:13px;padding:4px 8px;border-radius:3px;outline:none;color-scheme:dark;
+  }
+  .wform input:focus{border-color:var(--green);}
+  .wform .werr{flex:1 1 100%;color:var(--yellow);font-size:12px;}
+  .wform .werr:empty{display:none;}
+  /* 设置页 */
+  .scards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(430px,100%),1fr));gap:12px;align-items:start;}
+  .scard{border:1px solid var(--border);background:var(--panel);border-radius:4px;padding:12px 14px;min-width:0;}
+  .scard-h{display:flex;align-items:baseline;gap:4px 12px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:6px;}
+  .scard-h .st{color:var(--cyan);font-size:14px;letter-spacing:.6px;}
+  .scard-h .slive{color:var(--gray);font-size:12px;word-break:break-word;}
+  .scard .shint{color:var(--gray);font-size:12px;margin-top:10px;line-height:1.6;white-space:pre-wrap;}
+  .scard .shint.bad{color:var(--yellow);}
+  .scard .shint:empty{display:none;}
+  /* 设置页里挂载的弹窗面板: 去掉弹窗外观, 变成卡片内的普通表单(面板 DOM 仍是同一个节点) */
+  #pageSettings #budgetModal,#pageSettings #periodModal,#pageSettings #investModal,
+  #pageSettings #catModal,#pageSettings #geoModal{
+    width:auto;max-height:none;overflow:visible;box-shadow:none;border:none;background:transparent;
+    padding:0;border-radius:0;
+  }
+  #pageSettings .scard-body h3{display:none;}        /* 卡片自带标题, 面板里的 <h3> 不重复显示 */
+  #pageSettings .mbtns{justify-content:flex-start;margin-top:12px;}
+  #pageSettings .mbtns [data-close]{display:none;}   /* 「取消 / 关闭」在页内表单上没有意义 */
+  #pageSettings .scard-body hr{border:none;border-top:1px solid var(--border);margin:16px 0 4px;}
+  .srow{display:grid;grid-template-columns:9.5em minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:10px;}
+  .srow > label{color:var(--gray);font-size:12px;line-height:1.4;}
+  .srow input{
+    width:100%;min-width:0;background:var(--field);border:1px solid var(--border);color:var(--white);
+    font-family:inherit;font-size:13px;padding:4px 8px;border-radius:3px;outline:none;color-scheme:dark;
+  }
+  .srow input:focus{border-color:var(--green);}
+  .srow .seg{display:flex;gap:8px;flex-wrap:wrap;grid-column:2 / -1;}
+  /* 终端回显: 钱包 / 设置页上执行的命令, 其输出行(主页终端里新增的那几行)镜像到这里 */
+  .pecho{display:none;margin-top:14px;border:1px solid var(--border);border-left:2px solid var(--green-dim);
+    background:var(--panel-2);border-radius:4px;padding:8px 12px 10px;font-size:13px;line-height:1.5;}
+  .pecho.has{display:block;}
+  .pecho-h{color:var(--cyan);font-size:12.5px;letter-spacing:.5px;margin-bottom:4px;}
+  .pecho-h span{color:var(--gray);margin-left:8px;letter-spacing:0;}
+  .pecho-b .l{white-space:pre-wrap;word-break:break-word;}
+  .pecho-b{max-height:300px;overflow-y:auto;}
+  #modal select{cursor:pointer;}
 </style>
 </head>
 <body>
+<!-- v0.1.0 三页外壳: 主页 / 钱包 / 设置。主页 = 原终端界面(下面的 header / 工具栏 / 理财条 / 终端 / 输入行, 原样保留);
+     钱包页与设置页是两个独立的 <main>, 同一时间只显示一页(见 showPage)。两页上的操作同样回灌命令。 -->
+<nav class="pages" id="pageNav" aria-label="页面切换">
+  <button type="button" class="pg on" data-page="home">● 主页</button>
+  <button type="button" class="pg" data-page="wallet">钱包</button>
+  <button type="button" class="pg" data-page="settings">设置</button>
+  <span class="pg-hint">Alt+1 / 2 / 3 切换 · 钱包与设置页上的操作同样回灌命令, 输出同步到主页终端</span>
+</nav>
 <header id="statusbar"></header>
-<nav class="toolbar">
+<nav class="toolbar" id="toolbar">
   <button data-cmd="help">[F1] 帮助</button>
   <!-- v0.0.14: 工具栏不再留「预算进度」按钮 —— 周期预算在 boot() 的首屏由 showBudget() 自动输出,
        之后只能用 `budget` 命令重看(toolbar 只是辅助入口, 不再重复一个"已经一直看得见"的视图)。 -->
-  <!-- v0.0.11: 「配置预算」「配置投资比例」收进同一个「配置 ▾」下拉, 两个子项各自弹窗,
-       弹窗提交时回灌 config 命令(config set budget / config set invest)。
-       v0.0.14: 设置项里再加「配置类别余额」(回灌 set category 命令)。
-       v0.0.15: 再加「配置周期」(回灌 config set period / periodstart / periodend 命令)。 -->
-  <span class="dd" id="configDd">
-    <button id="btnConfigDd" class="accent" type="button">配置 ▾</button>
-    <div class="dd-menu" id="configDdMenu">
-      <span class="dd-hint">设置项</span>
-      <button type="button" data-config="period">配置周期</button>
-      <button type="button" data-config="budget">配置预算</button>
-      <button type="button" data-config="invest">配置投资比例</button>
-      <button type="button" data-config="category">配置类别余额</button>
-    </div>
-  </span>
+  <!-- v0.1.0: 原来的「配置 ▾」下拉已移除 —— 配置预算 / 周期持续时间 / 投资比例 / 类别余额 / 地图 Key
+       全部在顶部「设置」页里**页内直接改**(用的还是这五个面板的同一份 DOM, 见 SETTING_CARDS)。
+       主页工具栏只保留"一次性的动作"(记一笔/查看类/导出/备份), 不再重复一套配置入口。 -->
   <button data-cmd="forecast">燃尽预测</button>
   <button data-cmd="open-add" class="accent">+ 记一笔</button>
-  <!-- v0.0.12: 主页上直接切「自动填充地址 / 全手动」; 两个模式项都回灌 config 命令(H5 双通道对称) -->
-  <span class="dd" id="geoDd">
-    <button id="btnGeoDd" class="accent" type="button">地点: 自动 ▾</button>
-    <div class="dd-menu" id="geoDdMenu">
-      <span class="dd-hint" id="geoDdHint">记账时的地点模式</span>
-      <button type="button" data-geo="auto">自动填充地址</button>
-      <button type="button" data-geo="manual">全手动（不填则空）</button>
-      <button type="button" data-geo="settings">地点设置 / 手动补填…</button>
-    </div>
-  </span>
+  <!-- v0.1.0: 原来的「地点 ▾」下拉已移除 —— 地点模式 / 地图 Key / 按 id 手动补填
+       全部在顶部「设置」页的「地点与地图 Key」卡片里页内直接改(就是同一个 geoModal DOM)。
+       主页工具栏不再重复一套配置入口; 模式切换仍回灌 config 命令, 左上角 badge 保留。 -->
   <span class="dd" id="listDd">
     <button id="btnListDd" class="accent" type="button">消费列表 ▾</button>
     <div class="dd-menu" id="listDdMenu">
@@ -520,13 +614,34 @@
 <input type="file" id="fileImport" accept="application/json,.json" style="display:none">
 <div id="investbar"></div>
 <main id="term"></main>
-<footer>
+<footer id="pageFooter">
   <span class="ps1 glow"><b>user</b>@<span class="pwd">budget</span>:~$</span>
   <span class="inwrap">
     <input id="cmdline" autocomplete="off" spellcheck="false" placeholder="输入命令，如  add 50 餐饮 午餐    输入 help 查看帮助" />
     <span id="ghost" aria-hidden="true"></span>
   </span>
 </footer>
+
+<!-- v0.1.0 钱包页: 内容全部由 renderWalletPage() 按当前 state 现算(renderWalletRows 的同一份数据);
+     每个按钮都回灌 wallet / add 等命令, 命令输出镜像到页底的回显条。 -->
+<main id="pageWallet" class="page page-hide" aria-label="钱包页">
+  <div id="walletBody"></div>
+  <div class="pecho" id="walletEcho" aria-live="polite">
+    <div class="pecho-h">▓ 终端回显 <span>本次操作的输出已同步到主页终端, 回主页可查看完整记录</span></div>
+    <div class="pecho-b" id="walletEchoBody"></div>
+  </div>
+</main>
+
+<!-- v0.1.0 设置页: 卡片由 SETTING_CARDS(脚本里的唯一清单)生成, 五张配置卡直接挂载既有弹窗的面板
+     (同一份表单 DOM, 不写第二套); 「预警与收益参数」卡与月起始日一行是本页专有的小表单, 同样回灌命令。 -->
+<main id="pageSettings" class="page page-hide" aria-label="设置页">
+  <div class="pg-title"><span class="pg-name">设置</span><span class="pg-sub" id="settingsSub"></span></div>
+  <div class="scards" id="settingsCards"></div>
+  <div class="pecho" id="settingsEcho" aria-live="polite">
+    <div class="pecho-h">▓ 终端回显 <span>本次操作的输出已同步到主页终端, 回主页可查看完整记录</span></div>
+    <div class="pecho-b" id="settingsEchoBody"></div>
+  </div>
+</main>
 
 <div id="modalWrap">
   <div id="modal">
@@ -545,6 +660,8 @@
       <label>备注</label><input id="f_note" placeholder="可选，如 午餐">
       <label>地点 (选填) — 自动模式会填行政区名；手填可覆盖，留空则不记</label>
       <input id="f_place" placeholder="如 广东省深圳市南山区">
+      <label>支付钱包 — 这笔从哪个钱包出钱(默认钱包不用改; 余额在「钱包」页维护)</label>
+      <select id="f_wallet" aria-label="支付钱包"></select>
     </div>
     <!-- 分摊成本: 总价 ÷ 分摊天数 → 每天; 投资只按总价记一次 -->
     <div class="mpanel hide" id="mp_amort">
@@ -558,6 +675,8 @@
       <label>备注</label><input id="fa_note" placeholder="可选，如 年付房租">
       <label>地点 (选填) — 分摊成本不会自动定位，需要就手填</label>
       <input id="fa_place" placeholder="如 广东省深圳市南山区">
+      <label>支付钱包 — 总价一次从这个钱包出钱(不按天扣)</label>
+      <select id="fa_wallet" aria-label="支付钱包"></select>
       <div class="mhint" id="fa_hint"></div>
     </div>
     <!-- 经常性支出(v0.0.15): 每 <频率> 扣一次, 持续 <N>日/周/周期/月。
@@ -587,6 +706,8 @@
       </select>
       <label class="chk"><input id="fr_split" type="checkbox"> 自动分摊成本到每天（把「每次金额 × 次数」摊到整个持续期）</label>
       <label>备注</label><input id="fr_note" placeholder="可选，如 房租 / 视频会员">
+      <label>支付钱包 — 这批支出都从它出钱(默认钱包不用改)</label>
+      <select id="fr_wallet" aria-label="支付钱包"></select>
       <div class="mhint" id="fr_hint"></div>
     </div>
     <div class="mbtns">
@@ -602,7 +723,7 @@
     <label>周期预算金额 (元)</label><input id="b_amt" type="number" step="0.01" min="0.01" placeholder="如 1200">
     <div class="hint" id="b_hint"></div>
     <div class="mbtns">
-      <button id="b_cancel">取消</button>
+      <button id="b_cancel" data-close="1">取消</button>
       <button id="b_default">设为默认 (各期)</button>
       <button id="b_current">应用于当期</button>
     </div>
@@ -624,13 +745,13 @@
     <input id="i_pct" type="number" step="0.1" min="0" max="50" placeholder="如 15">
     <div class="hint" id="i_hint"></div>
     <div class="mbtns">
-      <button id="i_cancel">取消</button>
+      <button id="i_cancel" data-close="1">取消</button>
       <button id="i_save">保存</button>
     </div>
   </div>
 </div>
 
-<!-- v0.0.15 配置周期: 「配置 ▾ → 配置周期」。
+<!-- v0.0.15 配置周期(v0.1.0 起常驻在「设置」页的「周期持续时间」卡里, 这里只是它的弹出宿主)。
      · 只填起止日期 —— 周期天数(滚动长度)由日期自动算出并实时显示, 不单独填, 避免"天数与日期打架";
      · 按月模式把起止日交回 monthStart 规则(输入框只读), 保存回灌 `config set period natural`;
      · 自定义模式保存回灌**一条** `config set period <起> <止>`, 与命令行同一条通道、一步撤销。 -->
@@ -649,7 +770,7 @@
     <div class="pmeta" id="p_meta"></div>
     <div class="hint" id="p_hint"></div>
     <div class="mbtns">
-      <button id="p_cancel" type="button">取消</button>
+      <button id="p_cancel" type="button" data-close="1">取消</button>
       <button id="p_save" type="button">保存</button>
     </div>
   </div>
@@ -676,12 +797,12 @@
     <input id="g_place" type="text" placeholder="如 广东省深圳市南山区">
     <div class="mbtns">
       <button id="g_place_save">补填地点</button>
-      <button id="g_cancel">关闭</button>
+      <button id="g_cancel" data-close="1">关闭</button>
     </div>
   </div>
 </div>
 
-<!-- v0.0.14 类别余额(信封预算): 配置 ▾ → 「配置类别余额」。
+<!-- v0.0.14 类别余额(信封预算): v0.1.0 起常驻在「设置」页的「类别余额」卡里(这里只是弹出宿主)。
      每个类别一个数字输入框, 输入框后用低透明度字体显示**实时可配置余额**
      (= 总可用余额 − 已配置类别余额), 末尾显示该类别余额占总可用余额的实时占比。
      类别名后的勾选框(默认勾选) = 是否提示该类别超额; 取消后该类别完全静默(只影响警告)。
@@ -694,7 +815,7 @@
     <div class="hint" id="c_hint"></div>
     <div class="mbtns">
       <button id="c_clear" type="button">全部清除</button>
-      <button id="c_cancel" type="button">取消</button>
+      <button id="c_cancel" type="button" data-close="1">取消</button>
       <button id="c_save" type="button">保存</button>
     </div>
   </div>
@@ -733,7 +854,18 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.0.15";         // 版本号(与 git tag 对应)
+const APP_VERSION = "v0.1.0";          // 版本号(与 git tag 对应)
+/* ---- 钱包 (v0.1.0) · 口径 ----
+   钱包 = 付款账户(现金 / 微信 / 支付宝 / 银行卡…), 余额**手动维护**:
+     · 余额不参与预算的发放/占用/结转口径, 与预算各自独立(只做对照展示);
+     · 余额 = Σ 手动流水(存入 + / 取出 −) − Σ 由该钱包支付的支出, 两者都**只算截至今天**的;
+     · 一笔支出对钱包的扣款 = recTotal()(**总价**, 付款口径) —— 分摊成本的钱是记账当天一次付掉的,
+       与"消费口径 = 每天金额"(amount)不是同一把尺子, 所以这里不能拿 r.amount 直接减。
+   存储: state.wallets = [{id, name}]、state.wops = [{wallet, amount, date, note, created}];
+         记录上的 rec.wallet = 钱包 id(0 = 未指定: 钱包功能上线前的旧记录)。
+   WALLET_NAME_MAX: 钱包名长度上限; 命令行用 `$钱包名` 指定, 名字太长会把列表行/卡片撑爆。 */
+const WALLET_NAME_MAX = 24;
+const DEFAULT_WALLET_NAME = "默认钱包";
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
 /* ---- 地点 (v0.0.12) · 合规边界 ----
    只用腾讯地图 JSAPI GL + service 库。本应用是"本地双击"的单文件应用, 属非默认场景:
@@ -860,21 +992,27 @@ function defaultSettings(){
            dailyBudget:null,                 // 手动设置的"每日可用余额"(null = 未设置)
            categoryBudget:{},                // v0.0.14 类别余额(信封): {类别: 已分配金额}
            categoryMute:{},                  // v0.0.14 静默开关: {类别:true} = 该类别不产生超额警告(缺省 = 提示)
+           walletDefault:null,               // v0.1.0 默认钱包 id(记支出时默认用它付款); null = 第一个钱包
            geoMode:"auto", geoKey:"" };    // 地点: auto=add 时自动定位 / manual=全手动; key 只存本机
 }
 function loadState(){
   let parsed = null;
   try{ parsed = JSON.parse(localStorage.getItem(LS_KEY)); }catch(e){ parsed = null; }
   if(!parsed || typeof parsed!=="object") parsed = {};
-  state = { settings: normalizeSettings(parsed.settings), seq: 0, records: [] };
+  state = { settings: normalizeSettings(parsed.settings), seq: 0, records: [], wallets: [], wops: [] };
   const norm = normalizeRecords(parsed.records);
   state.records = norm.records;
   state.seq = Math.max(
     (typeof parsed.seq==="number" && isFinite(parsed.seq)) ? Math.round(parsed.seq) : 0,
     state.records.reduce((m,r)=>Math.max(m,r.id), 0));   // 序号必须大于所有已有 id, 否则新增会撞号
+  /* v0.1.0 钱包: 与记录走同一套归一化(加载与导入共用), 然后 保证至少一个钱包 + 修正悬空引用 */
+  const wn = normalizeWallets(parsed.wallets, parsed.wops);
+  state.wallets = wn.wallets;
+  state.wops = wn.wops;
+  ensureWallets();
   ensureEpoch();      // 账本起点对齐到真实周期边界(旧数据/改过周期设置的数据都会在这里修正)
   save();             // 启动时把归一化后的 state 落盘(非命令路径; 命令统一走 commit())
-  return norm.dropped;
+  return { dropped:norm.dropped, walletsDropped:wn.dropped };
 }
 /* --- 设置归一化: 手改过的/跨版本导入的 settings 也能安全使用 ---
    缺失项回落默认值, 非法值(类型错/越界/被写成 null)一律丢弃, 避免后面 [...thresholds] 之类直接抛错。 */
@@ -929,6 +1067,8 @@ function normalizeSettings(raw){
   }
   s.categoryMute = cm;
   if(!(typeof s.dailyBudget==="number" && isFinite(s.dailyBudget) && s.dailyBudget>0 && r2(s.dailyBudget)>0)) s.dailyBudget = null;
+  /* v0.1.0 默认钱包: 只接受正整数 id; 指向不存在的钱包时由 ensureWallets() 回落到第一个钱包 */
+  if(!(typeof s.walletDefault==="number" && isFinite(s.walletDefault) && s.walletDefault>0)) s.walletDefault = null;
   if(s.geoMode!=="auto" && s.geoMode!=="manual") s.geoMode = def.geoMode;
   /* P1 B-12: 与 config set geokey 共用 normalizeGeoKey() 唯一入口 ——
      以前写入只做 slice(0,128), 重启加载会额外清占位符/提示文案/空白, 出现"本次生效、重启失效"。 */
@@ -973,17 +1113,64 @@ function normalizeRecords(raw){
     const note = src.note==null ? "" : String(src.note).replace(/[\u0000-\u001f\u007f]/g," ");   // P2 B-19: 与 place 同一清洗纪律(只去控制字符, 不改变可见内容)
     const place = normalizePlace(src.place);   // 旧备份没有该字段 → 空串, 零迁移
     const created = repairDate(src.created) || date;
+    // v0.1.0 付款钱包: 只认正整数 id; 指向的钱包不存在时由 ensureWallets() 归 0(未指定), 旧备份没有该字段 → 0
+    const walletId = (typeof src.wallet==="number" && isFinite(src.wallet) && src.wallet>0) ? Math.round(src.wallet) : 0;
     // 旧数据里已标记"已投足"的, 重算后要吸附到新的应投额, 避免因精度变化退回"部分/未投"
     const wasFullM = oldMm>0 && mInv0 >= oldMm - 0.005;
     const wasFullI = oldIdx>0 && iInv0 >= oldIdx - 0.005;
     const cl = (x, cap)=> r6(Math.max(0, Math.min(cap, isFinite(x) ? x : 0)));
     out.push({ id, amount, category:cat, note, place, date, created,
+               wallet:walletId,
                amortDays:days, amortTotal:total,
                mm:inv.mm, idx:inv.idx,
                moneyInv: wasFullM ? inv.mm : cl(mInv0, inv.mm),
                indexInv: wasFullI ? inv.idx : cl(iInv0, inv.idx) });
   }
   return { records: out, dropped };
+}
+/* --- 钱包归一化(v0.1.0): 加载 localStorage 与导入备份共用(A8/F7) ---
+   钱包: id 必须是正整数(重复/缺失时顺延), 名称去首尾空白/控制字符后非空且 ≤ WALLET_NAME_MAX,
+         **同名只留第一个**(命令行用 `$钱包名` 指定, 重名会让"付的是哪个"有歧义); 不合法的钱包整体丢弃并计数。
+   流水: 只保留"钱包存在 + 金额 r2 后 ≠ 0"的项; 日期非法回落到创建日/今天。 */
+function cleanWalletName(v){
+  const s = String(v==null?"":v).replace(/[\u0000-\u001f\u007f]/g," ").trim();
+  if(!s || s.length > WALLET_NAME_MAX) return "";
+  return s;
+}
+function normalizeWallets(rawWallets, rawOps){
+  const wallets = [], wops = [], usedIds = new Set(), names = new Set();
+  let dropped = 0;
+  for(const src of (Array.isArray(rawWallets) ? rawWallets : [])){
+    if(!src || typeof src!=="object"){ dropped++; continue; }
+    const name = cleanWalletName(src.name);
+    if(!name || names.has(name)){ dropped++; continue; }
+    let id = (typeof src.id==="number" && isFinite(src.id) && src.id>0) ? Math.round(src.id) : 0;
+    while(!id || usedIds.has(id)) id = (id ? id+1 : 1);
+    usedIds.add(id); names.add(name);
+    wallets.push({ id, name });
+  }
+  for(const o of (Array.isArray(rawOps) ? rawOps : [])){
+    if(!o || typeof o!=="object"){ dropped++; continue; }
+    const v = r2(Number(o.amount));
+    if(!usedIds.has(o.wallet) || !isFinite(v) || v===0){ dropped++; continue; }
+    wops.push({ wallet:o.wallet, amount:v,
+                date: repairDate(o.date) || repairDate(o.created) || todayYMD(),
+                note: o.note==null ? "" : String(o.note).replace(/[\u0000-\u001f\u007f]/g," "),
+                created: repairDate(o.created) || todayYMD() });
+  }
+  return { wallets, wops, dropped };
+}
+/* 钱包不变量的唯一修复点(加载 / 导入 / undo·redo 恢复后都经过这里或等价路径):
+     ① 至少有一个钱包(没有就建「默认钱包」, 旧账本零迁移);
+     ② 默认钱包 id 必须指向真实存在的钱包, 否则回落到第一个;
+     ③ 记录上的 wallet 只能是 0(未指定) 或真实存在的钱包 id。 */
+function ensureWallets(){
+  if(!Array.isArray(state.wallets)) state.wallets = [];
+  if(!Array.isArray(state.wops)) state.wops = [];
+  if(!state.wallets.length) state.wallets.push({ id:1, name:DEFAULT_WALLET_NAME });
+  const ids = new Set(state.wallets.map(w=>w.id));
+  if(!ids.has(state.settings.walletDefault)) state.settings.walletDefault = state.wallets[0].id;
+  for(const r of state.records) if(!ids.has(r.wallet)) r.wallet = 0;
 }
 function save(){
   let ok = true;
@@ -1025,7 +1212,9 @@ function refreshAll(){
   refreshHeader();       // 顶栏统计 + 理财条(renderInvestBar 在 refreshHeader 末尾统一调用)
   refreshHistoryUI();    // 撤销/重做按钮可用态
   refreshCatlist();      // 类别下拉: 单一真相来源 knownCategories()(含记录里的自定义类别)
-  refreshGeoUI();        // v0.0.12: 主页「地点 ▾」按钮随 geoMode / Key 状态同步
+  refreshGeoUI();        // 左上角 badge 随 geoMode / Key 状态同步(配置入口在设置页卡片)
+  refreshWalletSelects();   // v0.1.0: 「记一笔」三个面板的支付钱包下拉
+  if(currentPage==="wallet") renderWalletPage();   // v0.1.0: 钱包页的数据视图跟着提交点刷新
 }
 function commit(){
   if(!state) return;     // boot 之前(loadState)还没有完整 state, 不落盘
@@ -1088,7 +1277,8 @@ function fsLog(msg, color){ if(typeof line==="function") line([{t:msg, c:color||
 function serializeState(){
   return JSON.stringify({ app:"budget_term", version:2,
     savedAt: todayYMD()+" "+new Date().toTimeString().slice(0,8),
-    settings: state.settings, seq: state.seq, records: state.records }, null, 2);
+    settings: state.settings, seq: state.seq, records: state.records,
+    wallets: state.wallets, wops: state.wops }, null, 2);   // v0.1.0 钱包随备份走(格式仍是 version:2 的增量字段)
 }
 function restoreFromText(text){
   const data = JSON.parse(text);
@@ -1106,6 +1296,12 @@ function restoreFromText(text){
     state.seq      = Math.max(
       (typeof data.seq==="number" && isFinite(data.seq)) ? Math.round(data.seq) : 0,
       state.records.reduce((m,r)=>Math.max(m,r.id), 0));   // 防止后续新增记录与备份里的 id 撞号
+    /* v0.1.0 钱包: 与 loadState 同一套归一化; 备份里没有钱包字段(旧版本导出) → 回到「默认钱包」 */
+    const wn = normalizeWallets(data.wallets, data.wops);
+    state.wallets = wn.wallets;
+    state.wops = wn.wops;
+    dropped       += wn.dropped;
+    ensureWallets();
     ensureEpoch();
   });
   commit();     // 导入也是一个提交点: 落盘 + 全量刷新(含类别下拉, H4)
@@ -1113,9 +1309,9 @@ function restoreFromText(text){
      回退更早的操作 —— 现在按"是否真的变化"分两种文案。 */
   const unchanged = snapshotState() === before;
   fsLog(unchanged
-    ? "✓ 已从备份恢复 "+state.records.length+" 条记录、预算与设置已更新 (内容与当前账本一致, 没有产生变化)。"
-    : "✓ 已从备份恢复 "+state.records.length+" 条记录、预算与设置已更新 (可 undo 撤销)。", COLOR.green);
-  if(dropped) fsLog("⚠ 其中 "+dropped+" 条记录金额或日期无效, 已跳过(其余记录正常导入)。", COLOR.yellow);
+    ? "✓ 已从备份恢复 "+state.records.length+" 条记录、"+state.wallets.length+" 个钱包、预算与设置已更新 (内容与当前账本一致, 没有产生变化)。"
+    : "✓ 已从备份恢复 "+state.records.length+" 条记录、"+state.wallets.length+" 个钱包、预算与设置已更新 (可 undo 撤销)。", COLOR.green);
+  if(dropped) fsLog("⚠ 其中 "+dropped+" 条记录 / 钱包 / 流水金额或日期无效, 已跳过(其余正常导入)。", COLOR.yellow);
 }
 function doBackupDownload(){
   const blob = new Blob([serializeState()], {type:"application/json;charset=utf-8"});
@@ -1842,9 +2038,11 @@ function hbarTrack(ratio, color, opts){
   rest.style.width = (100-usedPct).toFixed(2)+"%";
   rest.style.background = withAlpha(col, 0.16);
   track.append(fill, rest);
-  const mk = document.createElement("i"); mk.className = "hbar-100";
-  mk.style.left = (100/Math.max(r,1)).toFixed(2)+"%";
-  track.appendChild(mk);
+  if(opts.marker !== false){             // 「占比」条不画 100% 预算刻度(marker:false), 只有"是不是快花超了"才需要它
+    const mk = document.createElement("i"); mk.className = "hbar-100";
+    mk.style.left = (100/Math.max(r,1)).toFixed(2)+"%";
+    track.appendChild(mk);
+  }
   return track;
 }
 function ratioBar(ratio, opts){
@@ -1862,7 +2060,7 @@ function ratioBar(ratio, opts){
     const sub = document.createElement("div"); sub.className = "hbar-sub"; sub.textContent = opts.sub;
     wrap.appendChild(sub);
   }
-  term.appendChild(wrap);
+  ((opts && opts.host) || term).appendChild(wrap);   // v0.1.0: opts.host 可把同一块图形挂到钱包页等非终端容器
   return wrap;
 }
 function stackBar(parts, opts){
@@ -1932,7 +2130,7 @@ function stackBar(parts, opts){
     it.append(sw, tx); leg.appendChild(it);
   }
   wrap.appendChild(leg);
-  term.appendChild(wrap);
+  ((opts && opts.host) || term).appendChild(wrap);   // v0.1.0: opts.host 可把同一块图形挂到钱包页等非终端容器
   return wrap;
 }
 /* 类别占比行: 名称 + 细条 + 占比 + 金额(四列, 与饼图图例同一套色块/配色),
@@ -2145,13 +2343,21 @@ const COMMANDS = [
   { n:["budget"], sub:true,                        u:"budget set <金额>",                d:"只调整当前周期的预算, 例 budget set 1200" },
   { n:["budget"], sub:true,                        u:"budget default <金额>",            d:"调整默认预算(以后各期), budget reset 取消当期覆盖" },
   { n:["forecast","burn","predict"],               u:"forecast",                        d:"燃尽预测: 按日均消费预测期末结余/超支与每日可花" },
-  { n:["add","a"],                                 u:"add <金额> <类别> [备注..] [@日期] [#地点]", d:"add 50 餐饮 午餐  或  add @2025-03-05 300 购物 外套; 自动模式会填行政区地名" },
-  { n:["amort","amortize"],                        u:"amort <总价> <天数> <类别> [备注..] [@开始日期] [#地点]", d:"分摊成本: 总价按天数摊到每天, 投资只按总价记一次, 如 amort 3000 365 房租 年付 (天数可写 12月); 不自动定位" },
-  { n:["recur","repeat"],                          u:"recur <金额> <类别> <持续> <频率> [@起始日] [分摊] [备注..]", d:"经常性支出: 每<频率>付一次, 持续一段; 默认生成多笔记录, 加「分摊」记一笔分摊成本, 如 recur 100 房租 12月 月 @2027-09-01" },
+  { n:["add","a"],                                 u:"add <金额> <类别> [备注..] [@日期] [#地点] [$钱包]", d:"add 50 餐饮 午餐  或  add @2027-03-05 300 购物 外套; 自动模式会填行政区地名; $钱包 = 用哪个钱包付款(不写 = 默认钱包)" },
+  { n:["amort","amortize"],                        u:"amort <总价> <天数> <类别> [备注..] [@开始日期] [#地点] [$钱包]", d:"分摊成本: 总价按天数摊到每天, 投资只按总价记一次, 如 amort 3000 365 房租 年付 (天数可写 12月); 不自动定位; 钱包按总价一次扣款" },
+  { n:["recur","repeat"],                          u:"recur <金额> <类别> <持续> <频率> [@起始日] [分摊] [$钱包] [备注..]", d:"经常性支出: 每<频率>付一次, 持续一段; 默认生成多笔记录, 加「分摊」记一笔分摊成本, 如 recur 100 房租 12月 月 @2027-09-01" },
+  { n:["wallet","acct"],                           u:"wallet [子命令]",                d:"钱包(付款账户): 不带参数=总览; 子命令见下, 也可在「钱包」页点按钮(同样回灌命令)" },
+  { n:["wallet"], sub:true,                        u:"wallet add <名称> [初始余额] [备注..]", d:"新建钱包, 例 wallet add 微信 500; 初始余额记为第一条流水" },
+  { n:["wallet"], sub:true,                        u:"wallet in|out <钱包> <金额> [备注..]", d:"存入 / 取出(手动维护余额), 例 wallet in 微信 1000 工资  ·  wallet out 微信 200" },
+  { n:["wallet"], sub:true,                        u:"wallet mv <记录id> <钱包>",       d:"把某笔支出改为由该钱包支付(余额随之重算), 例 wallet mv 12 现金" },
+  { n:["wallet"], sub:true,                        u:"wallet use <钱包>",               d:"设为默认钱包(记支出时不写 $钱包 就用它)" },
+  { n:["wallet"], sub:true,                        u:"wallet name <钱包> <新名称>",     d:"重命名(已有记录自动跟着改, 因为记录存的是钱包 id)" },
+  { n:["wallet"], sub:true,                        u:"wallet del <钱包>",              d:"删除钱包: 它的流水一并删除, 由它支付的支出改记到默认钱包; 最后一个钱包不能删" },
+  { n:["wallet"], sub:true,                        u:"wallet log [钱包] [N]",          d:"钱包流水(存入/取出 + 支出扣款, 按日期倒序), 默认最近 20 条" },
   { n:["list","ls"],                               u:"list [类别X] [@日期/月份]",         d:"消费列表: list 餐饮 / list @2027-08-18 / list @2027-08 / list @today|@period|@month" },
   { n:["search","find"],                           u:"search <关键词|#编号|金额|@日期>",  d:"查找记录: 类别/备注/地点关键词、#编号、金额(=50 / >100 / 100-200)、@日期或月份; 多个条件同时满足" },
   { n:["del","rm","delete"],                       u:"del <id>",                        d:"删除指定记录(id 见 list)" },
-  { n:["update","edit"],                           u:"update <id> <金额> <类别> [备注..] [@日期] [#地点]", d:"修改某条记录并自动重算投资额; #- 可清除地点" },
+  { n:["update","edit"],                           u:"update <id> <金额> <类别> [备注..] [@日期] [#地点] [$钱包]", d:"修改某条记录并自动重算投资额; #- 可清除地点; $钱包 可改付款钱包" },
   { n:["place","where"],                           u:"place <id> <地点..> | -",          d:"手动设置地点(行政区名即可), 如 place 3 广东省深圳市南山区; - 清除; 不填则空着" },
   { n:["pay","invest"],                            u:"pay <id> [mm|idx|all|none]",      d:"标记投资已投状态 (货币基金 mm / 指数基金 idx)" },
   { n:["pay"], sub:true,                           u:"pay full [mm|idx]",               d:"全额投资: 一次把未投池投掉(等同界面「全额投资」按钮); 默认货币+指数都投, 别名 invest full" },
@@ -2173,6 +2379,7 @@ const COMMANDS = [
   { n:["config"], sub:true,                        u:"config set periodend <日期>",       d:"设当前周期的截止日(天数自动回算), 例 config set periodend 2027-09-02" },
   { n:["config"], sub:true,                        u:"config set budget <金额>",         d:"设置默认周期预算(各期生效), 例 config set budget 1200" },
   { n:["config"], sub:true,                        u:"config set budget <金额> now",     d:"只改当前周期的预算, 例 config set budget 1200 now (等价弹窗「应用于当期」)" },
+  { n:["config"], sub:true,                        u:"config set monthstart <1-28>",     d:"(按月模式)每期起始日, 例 config set monthstart 15; natural 回到自然月" },
   { n:["config"], sub:true,                        u:"config set invest <投资比例%>",    d:"设置投资比例(消费占比=1-投资比例), 例 config set invest 15; 范围 0~50%" },
   { n:["config"], sub:true,                        u:"config set geo auto|manual",       d:"地点模式: auto=add 时自动定位(仅行政区名); manual=全手动(不填则空)" },
   { n:["config"], sub:true,                        u:"config set geokey <你的Key>",      d:"填入自己的腾讯地图 Key(本地双击运行必填); off 清空; 代码不预置任何 key" },
@@ -2269,41 +2476,53 @@ function findDateToken(tokens){
   }
   return { tokens:out, date };
 }
-function cleanDateStr(d){ // accept YYYY-M-D variants, default today
-  const p = d ? parseYMD(d) : parseYMD(todayYMD());
-  if(!p) return null;
-  return mkYMD(p.y,p.m,p.d);
+/* @日期 → 'YYYY-MM-DD'。v0.1.0: 改成走 normDateText() 单一入口 —— 以前只校验"长得像 YYYY-MM-DD",
+   于是 `add 50 餐饮 @2027-13-40` / `@2027-02-30` 能落库, 而下次加载 normalizeRecords→repairDate
+   认定它非法, 那条记录会被当成"损坏"静默丢掉(记账变少)。现在不合法的日期当场拒绝(返回 null)。 */
+function cleanDateStr(d){
+  if(!d) return todayYMD();
+  const t = normDateText(d, "date");
+  return (t.ok && t.value) ? t.value : null;
 }
 /* v0.0.12 · 地点参数: `#地点` 与 `@日期` 一样位置无关, 只认第一个 #token。
    含空格写成 #"北京市 海淀区" (tokenize 会把引号内空格并进同一个 token); `#-`/`#off` = 清除。
    转义过的备注 token (\#… / \@…) 不参与参数识别, 原样透传。
    拆成一次调用, 让 add / amort / update 三条命令共用同一套参数口径。 */
-function findPlaceToken(tokens){
-  const out=[]; let place=null;
+/* v0.1.0: #地点 与 $钱包 都是"位置无关的带前缀标记", 解析逻辑只有下面这一份(不再各写一遍循环)。 */
+function findMarkedToken(tokens, mark){
+  const out=[]; let value=null;
   for(const tk of tokens){
     if(escapedArg(tk)){ out.push(tk); continue; }
-    if(tk[0]==="#" && tk.length>1 && place===null){ place = tk.slice(1); }
+    if(tk[0]===mark && tk.length>1 && value===null){ value = tk.slice(1); }
     else out.push(tk);
   }
-  return { tokens:out, place };
+  return { tokens:out, value };
 }
+function findPlaceToken(tokens){ return findMarkedToken(tokens, "#"); }
+function findWalletToken(tokens){ return findMarkedToken(tokens, "$"); }
 function splitRecordArgs(tokens){
-  const a = findDateToken(tokens), b = findPlaceToken(a.tokens);
-  return { tokens:b.tokens.map(unescapeArg), date:a.date, place:b.place };
+  const a = findDateToken(tokens), b = findPlaceToken(a.tokens), c = findWalletToken(b.tokens);
+  return { tokens:c.tokens.map(unescapeArg), date:a.date, place:b.value, wallet:c.value };
 }
 /* 注意 tokenize 遇到引号会重置当前 token, 所以 # 必须放在引号**里面**: "#北京市 海淀区" */
 function quotePlace(p){ return quote("#"+p); }
+/* $钱包 同理: $"招商银行 储蓄卡"(前缀在引号外, 与 #地点 完全同一套写法) */
+function quoteWallet(w){ return "$"+quote(w); }
 
 function runCommand(raw){
   raw = raw.trim();
   if(!raw) return;
   if(raw && raw!==history[history.length-1]) history.push(raw); hIdx=-1;
+  /* v0.1.0 三页外壳: 命令输出永远进主页终端; 当前在「钱包 / 设置」页时, 本次新增的终端行
+     会镜像到该页底部的回显条, 数据确实变了再把设置页表单回填成已保存值(见 afterPageCommand)。 */
+  const onPage = (currentPage!=="home");
+  const before0 = onPage ? snapshotState() : null, lines0 = onPage ? term.children.length : 0;
   echoCommand(raw);
   const {cmd, tokens} = parseCmd(raw);
   try{
     // 用主名判断: 否则 `u`(undo 的别名)会走 mutate 包一层, 撤销后又被当成"新改动"压栈并把 redo 清空
     const c = canonicalCmd(cmd);
-    if(c==="undo" || c==="redo"){ dispatch(cmd, tokens); return; }   // applyState() 内部已 commit
+    if(c==="undo" || c==="redo"){ dispatch(cmd, tokens); if(onPage) afterPageCommand(before0, lines0); return; }   // applyState() 内部已 commit
     pendingCommit = false;
     mutate(()=>dispatch(cmd, tokens));
     commitIfDirty();     // 唯一出口: 数据确实变了才 落盘 + 刷新(H4)
@@ -2311,6 +2530,7 @@ function runCommand(raw){
     line([{t:"[ERR] "+ (e && e.message ? e.message : e), c:COLOR.red}]);
     if(e && e.stack) console.error(e);
   }
+  if(onPage) afterPageCommand(before0, lines0);
 }
 
 /* dispatch main logic: 只按"主名"分派, 别名在入口统一解析(见上面的 COMMANDS 登记表)。
@@ -2339,6 +2559,7 @@ function dispatch(cmd, tokens){
     case "undo":     undo(); break;
     case "redo":     redo(); break;
     case "config":   doConfig(tokens); break;
+    case "wallet":   doWallet(tokens); break;
     default:
       line([{t:"未知命令: "+cmd+"。输入 help 查看用法。", c:COLOR.yellow}]);
   }
@@ -2369,7 +2590,7 @@ function setPeriodBudget(n){
 }
 /* ---------------------- 周期设置的唯一入口 (v0.0.15) ----------------------
    以前周期只能从命令行改(`set period` / `set periodstart`), 界面上的「配置」页看不到也改不了;
-   现在命令与「配置 ▾ → 配置周期」弹窗共用下面这几个 setter, 天数(lengthDays)一律由起止日期推导:
+   现在命令、设置页「周期持续时间」卡与「配置周期」弹窗共用下面这几个 setter, 天数(lengthDays)一律由起止日期推导:
      · periodSetDays(n)         → 滚动 N 天(N 只接受 2~90, 快捷写法)
      · periodSetStart(起)       → 只移动锚点, 天数不变 → 截止日自动顺延
      · periodSetEnd(止)         → 以当前周期的起点为锚, 天数 = 止−起+1 自动回算
@@ -2469,12 +2690,13 @@ function configUsage(){
   line([{t:"      config set period <起> <止>         直接指定本期起止日, 天数自动算出", c:COLOR.yellow}]);
   line([{t:"      config set periodstart <日期>       设滚动周期起点(锚点)", c:COLOR.yellow}]);
   line([{t:"      config set periodend <日期>         设本期截止日(天数自动回算)", c:COLOR.yellow}]);
+  line([{t:"      config set monthstart <1-28>       (按月模式)每期起始日; natural = 自然月", c:COLOR.yellow}]);
   line([{t:"      config set budget <金额> [now]    设默认预算 / 加 now 只改当前周期", c:COLOR.yellow}]);
   line([{t:"      config set invest <投资比例%>      如 config set invest 15 (消费占比=85%)", c:COLOR.yellow}]);
   line([{t:"      config set consume|ratio|share <消费占比>   如 config set ratio 0.85 (与 set ratio 同解释)", c:COLOR.yellow}]);
   line([{t:"      config set geo auto|manual        地点: 自动填充地址 / 全手动(不填则空)", c:COLOR.yellow}]);
   line([{t:"      config set geokey <你的Key>|off   腾讯地图 Key; off 清空(代码不预置 key)", c:COLOR.yellow}]);
-  line([{t:"      (每日额度用 set daily; 类别余额用 set category —— 它们不在 config 下)", c:COLOR.gray}]);
+  line([{t:"      (每日额度用 set daily; 类别余额用 set category; 钱包用 wallet —— 它们不在 config 下)", c:COLOR.gray}]);
 }
 function doConfig(tokens){
   const sub = (tokens[0]||"").toLowerCase();
@@ -2512,6 +2734,17 @@ function doConfig(tokens){
     if(!tokens[2]){ line([{t:"用法: config set periodstart <YYYY-MM-DD>   例 config set periodstart 2027-08-04", c:COLOR.yellow}]); return; }
     const r = periodSetStart(tokens[2]);
     if(!r.ok){ line([{t:periodErrText(r), c:COLOR.yellow}]); return; }
+    showSettings(); return;
+  }
+  /* v0.1.0: 月起始日收进 config(与周期其它三项同一入口, 设置页「周期持续时间」卡也回灌这条);
+     旧写法 set monthstart 仍兼容 —— 两者共用 monthStartSet() 校验。 */
+  if(what==="monthstart"){
+    const d = monthStartSet(tokens[2]);
+    if(d==null || tokens.length>3){
+      line([{t:"用法: config set monthstart <1-28>   1 或 natural = 自然月; 例 config set monthstart 15", c:COLOR.yellow}]);
+      return;
+    }
+    state.settings.monthStart = d; state.settings.periodMode = "month"; ensureEpoch();
     showSettings(); return;
   }
   if(what==="periodend"||what==="periodstop"){
@@ -2586,6 +2819,14 @@ function doConfig(tokens){
 
 
 /* ------------------------------- set ----------------------------------- */
+/* 月起始日的唯一校验入口(v0.1.0): 1 / natural / 自然月 = 自然月; 其余必须是 1~28 的整数 */
+function monthStartSet(raw){
+  const v = String(raw==null?"":raw).toLowerCase();
+  let d;
+  if(v==="natural"||v==="自然月"||v==="1") d=1;
+  else d = numeric(v);
+  return (d==null || !Number.isInteger(d) || d<1 || d>28) ? null : d;
+}
 function doSet(tokens){
   const sub = (tokens[0]||"").toLowerCase();
   if(sub==="category" || sub==="cat" || sub==="categories"){
@@ -2599,11 +2840,9 @@ function doSet(tokens){
           {t:"  (各期生效; 只想改本期可用 budget set <金额>)",c:COLOR.gray}]);
     showForecastLine();
   } else if(sub==="monthstart"){
-    const v = (tokens[1]||"").toLowerCase();
-    let d;
-    if(v==="natural"||v==="自然月"||v==="1") d=1;
-    else d = numeric(tokens[1]);
-    if(d==null || d<1 || d>28){ line([{t:"用法: set monthstart <1-28>  (1=自然月, 例 15 表示每月15日~下月14日)",c:COLOR.yellow}]); return; }
+    /* v0.1.0: 校验抽成 monthStartSet(), 与 config set monthstart 共用 */
+    const d = monthStartSet(tokens[1]);
+    if(d==null){ line([{t:"用法: set monthstart <1-28>  (1=自然月, 例 15 表示每月15日~下月14日)",c:COLOR.yellow}]); return; }
     state.settings.monthStart = d; state.settings.periodMode = "month"; ensureEpoch();
     const p = currentPeriod();
     line([{t:"✓ 切换为按月周期, 起始日 "+(d===1?"自然月":"每月 "+d+" 日")+"。当前周期: ",c:COLOR.green},{t:p.label,c:COLOR.cyan}]);
@@ -2746,6 +2985,14 @@ function showBudget(){
   ], 0);
   kvRow("已占用(含应投)", "¥"+money(st.usedUnits), 0, bar.color, true);
   kvRow("累计可用余额(含结转)", "¥"+money(bal), 0, bal<0?COLOR.red:COLOR.green, true);
+  /* v0.1.0 钱包 ↔ 预算对照: 钱包余额是手动维护的"手里有多少", 只在这里并排给出, 不参与占用/结转 */
+  const wcmp = walletBudgetCompare();
+  kvRow("钱包余额合计", [
+    {t:"¥"+money(wcmp.total), c:wcmp.total<0?COLOR.red:COLOR.green},
+    {t:"   ("+state.wallets.length+" 个钱包 · 手动维护)", c:COLOR.gray},
+    {t:"   ↔ 可用余额 ¥"+money(bal), c:COLOR.cyan},
+    {t:"   钱包"+(wcmp.diff>=0 ? "多" : "少")+" ¥"+money(Math.abs(wcmp.diff)), c:COLOR.gray}
+  ], 0);
   kvRow("本期结余/透支", [
     {t:(carry>0?"透支 -":"可结转 +")+money(Math.abs(carry)), c:carry>0?COLOR.red:COLOR.green},
     {t:"   (发放 ¥"+money(b)+" − 占用 ¥"+money(st.usedUnits)+")", c:COLOR.gray}
@@ -3196,7 +3443,7 @@ let geoHintShown = false;
 function geoHintOnce(){
   if(geoHintShown) return;
   geoHintShown = true;
-  line([{t:"   ℹ 自动定位未启用: 在「地点 ▾ → 地点设置」填入自己的腾讯地图 Key 后会自动重新定位; 或切到全手动。", c:COLOR.gray}]);
+  line([{t:"   ℹ 自动定位未启用: 在顶部「设置」页的「地点与地图 Key」卡片填入自己的腾讯地图 Key 后会自动重新定位; 或切到全手动。", c:COLOR.gray}]);
 }
 /* P1 B-10: 失败不再 .catch(()=>{}) 全吞 —— badge title 记具体原因、终端按原因一次性提示、
    console.warn 每次留痕; 用户能区分「拒绝授权 / 超时 / Key 无效 / 无网 / 无行政区结果」。 */
@@ -3218,7 +3465,7 @@ function geoWarnOnce(err){
   try{ console.warn("[geo] "+text); }catch(e){}
   if(geoWarned.has(text)) return text;
   geoWarned.add(text);
-  line([{t:"   ⚠ 自动定位失败: "+text+"  (「地点 ▾ → 地点设置」可查 Key / 切全手动, 点击左上角图标重试)", c:COLOR.yellow}]);
+  line([{t:"   ⚠ 自动定位失败: "+text+"  (顶部「设置」页 →「地点与地图 Key」可查 Key / 切全手动, 点击左上角图标重试)", c:COLOR.yellow}]);
   return text;
 }
 /* 每次打开调用一次(boot); 切模式/填 Key/点 badge 时 force 补一次。记账时绝不发起定位。 */
@@ -3259,24 +3506,24 @@ function primeGeoLocation(force){
 function currentGeoPlace(){
   return (state && state.settings.geoMode==="auto") ? geoCache.place : "";
 }
-/* ---------- 主页「地点 ▾」与设置弹窗 (UI 一律回灌命令, H5 双通道对称) ---------- */
+/* ---------- 设置页「地点与地图 Key」卡片 (UI 一律回灌命令, H5 双通道对称) ----------
+   v0.1.0: 主页「地点 ▾」下拉已移除(同「配置 ▾」, 功能在设置页), 本函数只留左上角 badge 的状态同步。 */
 const GEO_COMMANDS = { auto:"config set geo auto", manual:"config set geo manual" };
 function refreshGeoUI(){
-  const b = document.getElementById("btnGeoDd");
-  if(b) b.textContent = "地点: "+geoModeLabel()+" ▾";
-  const h = document.getElementById("geoDdHint");
-  if(h) h.textContent = "当前: "+geoModeLabel()+" · "+(state && state.settings.geoKey ? "Key 已配置" : "未配置 Key");
   // 全手动时左上角不许残留上次定位的区名
   if(state && state.settings.geoMode==="manual" && geoStatus.kind!=="off") setGeoStatus("off","全手动");
 }
-function openGeoModal(){
+function fillGeoModal(){
   const k = state.settings.geoKey;
   const el = document.getElementById("g_key");
   el.value = "";                              // 不回显明文 key
   el.placeholder = k ? ("已配置 ("+maskGeoKey(k)+")，留空则不修改") : "请在腾讯位置服务开放平台申请自己的 key 并填入";
   updateGeoHint();
+}
+function openGeoModal(){
+  fillGeoModal();
   openOverlay("geoWrap");
-  el.focus();
+  document.getElementById("g_key").focus();
 }
 function closeGeoModal(){ document.getElementById("geoWrap").classList.remove("open"); }
 function updateGeoHint(){
@@ -3326,8 +3573,8 @@ function validateCategory(cat){
   return c;
 }
 function doAdd(tokens){
-  if(!tokens.length){ line([{t:"用法: add <金额> <类别> [备注..] [@日期] [#地点]   例 add 50 餐饮 午餐",c:COLOR.yellow}]); return; }
-  const {tokens:rest, date:rawDate, place:rawPlace} = splitRecordArgs(tokens);
+  if(!tokens.length){ line([{t:"用法: add <金额> <类别> [备注..] [@日期] [#地点] [$钱包]   例 add 50 餐饮 午餐",c:COLOR.yellow}]); return; }
+  const {tokens:rest, date:rawDate, place:rawPlace, wallet:rawWallet} = splitRecordArgs(tokens);
   const amt = numeric(rest[0]);
   if(amt==null||amt<=0){ line([{t:"金额无效。例 add 50 餐饮 午餐",c:COLOR.yellow}]); return; }
   const cat = validateCategory(rest[1]);
@@ -3335,7 +3582,10 @@ function doAdd(tokens){
   const note = rest.slice(2).join(" ");
   const date = cleanDateStr(rawDate);
   if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
+  const wid = pickWalletId(rawWallet);   // v0.1.0: 钱包不存在则整笔不入账(校验在落账之前)
+  if(wid==null) return;
   const rec = makeRecord(amt, cat, note, date);
+  rec.wallet = wid;
   if(rawPlace!=null) rec.place = (rawPlace==="-"||rawPlace==="off") ? "" : normalizePlace(rawPlace);
   else rec.place = normalizePlace(currentGeoPlace());   // 启动预热缓存: 同步写入, 随命令一次落盘
   state.records.push(rec);
@@ -3344,7 +3594,8 @@ function doAdd(tokens){
   const bar = progressBar(st.ratio);
   line([{t:"✓ 已记入 #",c:COLOR.green},{t:rec.id,c:COLOR.pure,cls:"hl"},
         {t:"  "+cat+" ",c:catColor(cat)},
-        {t:"¥"+money(rec.amount),c:COLOR.pure}, {t:"  ("+date+")",c:COLOR.gray}]);
+        {t:"¥"+money(rec.amount),c:COLOR.pure}, {t:"  ("+date+")",c:COLOR.gray},
+        {t:"  ["+walletNameOf(wid)+"]",c:COLOR.gray}]);
   line([{t:"  占用预算 ",c:COLOR.gray},{t:"¥"+money(rec.amount/consumeShare()),c:COLOR.white},
         {t:"  (消费÷"+consumePct()+"%)  应投货币 ",c:COLOR.gray},{t:"¥"+money(rec.mm),c:COLOR.cyan},
         {t:"  + 应投指数 ",c:COLOR.gray},{t:"¥"+money(rec.idx),c:COLOR.index},
@@ -3370,6 +3621,7 @@ function makeRecord(amount, category, note, date, amortDays){
   const daily = days>1 ? r2(total/days) : total;
   const inv = investOf(total);
   return { id:state.seq, amount:daily, category, note, place:"", date,
+           wallet:0,                      // v0.1.0 付款钱包 id(由调用方在落账前指定; 0 = 未指定)
            amortDays:days, amortTotal:total,
            mm:inv.mm, idx:inv.idx, moneyInv:0, indexInv:0, created: todayYMD() };
 }
@@ -3398,10 +3650,10 @@ function parseDaysToken(t){
   }
   return null;
 }
-function amortUsage(){ return "用法: amort <总价> <天数> <类别> [备注..] [@开始日期] [#地点]   例 amort 3000 365 房租 年付  或 amort 600 12月 会员费"; }
+function amortUsage(){ return "用法: amort <总价> <天数> <类别> [备注..] [@开始日期] [#地点] [$钱包]   例 amort 3000 365 房租 年付  或 amort 600 12月 会员费"; }
 function doAmort(tokens){
   if(tokens.length < 3){ line([{t:amortUsage(),c:COLOR.yellow}]); return; }
-  const {tokens:rest, date:rawDate, place:rawPlace} = splitRecordArgs(tokens);
+  const {tokens:rest, date:rawDate, place:rawPlace, wallet:rawWallet} = splitRecordArgs(tokens);
   const total = numeric(rest[0]);
   if(total==null || total<=0){ line([{t:"总价无效。例 amort 3000 365 房租 年付",c:COLOR.yellow}]); return; }
   const d = parseDaysToken(rest[1]);
@@ -3416,14 +3668,18 @@ function doAmort(tokens){
   const note = rest.slice(3).join(" ");
   const date = cleanDateStr(rawDate);
   if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
+  const wid = pickWalletId(rawWallet);   // v0.1.0: 钱包按**总价**一次扣款(不是每天扣)
+  if(wid==null) return;
   const rec = makeRecord(total, cat, note, date, d.days);
+  rec.wallet = wid;
   if(rawPlace!=null) rec.place = (rawPlace==="-"||rawPlace==="off") ? "" : normalizePlace(rawPlace);
   state.records.push(rec);
   if(rec.place) line(geoPlaceSegs(rec.place, "   ", " 地点 "));
   const end = addDaysYMD(date, rec.amortDays-1);
   line([{t:"✓ 已记入分摊成本 #",c:COLOR.green},{t:rec.id,c:COLOR.pure,cls:"hl"},
         {t:"  "+cat+" ",c:catColor(cat)},
-        {t:"总价 ¥"+money(recTotal(rec)),c:COLOR.pure}, {t:"  ("+date+" 起)",c:COLOR.gray}]);
+        {t:"总价 ¥"+money(recTotal(rec)),c:COLOR.pure}, {t:"  ("+date+" 起)",c:COLOR.gray},
+        {t:"  ["+walletNameOf(wid)+" 按总价付款]",c:COLOR.gray}]);
   line([{t:"  分摊 ",c:COLOR.gray},
         {t:rec.amortDays+" 天",c:COLOR.cyan},
         {t:" → ",c:COLOR.gray},
@@ -3552,7 +3808,7 @@ function recurUsage(){
 }
 function doRecur(tokens){
   if(tokens.length < 4){ line([{t:recurUsage(),c:COLOR.yellow}]); return; }
-  const {tokens:rest, date:rawDate, place:rawPlace} = splitRecordArgs(tokens);
+  const {tokens:rest, date:rawDate, place:rawPlace, wallet:rawWallet} = splitRecordArgs(tokens);
   const amt = numeric(rest[0]);
   const cat = validateCategory(rest[1]);
   if(!cat) return;
@@ -3568,6 +3824,8 @@ function doRecur(tokens){
   const date = cleanDateStr(rawDate);
   if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
   if(amt==null || !(r2(amt)>0)){ line([{t:"金额无效。例 recur 100 房租 12月 月 @2027-09-01",c:COLOR.yellow}]); return; }
+  const wid = pickWalletId(rawWallet);   // v0.1.0: 整批记录由同一个钱包付款; 钱包不存在则一笔都不生成
+  if(wid==null) return;
   const plan = recurPlan({ amount:amt, durValue:span.n, durUnit:span.unit, freq, start:date, split });
   if(!plan.ok){ line([{t:plan.msg,c:COLOR.yellow}]); return; }
   const place = (rawPlace==null) ? "" : ((rawPlace==="-"||rawPlace==="off") ? "" : normalizePlace(rawPlace));
@@ -3575,10 +3833,12 @@ function doRecur(tokens){
   if(plan.split){
     const rec = makeRecord(plan.total, cat, note, plan.start, plan.days);
     rec.place = place;
+    rec.wallet = wid;
     state.records.push(rec);
     line([{t:"✓ 已记入经常性支出(分摊成本) #",c:COLOR.green},{t:rec.id,c:COLOR.pure,cls:"hl"},
           {t:"  "+cat+" ",c:catColor(cat)},{t:"总价 ¥"+money(recTotal(rec)),c:COLOR.pure},
-          {t:"   ("+recurEveryLabel(plan.freq)+" ¥"+money(plan.amount)+" × "+plan.count+" 次)",c:COLOR.gray}]);
+          {t:"   ("+recurEveryLabel(plan.freq)+" ¥"+money(plan.amount)+" × "+plan.count+" 次)",c:COLOR.gray},
+          {t:"  ["+walletNameOf(wid)+" 按总价付款]",c:COLOR.gray}]);
     line([{t:"  期间 "+plan.start+" ~ "+plan.end+" ("+plan.days+" 天)",c:COLOR.gray},
           {t:"  →  每天 ¥"+money(rec.amount),c:COLOR.pure,cls:"hl"},
           {t:"   投资按总价记一次: 货币 ¥"+money(rec.mm)+" + 指数 ¥"+money(rec.idx),c:COLOR.gray}]);
@@ -3587,6 +3847,7 @@ function doRecur(tokens){
     for(const d of plan.dates){
       const rec = makeRecord(plan.amount, cat, note, d);
       rec.place = place;
+      rec.wallet = wid;
       state.records.push(rec);
       made.push(rec);
     }
@@ -3595,7 +3856,8 @@ function doRecur(tokens){
     line([{t:"✓ 已记入 "+catTxt+"经常性支出 ",c:COLOR.green},
           {t:cat+" ",c:catColor(cat)},
           {t:recurEveryLabel(plan.freq)+" ¥"+money(plan.amount),c:COLOR.pure},
-          {t:"   期间 "+plan.start+" ~ "+plan.end+" ("+plan.days+" 天)",c:COLOR.gray}]);
+          {t:"   期间 "+plan.start+" ~ "+plan.end+" ("+plan.days+" 天)",c:COLOR.gray},
+          {t:"  ["+walletNameOf(wid)+" 付款]",c:COLOR.gray}]);
     line([{t:"  编号 #"+made[0].id+" ~ #"+made[made.length-1].id+"   合计 ¥"+money(plan.total),c:COLOR.pure},
           {t:"   应投货币 ¥"+money(r2(mm))+" + 指数 ¥"+money(r2(idx)),c:COLOR.gray}]);
     const shown = plan.dates.slice(0,6).join(", ");
@@ -3609,6 +3871,275 @@ function doRecur(tokens){
     line([{t:"⚠ 本期占用 ",c:COLOR.yellow},{t:"¥"+money(st.usedUnits),c:COLOR.yellow,cls:"glow"},
           {t:" / 发放 ¥"+money(st.B),c:COLOR.white},{t:"   "+aw.t,c:aw.c,cls:"glow"}]);
   }
+}
+
+/* ============================ wallet (钱包, v0.1.0) ============================
+   钱包 = 付款账户, 余额**手动维护**(存入 / 取出), 记支出时选一个钱包付款 —— 钱包页与命令行同一通道。
+   口径(三个数字, 三把尺子, 不要混用):
+     · 余额   = Σ 手动流水(存入 + / 取出 −) − Σ 由它支付的支出(**总价**, 付款口径), 只算**截至今天**的;
+                不参与预算的发放 / 占用 / 应投 / 结转, 与预算各自独立 —— 钱包页只把两者并排给出对照。
+     · 本期支出 = 消费口径(与 budget 的「本期消费」同一把尺子: 分摊成本按落在本期的天数计),
+                所以各钱包本期支出之和 = 本期消费(未指定钱包的旧记录单列)。
+     · 支出对钱包的扣款 = recTotal(): 分摊成本的钱是记账当天一次付掉的, 不能拿"每天金额" amount 去减。
+   单一入口: walletRows()(总览/钱包页/命令共用)、walletBalance()、walletLedger()。
+   记录上 rec.wallet 存钱包 **id**(重命名不影响已有记录); 0 = 未指定(钱包功能上线前的旧记录)。 */
+function walletById(id){ return state.wallets.find(w=>w.id===id) || null; }
+function walletNameOf(id){ const w = walletById(id); return w ? w.name : ""; }
+function defaultWallet(){
+  /* 防御: 内存里的 wallets 不是数组, 只可能是外部脚本直接改写了 state —— 就地修复, 不让后续读取抛错 */
+  if(!Array.isArray(state.wallets)) ensureWallets();
+  return walletById(state.settings.walletDefault) || state.wallets[0];
+}
+function findWalletByName(name){
+  const n = cleanWalletName(name);
+  return n ? (state.wallets.find(w=>w.name===n) || null) : null;
+}
+function nextWalletId(){ return state.wallets.reduce((m,w)=>Math.max(m,w.id),0) + 1; }
+/* `$钱包` 标记 → 钱包 id。没写 = 默认钱包; 写了但找不到 → 提示并返回 null,
+   调用方必须**在落账之前**中止(不得静默换成默认钱包: 那会从错误的账户扣钱)。 */
+function pickWalletId(raw){
+  if(raw==null) return defaultWallet().id;
+  const w = findWalletByName(raw);
+  if(!w){
+    line([{t:"未找到钱包「"+String(raw)+"」。用 wallet 查看已有钱包, 或 wallet add <名称> 新建。", c:COLOR.yellow}]);
+    return null;
+  }
+  return w.id;
+}
+/* 手动流水合计(存入为正、取出为负), 只算截至 upTo 的 */
+function walletOpsSum(id, upTo){
+  return r2(state.wops.reduce((s,o)=> (o.wallet===id && o.date<=upTo) ? s+o.amount : s, 0));
+}
+/* 由该钱包支付的支出合计(付款口径 = 总价), 只算截至 upTo 已发生的 —— 未来日期的支出不提前扣款 */
+function walletPaidSum(id, upTo){
+  return r2(state.records.reduce((s,r)=> (r.wallet===id && r.date<=upTo) ? s+recTotal(r) : s, 0));
+}
+function walletBalance(id){
+  const t = todayYMD();
+  return r2(walletOpsSum(id,t) - walletPaidSum(id,t));
+}
+/* 当前周期每个钱包的已支出(消费口径): 与 collectWindow 同一行筛选 / 同一金额口径 */
+function walletSpendMap(p){
+  const win = collectWindow(p.start, p.end), m = new Map();
+  for(const w of state.wallets) m.set(w.id, 0);
+  const groups = new Map();
+  for(const r of win.rows){
+    if(!groups.has(r.wallet)) groups.set(r.wallet, []);
+    groups.get(r.wallet).push(r);
+  }
+  for(const [id, rows] of groups) m.set(id, sumRange(rows, p.start, p.end).total);
+  return { map:m, total:win.total };
+}
+/* 钱包总览的**唯一数据入口**(wallet 命令 / 钱包页 / 顶栏对照都从这里取数) */
+function walletRows(p){
+  p = p || currentPeriod();
+  const sm = walletSpendMap(p), defId = defaultWallet().id;
+  const rows = state.wallets.map(w=>{
+    const spent = sm.map.get(w.id) || 0;
+    return { w, id:w.id, name:w.name, isDefault:(w.id===defId), balance:walletBalance(w.id), spent,
+             share:(sm.total>0 ? spent/sm.total : 0),
+             pays: state.records.filter(r=>r.wallet===w.id).length,
+             ops:  state.wops.filter(o=>o.wallet===w.id).length };
+  });
+  return { rows, periodSpend:sm.total, unassigned:(sm.map.get(0)||0) };
+}
+/* 钱包 ↔ 预算 的对照(只读派生, 两边口径互不影响):
+   钱包余额合计 = 手里实际有多少; 可用余额(含结转) = 预算口径下按计划还能花多少。 */
+function walletBudgetCompare(){
+  const total = r2(state.wallets.reduce((s,w)=>s+walletBalance(w.id), 0));
+  const bal = availableBalance();
+  return { total, bal, diff:r2(total - bal) };
+}
+/* 钱包流水(存入 / 取出 / 支出扣款 合并, 按日期倒序)。id 省略 = 全部钱包; limit 省略 = 20 */
+function walletLedger(id, limit){
+  const out = [];
+  state.wops.forEach((o,i)=>{
+    if(id!=null && o.wallet!==id) return;
+    out.push({ date:o.date, wallet:o.wallet, amount:o.amount, kind:"op", note:o.note, order:i });
+  });
+  state.records.forEach((r,i)=>{
+    if(id!=null ? r.wallet!==id : !(r.wallet>0)) return;
+    out.push({ date:r.date, wallet:r.wallet, amount:-recTotal(r), kind:"pay",
+               note:r.category+(r.note?" "+r.note:""), order:i });
+  });
+  const n = (Number.isInteger(limit) && limit>0) ? limit : 20;
+  out.sort((a,b)=> a.date<b.date ? 1 : (a.date>b.date ? -1 : b.order-a.order));
+  return out.slice(0, n);
+}
+function walletUsage(){
+  line([{t:"用法: wallet                         钱包总览(余额 / 本期支出 / 与预算对照); wallet <钱包> 看单个", c:COLOR.yellow}]);
+  line([{t:"      wallet add <名称> [初始金额] [备注]   新建钱包, 例 wallet add 微信 500", c:COLOR.yellow}]);
+  line([{t:"      wallet in|out <钱包> <金额> [备注..]  存入 / 取出(手动维护余额), 例 wallet in 微信 1000 工资", c:COLOR.yellow}]);
+  line([{t:"      wallet mv <记录id> <钱包>            把某笔支出改为由该钱包支付, 例 wallet mv 12 现金", c:COLOR.yellow}]);
+  line([{t:"      wallet use <钱包>  ·  wallet name <钱包> <新名称>  ·  wallet del <钱包>", c:COLOR.yellow}]);
+  line([{t:"      wallet log [钱包] [N]                钱包流水(最近 N 条, 默认 20)", c:COLOR.yellow}]);
+  line([{t:"      记支出时指定付款钱包: add 50 餐饮 午餐 $微信   (不写 = 默认钱包; 名字带空格写 $\"招商 卡\")", c:COLOR.gray}]);
+}
+function printWallets(onlyId){
+  const p = currentPeriod();
+  const { rows, periodSpend, unassigned } = walletRows(p);
+  const cmp = walletBudgetCompare();
+  blank();
+  sectionHead("钱包", rows.length+" 个 · 默认: "+defaultWallet().name+" · "+p.label);
+  let tb = 0, ts = 0;
+  for(const r of rows){
+    if(onlyId!=null && r.id!==onlyId) continue;
+    tb = r2(tb + r.balance); ts = r2(ts + r.spent);
+    kvRow((r.isDefault ? r.name+" ★" : r.name), [
+      {t:"余额 ¥"+money(r.balance), c:r.balance<0?COLOR.red:COLOR.green, cls:r.balance<0?"glow":""},
+      {t:"   本期支出 ¥"+money(r.spent)+(periodSpend>0 ? (" ("+(r.share*100).toFixed(1)+"%)") : ""), c:COLOR.white},
+      {t:"   "+r.pays+" 笔支出 · "+r.ops+" 条流水", c:COLOR.gray}
+    ], 0);
+  }
+  kvRow("合计", [
+    {t:"余额 ¥"+money(tb), c:tb<0?COLOR.red:COLOR.green},
+    {t:"   本期支出 ¥"+money(ts), c:COLOR.white}
+  ], 0);
+  kvRow("与预算对照", [
+    {t:"钱包余额 ¥"+money(cmp.total), c:COLOR.green},
+    {t:"  ↔  可用余额(含结转) ¥"+money(cmp.bal), c:COLOR.cyan},
+    {t:"   "+(cmp.diff>=0 ? "钱包比预算可用多 ¥" : "钱包比预算可用少 ¥")+money(Math.abs(cmp.diff)), c:cmp.diff<0?COLOR.yellow:COLOR.gray}
+  ], 0);
+  line([{t:"  口径: 余额 = 存入 − 取出 − 已付支出(按总价, 截至今天), 手动维护, 不参与预算的发放/占用/结转;", c:COLOR.gray}]);
+  line([{t:"        本期支出与 budget 的「本期消费」同口径(分摊按落在本期的天数计)"
+           +(unassigned>0 ? ("; 其中 ¥"+money(unassigned)+" 来自未指定钱包的旧记录") : "")
+           +"。★ = 默认钱包(不写 $钱包 时用它付款)。", c:COLOR.gray}]);
+  blank();
+}
+function printWalletLog(id, limit){
+  const items = walletLedger(id, limit);
+  blank();
+  sectionHead("钱包流水 · "+(id!=null ? (walletNameOf(id)||"?") : "全部"), "最近 "+items.length+" 条 · 扣款按总价");
+  if(!items.length){ line([{t:"  (暂无流水)  wallet in <钱包> <金额> 存入, 或记一笔支出", c:COLOR.gray}]); blank(); return; }
+  for(const it of items){
+    const plus = it.amount>0;
+    line([{t:"  "+it.date+"  ", c:COLOR.gray},
+          {t:(walletNameOf(it.wallet)||"—").padEnd(6," "), c:COLOR.white},
+          {t:(plus ? "+¥" : "−¥")+money(Math.abs(it.amount)).padStart(10," "), c:plus?COLOR.green:(it.kind==="pay"?COLOR.orange:COLOR.red)},
+          {t:"  "+(it.kind==="pay" ? "支出 " : (plus ? "存入 " : "取出 ")), c:COLOR.gray},
+          {t:it.note||"", c:COLOR.gray}]);
+  }
+  blank();
+}
+function walletAdd(rest){
+  const usage = "用法: wallet add <名称> [初始金额] [备注..]   例 wallet add 微信 500";
+  const name = cleanWalletName(rest[0]);
+  if(!name){ line([{t:"钱包名称不能为空, 且不超过 "+WALLET_NAME_MAX+" 个字符(含空格请加引号)。"+usage, c:COLOR.yellow}]); return; }
+  if(findWalletByName(name)){ line([{t:"已有同名钱包「"+name+"」, 请换一个名字(或先用 wallet name 重命名)。", c:COLOR.yellow}]); return; }
+  let init = 0, note = "";
+  if(rest.length>1){
+    const n = numeric(rest[1]);
+    init = (n!=null && n>=0) ? r2(n) : NaN;
+    if(!isFinite(init)){ line([{t:"初始金额无效(需为 ≥ 0 的数字, 不填 = 0)。"+usage, c:COLOR.yellow}]); return; }
+    note = rest.slice(2).map(unescapeArg).join(" ");   // 备注按原意入库(弹窗回灌的 \# / \@ 前缀在这里还原)
+  }
+  const id = nextWalletId();
+  state.wallets.push({ id, name });
+  if(init>0) state.wops.push({ wallet:id, amount:init, date:todayYMD(), note: note || "初始余额", created:todayYMD() });  line([{t:"✓ 已新建钱包 ",c:COLOR.green},{t:name,c:COLOR.pure,cls:"hl"},{t:"  (id "+id+")",c:COLOR.gray},
+        {t:init>0 ? ("  初始余额 ¥"+money(init)) : "  余额 ¥0.00 (用 wallet in 存入)",c:COLOR.white}]);
+  line([{t:"  记支出时写 $"+(name.indexOf(" ")>=0 ? '"'+name+'"' : name)+" 指定由它付款; ",c:COLOR.gray},
+        {t:"wallet use "+(name.indexOf(" ")>=0 ? '"'+name+'"' : name),c:COLOR.yellow},{t:" 可设为默认钱包。",c:COLOR.gray}]);
+}
+function walletInOut(rest, sign){
+  const word = sign>0 ? "in" : "out", verb = sign>0 ? "存入" : "取出";
+  const usage = "用法: wallet "+word+" <钱包> <金额> [备注..] [@日期]   例 wallet "+word+" 微信 500 工资";
+  const a = findDateToken(rest);
+  const w = findWalletByName(a.tokens[0]);
+  if(!w){ line([{t:"未找到钱包「"+String(a.tokens[0]||"")+"」。"+usage, c:COLOR.yellow}]); return; }
+  const n = parseAmount(a.tokens[1]);
+  if(n==null){ line([{t:"金额无效(需为 ≥ ¥0.01 的数字)。"+usage, c:COLOR.yellow}]); return; }
+  const date = cleanDateStr(a.date);
+  if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
+  const note = a.tokens.slice(2).map(unescapeArg).join(" ");
+  state.wops.push({ wallet:w.id, amount:sign*n, date, note, created:todayYMD() });
+  const bal = walletBalance(w.id);
+  line([{t:"✓ "+verb+" ",c:COLOR.green},{t:w.name+"  ",c:COLOR.pure},
+        {t:(sign>0 ? "+¥" : "−¥")+money(n)+(note ? "  "+note : ""),c:COLOR.white},
+        {t:"   余额 ¥"+money(bal), c:bal<0?COLOR.red:COLOR.green}]);
+  if(date > todayYMD()) line([{t:"  ※ 这条流水晚于今天, 到 "+date+" 才计入余额。", c:COLOR.gray}]);
+  if(bal<0) line([{t:"⚠ 钱包「"+w.name+"」余额为负: 支出 / 取出已超过存入, 请核对或用 wallet in 补齐。", c:COLOR.yellow}]);
+}
+function walletMv(rest){
+  const usage = "用法: wallet mv <记录id> <钱包>   把某笔支出改为由该钱包支付, 例 wallet mv 12 现金";
+  const id = numeric(rest[0]);
+  const rec = (id!=null) ? state.records.find(r=>r.id===id) : null;
+  if(!rec){ line([{t:"未找到 #"+String(rest[0]||"")+"。用 list 查看编号。"+usage, c:COLOR.yellow}]); return; }
+  const w = findWalletByName(rest[1]);
+  if(!w){ line([{t:"未找到钱包「"+String(rest[1]||"")+"」。"+usage, c:COLOR.yellow}]); return; }
+  if(rec.wallet===w.id){ line([{t:"#"+id+" 本来就是由「"+w.name+"」支付的。", c:COLOR.gray}]); return; }
+  const fromId = rec.wallet, fromName = walletNameOf(fromId) || "未指定钱包";
+  rec.wallet = w.id;
+  line([{t:"✓ #"+id+" 改为由 ",c:COLOR.green},{t:w.name,c:COLOR.pure},
+        {t:" 支付 "+rec.category+" ¥"+money(recTotal(rec))+(recAmortized(rec) ? "(总价)" : ""),c:COLOR.white}]);
+  line([{t:"  付款钱包: "+fromName+" → "+w.name, c:COLOR.gray},
+        {t:"   "+w.name+" 余额 ¥"+money(walletBalance(w.id)), c:walletBalance(w.id)<0?COLOR.red:COLOR.green},
+        {t:(fromId ? ("   "+fromName+" 余额 ¥"+money(walletBalance(fromId))) : ""), c:COLOR.gray}]);
+}
+function walletUse(rest){
+  const usage = "用法: wallet use <钱包>   设为默认钱包(记支出时不写 $钱包 就用它)";
+  const w = findWalletByName(rest[0]);
+  if(!w){ line([{t:"未找到钱包「"+String(rest[0]||"")+"」。"+usage, c:COLOR.yellow}]); return; }
+  state.settings.walletDefault = w.id;
+  line([{t:"✓ 默认钱包设为 ",c:COLOR.green},{t:w.name,c:COLOR.pure,cls:"hl"},
+        {t:"  (记支出时不写 $钱包 就由它付款)",c:COLOR.gray}]);
+}
+function walletRename(rest){
+  const usage = "用法: wallet name <钱包> <新名称>   重命名, 已有记录自动跟着改(记录存的是钱包 id)";
+  const w = findWalletByName(rest[0]);
+  if(!w){ line([{t:"未找到钱包「"+String(rest[0]||"")+"」。"+usage, c:COLOR.yellow}]); return; }
+  const name = cleanWalletName(rest[1]);
+  if(!name){ line([{t:"新名称不能为空, 且不超过 "+WALLET_NAME_MAX+" 个字符。"+usage, c:COLOR.yellow}]); return; }
+  if(name===w.name){ line([{t:"名称没有变化。", c:COLOR.gray}]); return; }
+  if(findWalletByName(name)){ line([{t:"已有同名钱包「"+name+"」, 请换一个名字。", c:COLOR.yellow}]); return; }
+  const old = w.name;
+  w.name = name;
+  line([{t:"✓ 钱包已重命名: ",c:COLOR.green},{t:old,c:COLOR.gray},{t:"  →  ",c:COLOR.gray},{t:name,c:COLOR.pure,cls:"hl"},
+        {t:"  ("+state.records.filter(r=>r.wallet===w.id).length+" 笔支出跟着改)",c:COLOR.gray}]);
+}
+function walletDel(rest){
+  const usage = "用法: wallet del <钱包>   删除钱包: 流水一并删除, 由它支付的支出改记到默认钱包";
+  const w = findWalletByName(rest[0]);
+  if(!w){ line([{t:"未找到钱包「"+String(rest[0]||"")+"」。"+usage, c:COLOR.yellow}]); return; }
+  if(state.wallets.length<=1){ line([{t:"至少要保留一个钱包(记支出需要指定付款钱包)。", c:COLOR.yellow}]); return; }
+  const wasDefault = (state.settings.walletDefault===w.id);
+  const ops = state.wops.filter(o=>o.wallet===w.id).length;
+  state.wallets = state.wallets.filter(x=>x!==w);
+  state.wops = state.wops.filter(o=>o.wallet!==w.id);
+  if(wasDefault) state.settings.walletDefault = state.wallets[0].id;
+  const toId = state.settings.walletDefault, toName = walletNameOf(toId);
+  let moved = 0;
+  for(const r of state.records) if(r.wallet===w.id){ r.wallet = toId; moved++; }
+  line([{t:"✗ 已删除钱包 ",c:COLOR.red},{t:w.name,c:COLOR.red},
+        {t:"  (流水 "+ops+" 条一并删除)",c:COLOR.gray}]);
+  line([{t:"  由它支付的 "+moved+" 笔支出改记到"+(wasDefault?"新的默认钱包":"默认钱包")+"「"+toName+"」",c:COLOR.white},
+        {t:"  可 undo 撤销",c:COLOR.gray}]);
+}
+function doWallet(tokens){
+  const sub = String(tokens[0]||"").toLowerCase();
+  if(!sub || sub==="list" || sub==="show" || sub==="ls" || sub==="总览"){ printWallets(); return; }
+  const rest = tokens.slice(1);
+  if(sub==="add"||sub==="new"||sub==="create"||sub==="新建"||sub==="添加"){ walletAdd(rest); return; }
+  if(sub==="in"||sub==="fund"||sub==="deposit"||sub==="存入"||sub==="充值"){ walletInOut(rest, 1); return; }
+  if(sub==="out"||sub==="take"||sub==="withdraw"||sub==="取出"||sub==="扣减"){ walletInOut(rest, -1); return; }
+  if(sub==="mv"||sub==="move"||sub==="改付"){ walletMv(rest); return; }
+  if(sub==="use"||sub==="default"||sub==="默认"){ walletUse(rest); return; }
+  if(sub==="name"||sub==="rename"||sub==="重命名"){ walletRename(rest); return; }
+  if(sub==="del"||sub==="rm"||sub==="delete"||sub==="remove"||sub==="删除"){ walletDel(rest); return; }
+  if(sub==="log"||sub==="history"||sub==="流水"){
+    let id = null, limit = 20;
+    for(const t of rest){
+      const w = findWalletByName(t);
+      if(w) id = w.id;
+      else if(numeric(t)!=null && numeric(t)>0) limit = Math.round(numeric(t));
+      else { line([{t:"未识别的参数「"+t+"」。用法: wallet log [钱包] [N]", c:COLOR.yellow}]); return; }
+    }
+    printWalletLog(id, limit);
+    return;
+  }
+  /* 不是子命令 → 当作钱包名: 看单个钱包 */
+  const w = findWalletByName(tokens[0]);
+  if(w){ printWallets(w.id); return; }
+  walletUsage();
 }
 
 /* ------------------------------- list ---------------------------------- */
@@ -3662,6 +4193,12 @@ function renderRecordRow(r, opts){
   d.appendChild(invSpan); d.appendChild(stSpan);
   if(r.note) for(const s of (hl ? hlSegs("  · "+r.note, COLOR.gray, hl) : [{t:"  · "+r.note, c:COLOR.gray}])) addSeg(d,s);
   if(r.place) for(const s of geoPlaceSegs(r.place, "  · ", " ")) addSeg(d,s);
+  /* v0.1.0 付款钱包: 与地点一样是行内元信息(方括号灰字); 旧记录(未指定钱包)不显示 */
+  const wName = walletNameOf(r.wallet);
+  if(wName){
+    const wTxt = "  ["+wName+"]";
+    for(const s of (hl ? hlSegs(wTxt, COLOR.gray, hl) : [{t:wTxt, c:COLOR.gray}])) addSeg(d,s);
+  }
   addSeg(d,{t:"  ", c:COLOR.gray});
   const b = document.createElement("button"); b.type="button"; b.className="tbtn";
   b.title = "把 #"+r.id+" 应投货币/指数全部标记已投 (等同 pay "+r.id+" all), 再点重置";
@@ -3907,7 +4444,8 @@ function searchAmountHit(r, t){
   return true;
 }
 function searchTextHit(r, kw){
-  return [r.category, r.note, r.place].some(h=>String(h==null?"":h).toLowerCase().includes(kw));
+  /* v0.1.0: 付款钱包名也参与关键词匹配(搜「微信」能搜到用它付的记录) */
+  return [r.category, r.note, r.place, walletNameOf(r.wallet)].some(h=>String(h==null?"":h).toLowerCase().includes(kw));
 }
 function searchDesc(q){
   const parts = [];
@@ -3992,17 +4530,21 @@ function doDelete(tokens){
         {t:recAmortized(rm) ? ("  (分摊"+(rm.amortDays)+"天 · 总价 ¥"+money(recTotal(rm))+")") : "", c:COLOR.gray}]);
 }
 function doUpdate(tokens){
-  if(tokens.length<3){ line([{t:"用法: update <id> <金额> <类别> [备注..] [@日期] [#地点]",c:COLOR.yellow}]); return; }
+  if(tokens.length<3){ line([{t:"用法: update <id> <金额> <类别> [备注..] [@日期] [#地点] [$钱包]",c:COLOR.yellow}]); return; }
   const id = numeric(tokens[0]);
   const rec = state.records.find(r=>r.id===id);
   if(!rec){ line([{t:"未找到 #"+id,c:COLOR.yellow}]); return; }
-  const {tokens:rest, date:rawDate, place:rawPlace} = splitRecordArgs(tokens.slice(1));
+  const {tokens:rest, date:rawDate, place:rawPlace, wallet:rawWallet} = splitRecordArgs(tokens.slice(1));
   const amt = numeric(rest[0]);
   if(amt==null||amt<=0){ line([{t:"金额无效",c:COLOR.yellow}]); return; }
   const cat = validateCategory(rest[1]); if(!cat) return;
   const note = rest.slice(2).join(" ");
+  /* v0.1.0: $钱包 不写 = 不改付款钱包; 写了但不存在 → 整条 update 中止(先校验再改, 不留半更新) */
+  const wid = (rawWallet!=null) ? pickWalletId(rawWallet) : null;
+  if(rawWallet!=null && wid==null) return;
   const days = recDays(rec);                    // 分摊成本: 天数不变, 金额按"每天"解释 → 总价同步重算
   rec.amount = r2(amt); rec.category = cat; rec.note = note;
+  if(wid!=null) rec.wallet = wid;
   if(rawPlace!=null) rec.place = (rawPlace==="-"||rawPlace==="off"||rawPlace==="clear") ? "" : normalizePlace(rawPlace);
   rec.amortDays = days;
   rec.amortTotal = days>1 ? r2(rec.amount*days) : rec.amount;
@@ -4013,7 +4555,8 @@ function doUpdate(tokens){
   line([{t:"✓ 已更新 #",c:COLOR.green},{t:id,c:COLOR.pure},
         {t:"  "+cat+" ¥"+money(rec.amount)+(days>1 ? ("/天 (总价 ¥"+money(recTotal(rec))+" ÷ "+days+" 天)") : ""),
          c:COLOR.white},
-        {t:"  应投按总价重算: 货币¥"+money(rec.mm)+" 指数¥"+money(rec.idx),c:COLOR.white}]);
+        {t:"  应投按总价重算: 货币¥"+money(rec.mm)+" 指数¥"+money(rec.idx),c:COLOR.white},
+        {t:(wid!=null ? ("  付款钱包 → "+walletNameOf(wid)) : ""), c:COLOR.gray}]);
 }
 function doPay(tokens){
   // H5: 「全额投资」以前只有界面按钮 —— 这里补上命令通道 pay full [mm|idx] (别名 invest full);
@@ -4619,6 +5162,7 @@ function buildReportText(md){
           +"  (应投货币¥"+money(r.mm)+" 指数¥"+money(r.idx)
           +"  已投货币¥"+money(r.moneyInv||0)+" 指数¥"+money(r.indexInv||0)+")  ["+paidSt+"]"
           +(r.note?"  "+esc(r.note):"")+(r.place?"  地点:"+esc(r.place):"")
+          +(walletNameOf(r.wallet)?"  钱包:"+esc(walletNameOf(r.wallet)):"")
           +(r.created?"  创建:"+r.created:""));   // P2 B-19: 补 created 字段, 用户输入走 esc()
   }
   HR();
@@ -4655,7 +5199,7 @@ function showSettings(){
   const cp = currentPeriod();
   kv("当期预算", hasBudgetOverride(cp) ? ("¥"+money(effectiveBudget(cp))+"  (自定义, 默认 ¥"+money(s.budget)+")")
                                        : ("¥"+money(effectiveBudget(cp))+"  (跟随默认)"));
-  kv("周期模式", modeDesc+"   (配置 ▾ → 配置周期 可改)");
+  kv("周期模式", modeDesc+"   (设置页 · 周期持续时间 可改)");
   kv("当前周期", cp.label+"   共 "+periodDayCount(cp)+" 天   (截止日: config set periodend <日期>)");
   kv("周起始日", s.weekStart==="mon"?"周一":"周日");
   const dbv = (typeof s.dailyBudget==="number" && s.dailyBudget>0) ? ("¥"+money(s.dailyBudget)) : "未设置";
@@ -4672,10 +5216,12 @@ function showSettings(){
   kv("类别余额(已/可配置)", "已配置 ¥"+money(cba)+"   |   可配置 ¥"+money(cbl)+(cbl<0?"   (已超出, 请下调)":""));
   kv("类别余额(明细)", cbRows.length
       ? cbRows.map(r=>r.cat+" ¥"+money(r.alloc)+" 已用"+(r.ratio*100).toFixed(0)+"%").join("  ·  ")
-      : "未配置 → set category <类别> <金额> (或「配置 ▾ → 配置类别余额」)");
+      : "未配置 → set category <类别> <金额> (或在「设置」页的「类别余额」卡里配置)");
   kv("地点模式", s.geoMode==="auto" ? "自动填充地址 (仅 add · 只存行政区名)" : "全手动 (不填则空)");
   kv("腾讯地图 Key", s.geoKey ? (maskGeoKey(s.geoKey)+"   (已配置, 仅存本机)") : "未配置 → config set geokey <Key>");
   kv("当前定位", geoCache.place ? (geoCache.place+"   ["+geoStatus.text+"]") : ("尚未定位  ["+geoStatus.text+"]"));
+  /* v0.1.0 钱包: 默认钱包 + 各钱包余额; 明细与流水用 wallet / wallet log, 界面在「钱包」页 */
+  kv("钱包", walletRows().rows.map(r=>r.name+(r.isDefault?"(默认)":"")+" ¥"+money(r.balance)).join("  ·  "));
   blank();
 }
 
@@ -5022,6 +5568,9 @@ function openAdd(){ modalMode="add"; modalId=null;
   document.getElementById("fr_freq").value="month";
   document.getElementById("fr_split").checked=false;
   document.getElementById("fr_note").value="";
+  setWalletSelect("f_wallet", null);            // v0.1.0 新增: 支付钱包回到「默认钱包」
+  setWalletSelect("fa_wallet", null);
+  setWalletSelect("fr_wallet", null);
   setModalTabsVisible(true);           // 新增模式: 三个选项卡都在
   setModalTab("add");                  // 每次打开都回到最常用的"单笔消费"
   openOverlay("modalWrap");
@@ -5042,6 +5591,7 @@ function openEdit(r){
   document.getElementById("f_date").value = r.date;
   document.getElementById("f_note").value = r.note || "";
   document.getElementById("f_place").value = r.place || "";
+  setWalletSelect("f_wallet", r.wallet);        // v0.1.0: 预填这条记录的付款钱包(默认钱包 / 旧记录 → 不带 $ 参数)
   setModalTab("add");                  // 编辑固定单笔表单(标题会变成「编辑记录 #id」)
   openOverlay("modalWrap");
   document.getElementById("f_amt").focus();
@@ -5052,8 +5602,11 @@ function refreshCatlist(){
     const o=document.createElement("option"); o.value=c; d.appendChild(o);
   }
 }
-/* ---- 配置预算弹窗(鼠标) ---- */
-function openBudgetModal(){
+/* ---- 配置预算面板 ----
+   v0.1.0: 拆成 fillBudgetModal()(按当前 state 回填表单) + openOverlay。
+   设置页的「周期预算」卡挂载同一个面板(只回填、不开遮罩, 见 SETTING_CARDS);
+   openBudgetModal() 只是"以浮层打开"的程序化入口(主页已无「配置 ▾」, UI 不再调用它)。 */
+function fillBudgetModal(){
   const p = currentPeriod();
   const cur = effectiveBudget(p);
   document.getElementById("b_amt").value = cur;
@@ -5065,23 +5618,27 @@ function openBudgetModal(){
   const db = state.settings.dailyBudget;
   document.getElementById("b_daily").value = (typeof db==="number" && db>0) ? db : "";
   updateDailyHint();
+}
+function openBudgetModal(){
+  fillBudgetModal();
   openOverlay("budgetWrap");
   document.getElementById("b_amt").focus();
 }
 function closeBudgetModal(){ document.getElementById("budgetWrap").classList.remove("open"); }
-/* ---- 配置投资比例弹窗(鼠标) ----
-   与「配置预算」并列在工具栏「配置 ▾」下拉里; 保存时回灌 `config set invest <pct>`,
+/* ---- 配置投资比例面板(v0.1.0 起常驻在设置页「投资比例」卡; 这里只是弹出宿主) ----
+   保存时回灌 `config set invest <pct>`,
    输出即 config 的当前配置表(不另写确认文案)。 */
-function openInvestModal(){
-  const inv = invPct();
-  document.getElementById("i_pct").value = inv;
+function fillInvestModal(){
+  document.getElementById("i_pct").value = invPct();
   updateInvestHint();
+}
+function openInvestModal(){
+  fillInvestModal();
   openOverlay("investWrap");
   document.getElementById("i_pct").focus();
 }
 function closeInvestModal(){ document.getElementById("investWrap").classList.remove("open"); }
-/* ---- 配置周期弹窗(v0.0.15) ----
-   与「配置预算 / 配置投资比例 / 配置类别余额」并列在「配置 ▾」里。
+/* ---- 配置周期面板(v0.0.15; v0.1.0 起常驻在设置页「周期持续时间」卡, 这里只是弹出宿主) ----
    · 起止日期是唯一输入: 周期天数 = 截止日 − 起始日 + 1, 输入即算、即时显示(不另设"天数"输入框);
    · 按月模式把起止日交回 monthStart 规则(输入框只读), 保存回灌 `config set period natural`;
    · 自定义模式保存回灌**一条** `config set period <起> <止>` —— 与命令行同一条通道, 一步撤销。
@@ -5131,12 +5688,15 @@ function setPeriodModalMode(mode){
   document.getElementById("p_end").value = p.end;
   updatePeriodModal();
 }
-function openPeriodModal(){
+function fillPeriodModal(){
   periodModalMode = (state.settings.periodMode==="rolling") ? "rolling" : "month";
   const p = currentPeriod();
   document.getElementById("p_start").value = p.start;
   document.getElementById("p_end").value = p.end;
   updatePeriodModal();
+}
+function openPeriodModal(){
+  fillPeriodModal();
   openOverlay("periodWrap");
 }
 function closePeriodModal(){ document.getElementById("periodWrap").classList.remove("open"); }
@@ -5235,9 +5795,12 @@ function updateCatModal(){
   }
   return { pool, sum, left, items };
 }
-function openCatModal(){
+function fillCatModal(){
   buildCatRows();
   updateCatModal();
+}
+function openCatModal(){
+  fillCatModal();
   openOverlay("catWrap");
   const host = document.getElementById("c_rows");
   const first = host && host.children && host.children[0];
@@ -5346,9 +5909,10 @@ function submitModal(){
   closeModal();
   // 编辑模式清空地点 → 回灌 #- 才会真的清掉; 新增模式留空就什么都不带(不填则空着)
   const placePart = place ? " "+quotePlace(place) : (modalMode==="edit" ? " #-" : "");
+  const walletPart = modalWalletPart("f_wallet");   // v0.1.0: 选了非默认钱包才带 $钱包
   const cmd = modalMode==="edit"
-    ? "update "+modalId+" "+amt+" "+cat+(note?" "+quoteNote(note):"")+" @"+date+placePart
-    : "add "+amt+" "+cat+(note?" "+quoteNote(note):"")+" @"+date+placePart;
+    ? "update "+modalId+" "+amt+" "+cat+(note?" "+quoteNote(note):"")+" @"+date+walletPart+placePart
+    : "add "+amt+" "+cat+(note?" "+quoteNote(note):"")+" @"+date+walletPart+placePart;
   input.value = cmd; input.focus();
   runCommand(cmd);
 }
@@ -5373,6 +5937,7 @@ function submitAmort(){
   closeModal();
   const cmd = "amort "+total+" "+d.days+" "+cat+(note?" "+quoteNote(note):"")
             + (picked.blank ? "" : (" @"+picked.date))
+            + modalWalletPart("fa_wallet")
             + (place ? " "+quotePlace(place) : "");
   input.value = cmd; input.focus();
   runCommand(cmd);
@@ -5394,7 +5959,7 @@ function submitRecur(){
   if(!plan.ok){ alertModal(plan.msg); return; }
   closeModal();
   const cmd = "recur "+plan.amount+" "+cat+" "+(plan.durValue+RECUR_UNITS[plan.durUnit])+" "+RECUR_UNITS[plan.freq]
-            + " @"+plan.start + (split ? " 分摊" : "") + (note ? " "+quoteNote(note) : "");
+            + " @"+plan.start + (split ? " 分摊" : "") + modalWalletPart("fr_wallet") + (note ? " "+quoteNote(note) : "");
   input.value = cmd; input.focus();
   runCommand(cmd);
 }
@@ -5406,7 +5971,7 @@ function alertModal(msg){ const old=document.getElementById("btnSubmit").textCon
         不会执行 → 多个下拉/弹窗同时叠在页面上(互相遮挡)。
    规则: 全局同时最多一个浮层 open —— 打开任一下拉/弹窗前, 先关掉其它所有浮层。
    下拉与弹窗都走这两个入口, 不再各写一份 close 清单(F1 横向重复)。 */
-const DD_IDS = ["listDd","reportDd","configDd","geoDd","exportDd"];
+const DD_IDS = ["listDd","reportDd","exportDd"];   // v0.1.0: configDd/geoDd 分别随「配置 ▾」「地点 ▾」一起移除(配置在设置页)
 const MODAL_IDS = ["modalWrap","budgetWrap","investWrap","dateWrap","geoWrap","catWrap","periodWrap"];
 function closeAllOverlays(except){
   for(const id of DD_IDS.concat(MODAL_IDS)){
@@ -5433,29 +5998,8 @@ function bindToolbar(){
     b.addEventListener("click",(ev)=>{
       // 范围下拉: 「消费列表」与「总结与图表」共用同一套 data-range + 菜单处理
       if(b.dataset && b.dataset.range!==undefined){ onRangeMenuItem(b.dataset.range, b.dataset.rangeTarget); return; }
-      // 「配置 ▾」下拉的子项: 各自开自己的弹窗(弹窗提交再回灌 config / set 命令)
-      if(b.dataset && b.dataset.config!==undefined){
-        closeDd("configDd");
-        if(b.dataset.config==="invest") openInvestModal();
-        else if(b.dataset.config==="category") openCatModal();
-        else if(b.dataset.config==="period") openPeriodModal();
-        else openBudgetModal();
-        return;
-      }
-      /* v0.0.12 「地点 ▾」: 模式项回灌 config 命令, 第三项开设置弹窗(弹窗再回灌命令) */
-      if(b.dataset && b.dataset.geo!==undefined){
-        closeDd("geoDd");
-        if(b.dataset.geo==="settings"){ openGeoModal(); return; }
-        const gc = GEO_COMMANDS[b.dataset.geo];
-        if(!gc) return;
-        input.value = gc; input.focus();
-        runCommand(gc);
-        return;
-      }
       if(b.id==="btnListDd"){ toggleDd("listDd", ev); return; }
       if(b.id==="btnReportDd"){ toggleDd("reportDd", ev); return; }
-      if(b.id==="btnConfigDd"){ toggleDd("configDd", ev); return; }
-      if(b.id==="btnGeoDd"){ toggleDd("geoDd", ev); return; }
       if(b.id==="btnExportDd"){ toggleDd("exportDd", ev); return; }
       const c=b.dataset.cmd;
       if(!c) return;
@@ -5463,8 +6007,8 @@ function bindToolbar(){
          以前这里是四个 closeDd 的硬编码清单, 新增「导出 ▾」时就会漏关、菜单叠在页面上。 */
       closeAllDd();
       if(c==="open-add"){ openAdd(); return; }
-      /* open-budget / open-invest 两个 data-cmd 分支已删: 配置预算/投资比例现在只从「配置 ▾」
-         的两个 data-config 子项进入(它们直接调 openBudgetModal/openInvestModal), 没有元素再发这两个值。 */
+      /* v0.1.0: 「配置 ▾」下拉整体移除(配置全在设置页) —— data-config / btnConfigDd 两个分支随之删除,
+         面板的"以弹窗打开"入口(openBudgetModal 等)只剩程序化调用(设置页的卡片直接挂载面板, 不走弹窗)。 */
       if(c==="backup-download"){ doBackupDownload(); return; }
       if(c==="restore-file"){ document.getElementById("fileImport").click(); return; }
       if(c==="autosave-dir"){ doAutosaveToggle(); return; }
@@ -5642,7 +6186,7 @@ function bindModal(){
   document.getElementById("b_daily_off").addEventListener("click",clearDailyBudget);
   document.getElementById("b_daily").addEventListener("input",updateDailyHint);   // 输入即预览红黄绿圆点
   document.getElementById("b_daily").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveDailyBudget(); });
-  // 投资比例弹窗(「配置 ▾ → 配置投资比例」)
+  // 投资比例面板(v0.1.0 起常驻设置页「投资比例」卡; 这些按钮在卡片里同样生效)
   document.getElementById("i_cancel").addEventListener("click",closeInvestModal);
   document.getElementById("i_save").addEventListener("click",saveInvest);
   document.getElementById("investWrap").addEventListener("click",(e)=>{ if(e.target.id==="investWrap") closeInvestModal(); });
@@ -5714,17 +6258,27 @@ function argCandidates(c0, slot, tokens, cur){
   let arg = 0;                       // 语义槽位(0-based)
   for(let i=1; i<slot && i<tokens.length; i++){
     const t = tokens[i];
-    if(t && t[0]!=="@" && t[0]!=="#") arg++;       // @日期 / #地点 都不占语义槽位
+    if(t && t[0]!=="@" && t[0]!=="#" && t[0]!=="$") arg++;   // @日期 / #地点 / $钱包 都不占语义槽位
   }
   const typingAt = !!(cur && cur[0]==="@");
   if(cur && cur[0]==="#") return [];               // 地点自由输入, 不给候选
+  /* v0.1.0: 正在输 $钱包 → 给全部钱包名(名字不带空格时可直接补全; 带空格请写 $"…" ) */
+  if(cur && cur[0]==="$") return state.wallets.map(w=>"$"+w.name);
+  if(cmd==="wallet"){
+    if(arg===0) return ["add","in","out","mv","use","name","del","log", ...state.wallets.map(w=>w.name)];
+    const sub = String(tokens[1]||"").toLowerCase();
+    if(sub==="add") return [];
+    if(sub==="in"||sub==="out"||sub==="use"||sub==="name"||sub==="del") return (arg===1) ? state.wallets.map(w=>w.name) : [];
+    if(sub==="mv") return (arg===1) ? recordIds() : (arg===2 ? state.wallets.map(w=>w.name) : []);
+    return [];
+  }
   // 正在输入 @条件: list / search 支持关键字写法, 其余命令要么接受 ISO 日期(@YYYY-MM-DD), 要么不支持
   if(typingAt) return (cmd==="list"||cmd==="search") ? ["@today","@period","@month"] : [];
   if(cmd==="help"||cmd==="cls"||cmd==="undo"||cmd==="redo") return [];
   /* P2 B-20: config 的子命令/子名也给候选(旧版整体返回空, geo/geokey/ratio 补不出来) */
   if(cmd==="config"){
     if(arg===0) return ["set"];
-    if(arg===1) return ["period","periodstart","periodend","budget","invest","consume","ratio","share","geo","geokey"];
+    if(arg===1) return ["period","periodstart","periodend","monthstart","budget","invest","consume","ratio","share","geo","geokey"];
     if(arg===2){
       const sub=(tokens[2]||"").toLowerCase();   // 子名槽: tokens[1]="set", tokens[2]=子名
       if(sub==="budget") return ["800","1000","1200","1500"];
@@ -5734,6 +6288,7 @@ function argCandidates(c0, slot, tokens, cur){
       if(sub==="period") return ["natural","15","14","7","30","90",todayYMD()];
       if(sub==="periodstart") return [todayYMD(), addDaysYMD(todayYMD(),-14)];
       if(sub==="periodend") return [addDaysYMD(todayYMD(),14), addDaysYMD(todayYMD(),29)];
+      if(sub==="monthstart") return ["natural","1","5","10","15","20","25","28"];
       return [];
     }
     if(arg===3){
@@ -5955,6 +6510,524 @@ function bindSearch(){
     scrollBottom();
   });
 }
+/* ============================ 三页外壳 (v0.1.0) ============================
+   页面 = 主页(原终端界面) / 钱包 / 设置, 同一时间只显示一页:
+     · 主页的五个顶层元素(顶栏 / 工具栏 / 理财条 / 终端 / 输入行)用 .page-hide 收起, 另两页是独立的
+       <main> —— 主页"即当前页面", 原有 DOM 一个 id 都没动, 既有弹窗 / 下拉 / 命令行照常工作;
+     · 两页上的每个动作仍然**拼命令字符串回灌 runCommand**(H5 双通道对称): 撤销栈 / 校验 / 落盘只有一套;
+       命令输出永远进主页终端, 当前不在主页时把本次新增的行镜像到页底的回显条(afterPageCommand);
+     · 设置页不写第二套表单: 五张配置卡直接**挂载既有弹窗的面板**(同一个 DOM 节点在
+       "主页弹窗 ↔ 设置页卡片"之间搬动, SETTING_CARDS 是唯一清单), 离开设置页再搬回各自的遮罩层;
+     · 数据确实变了才把表单回填成已保存值 —— 校验失败的命令不会冲掉用户正在输入的内容。 */
+let currentPage = "home";
+const HOME_IDS = ["statusbar","toolbar","investbar","term","pageFooter"];
+const PAGE_IDS = { wallet:"pageWallet", settings:"pageSettings" };
+const PAGE_ECHO = { wallet:"walletEcho", settings:"settingsEcho" };
+const PAGE_KEYS = { "1":"home", "2":"wallet", "3":"settings" };
+const PAGE_ECHO_MAX = 30;
+function showPage(name){
+  name = (name==="wallet" || name==="settings") ? name : "home";
+  closeAllOverlays();                        // 换页: 任何下拉 / 弹窗都不留在屏幕上
+  if(currentPage==="settings" && name!=="settings") unmountSettingsCards();
+  currentPage = name;
+  for(const id of HOME_IDS){
+    const el = document.getElementById(id);
+    if(el) el.classList.toggle("page-hide", name!=="home");
+  }
+  for(const pg in PAGE_IDS){
+    const el = document.getElementById(PAGE_IDS[pg]);
+    if(el){ el.classList.toggle("page-hide", name!==pg); el.scrollTop = 0; }
+  }
+  document.querySelectorAll("#pageNav .pg").forEach(b=>{
+    if(b.dataset) b.classList.toggle("on", b.dataset.page===name);
+  });
+  clearPageEcho("wallet"); clearPageEcho("settings");
+  if(name==="wallet") renderWalletPage();
+  if(name==="settings") fillSettingsCards();
+  if(name==="home") input.focus();
+}
+/* 页内小工具: 与终端的 line()/addSeg() 同一套段落结构({t,c,cls,node}), 只是容器由调用方指定 */
+function pageLine(host, segs, cls){
+  const d = document.createElement("div");
+  d.className = cls || "l";
+  for(const s of (typeof segs==="string" ? [{t:segs}] : segs)) addSeg(d, s);
+  host.appendChild(d);
+  return d;
+}
+function pageHead(host, title, meta){
+  return pageLine(host, [{t:"  ▓ ", c:COLOR.cyan},{t:title, c:COLOR.cyan},{t:meta ? "  "+meta : "", c:COLOR.gray}], "l chart-h");
+}
+function pageButton(host, label, onClick, cls){
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "pbtn"+(cls ? " "+cls : ""); b.textContent = label;
+  b.addEventListener("click", onClick);
+  host.appendChild(b);
+  return b;
+}
+function clearPageEcho(name){
+  const host = document.getElementById(PAGE_ECHO[name]);
+  if(!host) return;
+  host.classList.remove("has");
+  document.getElementById(PAGE_ECHO[name]+"Body").innerHTML = "";   // 仅清空
+}
+/* 非主页上执行完一条命令: 镜像本次新增的终端行; 数据变了再把设置页表单回填成已保存值 */
+function afterPageCommand(before, lines0){
+  const body = document.getElementById(PAGE_ECHO[currentPage]+"Body");
+  if(body){
+    body.innerHTML = "";                       // 仅清空
+    const added = Array.from(term.children).slice(lines0);
+    for(const n of added.slice(-PAGE_ECHO_MAX)){
+      if(typeof n.cloneNode==="function") body.appendChild(n.cloneNode(true));
+      else pageLine(body, [{t:n.textContent}]);   // 离线 DOM 桩: 退化为纯文本行
+    }
+    document.getElementById(PAGE_ECHO[currentPage]).classList.toggle("has", added.length>0);
+  }
+  if(currentPage==="settings" && snapshotState()!==before) fillSettingsCards();
+}
+
+/* ---- 「记一笔」三个面板的支付钱包下拉(单一实现) ----
+   第一项 = 默认钱包, 其余钱包按名称列出。空值 / 默认钱包 都表示"用默认钱包付款", 提交时不带 $ 参数 ——
+   所以不选钱包时回灌的命令字符串与 v0.1.0 之前完全一致(老用法、老脚本、撤销栈都不受影响)。 */
+const WALLET_SELECTS = ["f_wallet","fa_wallet","fr_wallet"];
+function refreshWalletSelects(){
+  const def = defaultWallet();
+  for(const id of WALLET_SELECTS){
+    const sel = document.getElementById(id);
+    if(!sel) continue;
+    const cur = String(sel.value || "");
+    sel.innerHTML = "";                        // 仅清空
+    const opt = (v,t)=>{
+      const o = document.createElement("option"); o.value = v; o.textContent = t;
+      sel.appendChild(o);
+    };
+    opt("", def.name+"（默认）");
+    for(const w of state.wallets) if(w.id!==def.id) opt(w.name, w.name);
+    sel.value = (cur && cur!==def.name && findWalletByName(cur)) ? cur : "";
+  }
+}
+function setWalletSelect(id, walletId){
+  const sel = document.getElementById(id);
+  if(sel) sel.value = (walletId>0 && walletId!==defaultWallet().id && walletNameOf(walletId)) ? walletNameOf(walletId) : "";
+}
+function modalWalletPart(id){
+  const sel = document.getElementById(id);
+  const v = sel ? String(sel.value || "") : "";
+  return (v && v!==defaultWallet().name) ? " "+quoteWallet(v) : "";
+}
+
+/* ---- 钱包页: 全部按当前 state 现算(数据只从 walletRows()/walletLedger() 取, 与 wallet 命令同源) ---- */
+function walletColor(i){ return CAT_PALETTE[i % CAT_PALETTE.length]; }
+function walletFormBase(host){
+  host.innerHTML = "";                         // 仅清空
+  const f = document.createElement("div"); f.className = "wform";
+  host.appendChild(f);
+  return f;
+}
+function walletField(f, label, placeholder, type){
+  const wf = document.createElement("div"); wf.className = "wf";
+  const l = document.createElement("label"); l.textContent = label;
+  const i = document.createElement("input");
+  i.type = type || "text"; i.placeholder = placeholder || ""; i.autocomplete = "off";
+  wf.append(l, i); f.appendChild(wf);
+  return i;
+}
+function walletFormButtons(f, acts){
+  let first = null;
+  for(const [label, fn, cls] of acts){
+    const b = pageButton(f, label, fn, cls);
+    if(!first) first = b;
+  }
+  const inputs = walletFormInputs(f);
+  for(const i of inputs){                       // 输入框里按 Enter = 点第一个按钮(确认)
+    i.addEventListener("keydown", (e)=>{ if(e && e.key==="Enter"){ if(e.preventDefault) e.preventDefault(); if(first) first.click(); } });
+  }
+  if(inputs[0] && inputs[0].focus) inputs[0].focus();
+  return first;
+}
+function walletFormInputs(f){
+  const out = [];
+  for(const wf of f.children){
+    if(!wf || !wf.children) continue;
+    for(const c of wf.children) if(c && String(c.tagName).toUpperCase()==="INPUT") out.push(c);
+  }
+  return out;
+}
+/* ---- 钱包卡片上的内联表单(存入 / 取出 / 重命名): 只做最基本的前置校验, 规则仍是命令里那一套(同一个入口函数) ---- */
+function openWalletForm(host, w, kind){
+  const f = walletFormBase(host);
+  const err = walletFormErr(f);
+  const cancel = ()=>{ host.innerHTML = ""; };
+  if(kind==="name"){
+    const name = walletField(f, "新名称", "如 微信");
+    name.value = w.name;
+    walletFormButtons(f, [
+      ["确认重命名", ()=>{
+        const nm = cleanWalletName(name.value);
+        if(!nm) return walletFormFail(err, "新名称不能为空, 且不超过 "+WALLET_NAME_MAX+" 个字符");
+        if(nm!==w.name && findWalletByName(nm)) return walletFormFail(err, "已有同名钱包「"+nm+"」");
+        runCommand("wallet name "+quote(w.name)+" "+quote(nm));
+      }, "accent"],
+      ["取消", cancel]
+    ]);
+    return;
+  }
+  const sign = (kind==="in") ? 1 : -1;
+  const amt  = walletField(f, sign>0 ? "存入金额 (元)" : "取出金额 (元)", "如 500", "number");
+  const note = walletField(f, "备注 (可选)", sign>0 ? "如 工资" : "如 转去别的钱包");
+  walletFormButtons(f, [
+    [sign>0 ? "确认存入" : "确认取出", ()=>{
+      const n = parseAmount(String(amt.value || "").replace(/,/g,""));
+      if(n==null) return walletFormFail(err, "金额需为 ≥ ¥0.01 的数字");
+      const nt = String(note.value || "").trim();
+      runCommand("wallet "+(sign>0 ? "in" : "out")+" "+quote(w.name)+" "+n+(nt ? " "+quoteNote(nt) : ""));
+    }, "accent"],
+    ["取消", cancel]
+  ]);
+}
+function walletFormErr(f){
+  const e = document.createElement("span"); e.className = "werr";
+  f.appendChild(e);
+  return e;
+}
+function walletFormFail(err, msg){ err.textContent = msg; return false; }
+function buildWalletNewCard(){
+  const card = document.createElement("div"); card.className = "wcard new";
+  const h = document.createElement("div"); h.className = "wcard-h";
+  const t = document.createElement("span"); t.className = "wname"; t.textContent = "+ 新建钱包";
+  const s = document.createElement("span"); s.className = "wsub"; s.textContent = "名称必填 · 初始金额记为第一条流水";
+  h.append(t, s);
+  card.appendChild(h);
+  const f = walletFormBase(card);
+  const name = walletField(f, "名称", "如 微信 / 现金 / 招商卡");
+  const init = walletField(f, "初始金额 (元)", "不填 = 0", "number");
+  const note = walletField(f, "备注 (可选)", "如 日常零花");
+  const err  = walletFormErr(f);
+  walletFormButtons(f, [["新建钱包", ()=>{
+    const nm = cleanWalletName(name.value);
+    if(!nm) return walletFormFail(err, "名称不能为空, 且不超过 "+WALLET_NAME_MAX+" 个字符");
+    if(findWalletByName(nm)) return walletFormFail(err, "已有同名钱包「"+nm+"」");
+    const iv = String(init.value || "").trim();
+    let cmd = "wallet add "+quote(nm);
+    if(iv!==""){
+      const n = numeric(iv.replace(/,/g,""));
+      if(n==null || n<0 || !isFinite(r2(n))) return walletFormFail(err, "初始金额需为 ≥ 0 的数字");
+      cmd += " "+r2(n);
+    }
+    const nt = String(note.value || "").trim();
+    if(nt) cmd += (iv==="" ? " 0 " : " ")+quoteNote(nt);   // 没填金额却填了备注: 显式补 0, 备注不会被当成金额
+    runCommand(cmd);
+  }, "accent"]]);
+  return card;
+}
+/* 钱包卡片的「本期支出占比」条: 与预算进度条区分 —— 占比不是"额度用了多少",
+   所以固定青色、不画 100% 虚线刻度、也不按红黄绿分级(否则 100% 会被读成"超支")。 */
+function shareBar(ratio, opts){
+  opts = opts || {};
+  const r = (typeof ratio==="number" && isFinite(ratio)) ? Math.max(0, ratio) : 0;
+  const wrap = document.createElement("div"); wrap.className = "l hbar-wrap";
+  const top = document.createElement("div"); top.className = "hbar-top";
+  const k = document.createElement("span"); k.className = "hbar-k"; k.textContent = opts.label || "";
+  const v = document.createElement("span"); v.className = "hbar-v"; v.style.color = COLOR.cyan;
+  v.textContent = (r*100).toFixed(1)+"%";
+  top.append(k, v);
+  wrap.append(top, hbarTrack(r, COLOR.cyan, { marker:false }));
+  if(opts.sub){
+    const sub = document.createElement("div"); sub.className = "hbar-sub"; sub.textContent = opts.sub;
+    wrap.appendChild(sub);
+  }
+  ((opts && opts.host) || term).appendChild(wrap);
+  return wrap;
+}
+function buildWalletCard(r, periodSpend){
+  const card = document.createElement("div");
+  card.className = "wcard"+(r.isDefault ? " default" : "");
+  card.dataset.wallet = String(r.id);
+  const h = document.createElement("div"); h.className = "wcard-h";
+  const nm = document.createElement("span"); nm.className = "wname"; nm.textContent = r.name;
+  h.appendChild(nm);
+  if(r.isDefault){
+    const tag = document.createElement("span"); tag.className = "wtag"; tag.textContent = "默认";
+    h.appendChild(tag);
+  }
+  const sub = document.createElement("span"); sub.className = "wsub";
+  sub.textContent = r.pays+" 笔支出 · "+r.ops+" 条手动流水";
+  h.appendChild(sub);
+  const bal = document.createElement("div");
+  bal.className = "wbal"+(r.balance<0 ? " neg" : "");
+  bal.style.color = r.balance<0 ? COLOR.red : COLOR.green;
+  bal.textContent = "¥"+money(r.balance);
+  card.append(h, bal);
+  if(r.balance<0){
+    const warn = document.createElement("div"); warn.className = "wnote"; warn.style.color = COLOR.yellow;
+    warn.textContent = "余额为负: 支出 / 取出已超过存入, 请核对或存入补齐";
+    card.appendChild(warn);
+  }
+  shareBar(r.share, {
+    label: "本期支出占比",
+    sub: "本期支出 ¥"+money(r.spent)+(periodSpend>0 ? (" · 占本期消费 "+(r.share*100).toFixed(1)+"%") : " · 本期暂无支出"),
+    host: card
+  });
+  const btns = document.createElement("div"); btns.className = "wbtns";
+  const form = document.createElement("div");
+  pageButton(btns, "存入", ()=>openWalletForm(form, r, "in"));
+  pageButton(btns, "取出", ()=>openWalletForm(form, r, "out"));
+  if(!r.isDefault) pageButton(btns, "设为默认", ()=>runCommand("wallet use "+quote(r.name)), "accent");
+  pageButton(btns, "重命名", ()=>openWalletForm(form, r, "name"));
+  if(state.wallets.length>1){
+    /* 两步确认: 第一次点只变红, 3 秒内再点才真的删(删除 = 流水一并删 + 支出改记默认钱包, 可 undo) */
+    const del = pageButton(btns, "删除", ()=>{
+      if(!del.classList.contains("armed")){
+        del.classList.add("armed"); del.textContent = "确认删除?";
+        setTimeout(()=>{ del.classList.remove("armed"); del.textContent = "删除"; }, 3000);
+        return;
+      }
+      runCommand("wallet del "+quote(r.name));
+    }, "danger");
+    del.title = "删除后: 手动流水一并删除, 由它支付的支出改记到默认钱包(可 undo)";
+  }
+  card.append(btns, form);
+  return card;
+}
+function renderWalletPage(){
+  const host = document.getElementById("walletBody");
+  if(!host) return;
+  host.innerHTML = "";                         // 仅清空
+  const p = currentPeriod();
+  const { rows, periodSpend, unassigned } = walletRows(p);
+  const cmp = walletBudgetCompare();
+  const st = periodSnapshot(p);
+  pageHead(host, "钱包", rows.length+" 个 · 默认: "+defaultWallet().name+" · "+p.label);
+  const sum = document.createElement("div"); sum.className = "wsum";
+  const wstat = (k, v, color, subTxt)=>{
+    const d = document.createElement("div"); d.className = "ws";
+    const kk = document.createElement("span"); kk.className = "k"; kk.textContent = k;
+    const vv = document.createElement("span"); vv.className = "v"; vv.textContent = v; vv.style.color = color;
+    d.append(kk, vv);
+    if(subTxt){ const s2 = document.createElement("span"); s2.className = "s"; s2.textContent = subTxt; d.appendChild(s2); }
+    sum.appendChild(d);
+  };
+  wstat("钱包余额合计", "¥"+money(cmp.total), cmp.total<0 ? COLOR.red : COLOR.green, "存入 − 取出 − 已付支出");
+  wstat("可用余额(含结转)", "¥"+money(cmp.bal), cmp.bal<0 ? COLOR.red : COLOR.cyan, "预算口径: 发放 − 占用");
+  wstat("钱包 − 预算可用", (cmp.diff>=0 ? "+" : "-")+"¥"+money(Math.abs(cmp.diff)),
+        cmp.diff<0 ? COLOR.yellow : COLOR.white, cmp.diff>=0 ? "钱包里的钱比预算可用多" : "钱包里的钱比预算可用少");
+  wstat("本期预算 / 已消费", "¥"+money(st.B)+" / ¥"+money(st.consumption), COLOR.white,
+        "各钱包本期支出合计 ¥"+money(r2(periodSpend-unassigned)));
+  host.appendChild(sum);
+  pageLine(host, [{t:"  钱包余额手动维护, 不参与预算的发放 / 占用 / 结转 —— 两边各自计算, 这里只并排对照; 记支出时选钱包, 余额自动扣减(按总价)。", c:COLOR.gray}]);
+  if(periodSpend>0){
+    const parts = rows.filter(x=>x.spent>0).map(x=>({ label:x.name, value:x.spent, color:walletColor(state.wallets.indexOf(x.w)) }));
+    if(unassigned>0) parts.push({ label:"未指定钱包(旧记录)", value:unassigned, color:COLOR.gray });
+    stackBar(parts, { title:"本期各钱包支出占比(消费口径, 合计 ¥"+money(periodSpend)+")", host });
+  } else {
+    pageLine(host, [{t:"  本期还没有支出 —— 「+ 记一笔」时选一个支付钱包, 这里会显示各钱包的支出占比。", c:COLOR.gray}]);
+  }
+  host.appendChild(buildWalletNewCard());
+  const grid = document.createElement("div"); grid.className = "wk-grid";
+  rows.forEach(x=>grid.appendChild(buildWalletCard(x, periodSpend)));
+  host.appendChild(grid);
+  const items = walletLedger(null, 12);
+  pageHead(host, "钱包流水", "最近 "+items.length+" 条 · 存入 / 取出 / 支出扣款(按总价) · 看更多: wallet log [N]");
+  if(!items.length) pageLine(host, [{t:"  (暂无流水)", c:COLOR.gray}]);
+  for(const it of items){
+    const plus = it.amount>0;
+    pageLine(host, [
+      {t:"  "+it.date+"  ", c:COLOR.gray},
+      {t:(walletNameOf(it.wallet) || "—")+"  ", c:COLOR.white},
+      {t:(plus ? "+¥" : "-¥")+money(Math.abs(it.amount)).padStart(10," ")+"  ", c:plus ? COLOR.green : (it.kind==="pay" ? COLOR.orange : COLOR.red)},
+      {t:(it.kind==="pay" ? "支出 " : (plus ? "存入 " : "取出 "))+(it.note || ""), c:COLOR.gray}
+    ]);
+  }
+}
+
+/* ---- 设置页: SETTING_CARDS 是唯一清单(卡片顺序 / 标题 / 挂哪个面板 / 怎么回填 / 摘要文案) ----
+   modal+wrap: 该卡挂载的既有弹窗面板与它的遮罩层(离开设置页时搬回去);
+   fill: 把表单回填成当前已保存的值(与"以浮层打开"时走同一个回填函数);
+   live: 卡片标题旁的一行实时摘要; build: 卡片里面板之外的补充行(或整张小表单)。 */
+const SETTING_CARDS = [
+  { key:"budget",   title:"周期预算",        modal:"budgetModal", wrap:"budgetWrap", fill:fillBudgetModal, live:liveBudget },
+  { key:"period",   title:"周期持续时间",    modal:"periodModal", wrap:"periodWrap", fill:fillPeriodCard, live:livePeriod, build:buildMonthStartRow },
+  { key:"invest",   title:"投资比例",        modal:"investModal", wrap:"investWrap", fill:fillInvestModal, live:liveInvest },
+  { key:"category", title:"类别余额",        modal:"catModal",    wrap:"catWrap",    fill:fillCatCard,    live:liveCategory },
+  { key:"geo",      title:"地点与地图 Key",  modal:"geoModal",    wrap:"geoWrap",    fill:fillGeoModal,   live:liveGeo },
+  { key:"other",    title:"预警与收益参数",  build:buildOtherCard,                   fill:fillOtherCard,  live:liveOther },
+];
+function buildSettingsCards(){
+  const host = document.getElementById("settingsCards");
+  if(!host) return;
+  host.innerHTML = "";                         // 仅清空
+  const sub = document.getElementById("settingsSub");
+  if(sub) sub.textContent = APP_VERSION+" · 改动立即保存, 可在主页撤销(Ctrl+Z) · 表单里显示的是已保存的值";
+  for(const c of SETTING_CARDS){
+    const card = document.createElement("div"); card.className = "scard"; card.dataset.key = c.key;
+    const h = document.createElement("div"); h.className = "scard-h";
+    const t = document.createElement("span"); t.className = "st"; t.textContent = "▓ "+c.title;
+    const lv = document.createElement("span"); lv.className = "slive"; lv.id = "sl_"+c.key;
+    h.append(t, lv);
+    const body = document.createElement("div"); body.className = "scard-body"; body.id = "sb_"+c.key;
+    if(c.modal){
+      const slot = document.createElement("div"); slot.className = "scard-slot"; slot.id = "sf_"+c.key;
+      body.appendChild(slot);
+    }
+    if(c.build) c.build(body);
+    const hint = document.createElement("div"); hint.className = "shint"; hint.id = "sh_"+c.key;
+    card.append(h, body, hint);
+    host.appendChild(card);
+  }
+}
+/* children 在浏览器里是 HTMLCollection(没有 indexOf), 在测试桩里是数组 —— 用遍历判断, 两边都成立 */
+function hasChild(parent, el){
+  if(!parent || !el) return false;
+  for(const c of parent.children) if(c===el) return true;
+  return false;
+}
+/* 把既有弹窗面板搬进设置页卡片(同一个 DOM 节点, 所以事件 / 校验 / 回灌命令都还是原来那一套) */
+function mountSettingsCards(){
+  const host = document.getElementById("settingsCards");
+  if(!host.children.length) buildSettingsCards();
+  for(const c of SETTING_CARDS){
+    if(!c.modal) continue;
+    const slot = document.getElementById("sf_"+c.key);
+    const panel = document.getElementById(c.modal);
+    if(slot && panel && !hasChild(slot, panel)) slot.appendChild(panel);
+  }
+}
+function unmountSettingsCards(){
+  for(const c of SETTING_CARDS){
+    if(!c.modal) continue;
+    const wrap = document.getElementById(c.wrap);
+    const panel = document.getElementById(c.modal);
+    if(wrap && panel && !hasChild(wrap, panel)) wrap.appendChild(panel);
+  }
+}
+function clearSettingsHints(){
+  for(const c of SETTING_CARDS){
+    const h = document.getElementById("sh_"+c.key);
+    if(h){ h.textContent = ""; h.classList.remove("bad"); }
+  }
+}
+function settingsHint(key, msg, bad){
+  const h = document.getElementById("sh_"+key);
+  if(!h) return false;
+  h.textContent = msg;
+  h.classList.toggle("bad", !!bad);
+  return false;
+}
+function fillSettingsCards(){
+  mountSettingsCards();
+  clearSettingsHints();
+  for(const c of SETTING_CARDS){
+    c.fill();
+    const lv = document.getElementById("sl_"+c.key);
+    if(lv) lv.textContent = c.live();
+  }
+}
+/* 设置页专属的小表单行: 标签 + 输入框 + 按钮(Enter 同按钮); 回灌的命令由调用方给 */
+function settingsRow(host, label, inputId, placeholder, btnLabel, onOk, inputType){
+  const row = document.createElement("div"); row.className = "srow";
+  const l = document.createElement("label"); l.textContent = label;
+  const i = document.createElement("input");
+  i.id = inputId; i.type = inputType || "text"; i.placeholder = placeholder || ""; i.autocomplete = "off";
+  row.append(l, i);
+  if(btnLabel){
+    pageButton(row, btnLabel, onOk, "accent");
+    i.addEventListener("keydown", (e)=>{ if(e && e.key==="Enter"){ if(e.preventDefault) e.preventDefault(); onOk(); } });
+  }
+  host.appendChild(row);
+  return i;
+}
+function liveBudget(){
+  const p = currentPeriod(), db = state.settings.dailyBudget;
+  return "默认 ¥"+money(state.settings.budget)+" · 当期 ¥"+money(effectiveBudget(p))
+       + " · 每日额度 "+((typeof db==="number" && db>0) ? "¥"+money(db) : "未设");
+}
+function livePeriod(){
+  const s = state.settings, p = currentPeriod();
+  return (s.periodMode==="rolling" ? ("每 "+s.lengthDays+" 天一期") : (s.monthStart===1 ? "按自然月" : "每月 "+s.monthStart+" 日起"))
+       + " · 本期 "+p.label+" · 共 "+periodDayCount(p)+" 天";
+}
+function liveInvest(){
+  const sp = rateSplit();
+  return "消费 "+consumePct()+"% · 投资 "+invPct()+"% (货币 "+r2(sp.mm*100)+"% / 指数 "+r2(sp.idx*100)+"%)";
+}
+function liveCategory(){
+  const cp = currentPeriod(), rows = catBudgetRows(cp);
+  return rows.length ? ("已配置 "+rows.length+" 类 ¥"+money(catAllocated())+" · 可配置 ¥"+money(catPoolLeft(cp))) : "尚未配置类别余额";
+}
+function liveGeo(){
+  return "地点: "+geoModeLabel()+" · 地图 Key "+(state.settings.geoKey ? ("已配置 ("+maskGeoKey(state.settings.geoKey)+")") : "未配置");
+}
+function liveOther(){
+  const s = state.settings;
+  return "阈值 "+s.thresholds.join("% / ")+"% · 周从"+(s.weekStart==="mon" ? "周一" : "周日")+"起 · 年化 货币 "+(s.rateMoney*100).toFixed(2)+"% / 指数 "+(s.rateIndex*100).toFixed(2)+"%";
+}
+function fillPeriodCard(){
+  fillPeriodModal();
+  const el = document.getElementById("o_monthstart");
+  if(el) el.value = state.settings.monthStart;
+}
+function fillCatCard(){ fillCatModal(); }
+function fillOtherCard(){
+  const s = state.settings;
+  const a = document.getElementById("o_alert");   if(a) a.value = s.thresholds.join(",");
+  const mon = document.getElementById("o_week_mon"), sun = document.getElementById("o_week_sun");
+  if(mon) mon.classList.toggle("on", s.weekStart==="mon");
+  if(sun) sun.classList.toggle("on", s.weekStart!=="mon");
+  const rm = document.getElementById("o_rate_money"); if(rm) rm.value = +(s.rateMoney*100);
+  const ri = document.getElementById("o_rate_index"); if(ri) ri.value = +(s.rateIndex*100);
+}
+/* 周期卡里、面板之外的一行: 按月模式的月起始日(v0.1.0 起收进 config, 与命令行同一个校验入口) */
+function buildMonthStartRow(host){
+  settingsRow(host, "按月模式的月起始日", "o_monthstart", "1-28; 1 或 natural = 自然月", "保存", saveMonthStartRow);
+}
+function saveMonthStartRow(){
+  const d = monthStartSet(document.getElementById("o_monthstart").value);
+  if(d==null) return settingsHint("period", "月起始日需为 1-28 的整数(1 或 natural = 自然月)。", true);
+  runCommand("config set monthstart "+d);
+}
+/* 「预警与收益参数」卡: 以前只有命令行能改的三项(set alert / set weekstart / set rate) */
+function buildOtherCard(host){
+  settingsRow(host, "预警阈值 (%)", "o_alert", "如 80,100", "保存", saveAlertRow);
+  const row = document.createElement("div"); row.className = "srow";
+  const l = document.createElement("label"); l.textContent = "周起始日(周总结起点)";
+  const seg = document.createElement("div"); seg.className = "seg";
+  for(const [id, label, val] of [["o_week_mon","周一","mon"],["o_week_sun","周日","sun"]]){
+    const b = document.createElement("button"); b.type="button"; b.id = id; b.textContent = label;
+    b.addEventListener("click", ()=>runCommand("set weekstart "+val));
+    seg.appendChild(b);
+  }
+  row.append(l, seg);
+  host.appendChild(row);
+  settingsRow(host, "货币基金年化 (%)", "o_rate_money", "如 2", "保存", ()=>saveRateRow("money"), "number");
+  settingsRow(host, "指数基金年化 (%)", "o_rate_index", "如 8", "保存", ()=>saveRateRow("index"), "number");
+}
+function saveAlertRow(){
+  const parts = String(document.getElementById("o_alert").value || "").split(/[,，]/).map(x=>x.trim()).filter(Boolean);
+  const nums = parts.map(x=>numeric(x));
+  if(!parts.length || nums.some(n=>n==null || n<=0 || n>100)){
+    return settingsHint("other", "预警阈值请写成 0~100 的百分数, 用逗号分隔, 如 80,100。", true);
+  }
+  runCommand("set alert "+nums.join(","));
+}
+function saveRateRow(which){
+  const n = numeric(String(document.getElementById(which==="money" ? "o_rate_money" : "o_rate_index").value || "").trim());
+  if(n==null || n<0 || n>100) return settingsHint("other", "年化需为 0~100 之间的数字(百分数), 如 2 或 8。", true);
+  runCommand("set rate "+which+" "+n);
+}
+function bindPages(){
+  document.querySelectorAll("#pageNav .pg").forEach(b=>{
+    b.addEventListener("click", ()=>showPage(b.dataset.page));
+  });
+  if(typeof window!=="undefined" && window.addEventListener){
+    window.addEventListener("keydown", (e)=>{      // Alt+1 主页 / Alt+2 钱包 / Alt+3 设置
+      if(!e || !e.altKey || e.ctrlKey || e.metaKey) return;
+      const pg = PAGE_KEYS[e.key];
+      if(!pg) return;
+      if(e.preventDefault) e.preventDefault();
+      showPage(pg);
+    });
+  }
+  buildSettingsCards();
+}
 function boot(){
   const dropped = loadState();
   /* v0.0.12: 先把上次定位的地名从独立缓存读回来(左上角立即可见、首笔即可用), 再申请一次新定位 */
@@ -5962,9 +7035,10 @@ function boot(){
   setGeoStatus(cached ? "cached" : "idle",
                cached ? (geoCache.district || districtOf(geoCache.place)) : "定位中…");
   refreshAll();               // 顶栏统计/理财条/类别下拉/左上角定位/撤销按钮 一次刷新(H4 的同一入口)
-  bindToolbar(); bindModal(); bindInput(); bindSearch();
+  bindToolbar(); bindModal(); bindInput(); bindSearch(); bindPages();
   armAutoReconnect();
-  if(dropped) line([{t:"⚠ 本地数据里有 "+dropped+" 条记录金额/日期损坏, 已跳过(其余记录照常加载)。", c:COLOR.yellow}]);
+  if(dropped.dropped) line([{t:"⚠ 本地数据里有 "+dropped.dropped+" 条记录金额/日期损坏, 已跳过(其余记录照常加载)。", c:COLOR.yellow}]);
+  if(dropped.walletsDropped) line([{t:"⚠ 本地数据里有 "+dropped.walletsDropped+" 条钱包 / 流水数据无效(名称重复、金额为 0 等), 已跳过。", c:COLOR.yellow}]);
   // banner
   const t=todayYMD();
   line([{t:"╔═══════════════════════════════════════════════════╗",c:COLOR.green}]);
@@ -5980,6 +7054,9 @@ function boot(){
         {t:" (或 set consume 85 / set ratio 0.85)",c:COLOR.gray}]);
   showBudget();
   line([{t:"输入 ",c:COLOR.gray},{t:"help",c:COLOR.yellow},{t:" 查看全部命令；或点上方按钮快速操作。",c:COLOR.gray}]);
+  /* v0.1.0: 工具栏的「配置 ▾」移除后, 首屏明确指一下配置去哪儿了(省得老用户找按钮) */
+  line([{t:"  配置(周期预算 / 周期持续时间 / 投资比例 / 类别余额 / 地图 Key)都在顶部「",c:COLOR.gray},
+        {t:"设置",c:COLOR.cyan},{t:"」页, 页内直接改。",c:COLOR.gray}]);
   blank();
   primeGeoLocation();         // 每次打开只申请一次定位(结果只更新缓存 + 左上角, 不碰账本)
   input.focus();

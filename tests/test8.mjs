@@ -302,13 +302,17 @@ function geoApp(opts={}){
 /* ---------- 5. UI 双通道(全部回灌命令) ---------- */
 {
   const { S } = geoApp();
-  ok("GEO.63 工具栏有「地点 ▾」下拉", /id="geoDd"/.test(html) && /id="btnGeoDd"/.test(html));
-  ok("GEO.64 三个 data-geo 菜单项齐全", ["auto","manual","settings"].every(k=>html.includes('data-geo="'+k+'"')));
-  ok("GEO.65 GEO_COMMANDS 回灌 config 命令",
+  ok("GEO.63 工具栏不再有「地点 ▾」下拉(配置入口只在设置页)",
+     !/id="geoDd"/.test(html) && !/id="btnGeoDd"/.test(html) && !/data-geo=/.test(html));
+  ok("GEO.64 设置页仍有「地点与地图 Key」卡片(同一个 geoModal DOM)",
+     /modal:"geoModal"/.test(html) && /wrap:"geoWrap"/.test(html) && /id="geoModal"/.test(html));
+  ok("GEO.65 GEO_COMMANDS 仍供设置页弹窗回灌 config 命令",
      S.GEO_COMMANDS.auto==="config set geo auto" && S.GEO_COMMANDS.manual==="config set geo manual");
-  ok("GEO.66 bindToolbar 的 geo 分支真的 runCommand", /runCommand\(gc\);/.test(html));
+  ok("GEO.66 bindToolbar 不再有 geo 分支(顶栏无重复配置入口)",
+     !/dataset\.geo/.test(html) && !/btnGeoDd/.test(html));
   S.state.settings.geoMode="manual"; S.refreshGeoUI();
-  ok("GEO.67 主页按钮随模式刷新", S.__doc.getElementById("btnGeoDd").textContent.includes("手动"));
+  ok("GEO.67 refreshGeoUI 不依赖已删按钮, 仍清掉左上角残留区名",
+     !/getElementById\("btnGeoDd"\)/.test(html) && S.geoStatus.kind==="off");
   S.state.settings.geoKey="ABCDEFGHIJKLMN"; S.openGeoModal();
   ok("GEO.68 设置弹窗不回显明文 Key",
      S.__doc.getElementById("g_key").value==="" && S.__doc.getElementById("g_key").placeholder.includes("…"));

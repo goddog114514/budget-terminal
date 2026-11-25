@@ -131,7 +131,7 @@ const TODAY = "2027-08-30";
 {
   const S = mk();
   const d = (id)=>S.__doc.getElementById(id);
-  ok("P7.1 下拉里有「配置周期」按钮", /data-config="period"[^>]*>配置周期/.test(html), "");
+  ok("P7.1 主页不再有 data-config 菜单; 周期设置入口在设置页「周期持续时间」卡", !/data-config=/.test(html) && /key:"period",\s+title:"周期持续时间"/.test(html), "");
   ok("P7.2 周期弹窗在 MODAL_IDS 里(浮层互斥管得到)", S.MODAL_IDS.includes("periodWrap"), S.MODAL_IDS.join(","));
 
   S.openBudgetModal();
@@ -184,7 +184,7 @@ const TODAY = "2027-08-30";
   const out = S.lines().join("\n");
   ok("P8.1 config 输出「当前周期」行", /当前周期\s+2027-08-01 ~ 2027-09-13/.test(out), out.split("\n").filter(l=>/周期/.test(l)).join("|"));
   ok("P8.2 config 输出当前周期天数", /共 44 天/.test(out), out.split("\n").filter(l=>/周期/.test(l)).join("|"));
-  ok("P8.3 config 的周期模式行指向配置周期入口", /配置 ▾ → 配置周期/.test(out), "");
+  ok("P8.3 config 的周期模式行指向设置页「周期持续时间」", /设置页 · 周期持续时间/.test(out), "");
 
   eq("P8.4 补全: config 首槽给 set", S.argCandidates("config",1,["config",""],""), ["set"]);
   const sub1 = S.argCandidates("config",2,["config","set",""],"");
@@ -211,7 +211,7 @@ const TODAY = "2027-08-30";
 {
   ok("P10.1 README 命令表记录 config set period", /`config set period <N天>`/.test(readme), "");
   ok("P10.2 README 记录 config set periodend", /`config set periodend/.test(readme), "");
-  ok("P10.3 README 记录「配置周期」入口", /配置 ▾ → 配置周期/.test(readme), "");
+  ok("P10.3 README 记录周期设置入口(设置页「周期持续时间」)", /设置页「周期持续时间」/.test(readme), "");
 }
 
 console.log("PASS " + pass + " / FAIL " + fails.length);

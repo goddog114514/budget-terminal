@@ -18,7 +18,7 @@ node tests/run-all.mjs
 # 日常小更新: 只跑相关的那一个（同样满足低档闸门）
 node tests/test5.mjs
 
-# 变异测试: 只在你新增/改动护栏后重跑（116 组: 分摊成本 / H5 / H4 / 图表 / 合并入口 / 统一视觉 / 地点 13 / P0 / 浮层互斥 / P1 14 / P2 8 / 查找 6 / 预算行口径 5 / 类别余额 15（含静默开关 2）/ 导出下拉 2 / 周期设置 4 / 经常性支出 4 / 持久化容量 3, 明细见 mutate-amort.mjs 的 MUTANTS, 必须全部被抓住）
+# 变异测试: 只在你新增/改动护栏后重跑（124 组: 分摊成本 / H5 / H4 / 图表 / 合并入口 / 统一视觉 / 地点 13 / P0 / 浮层互斥 / P1 14 / P2 8 / 查找 6 / 预算行口径 5 / 类别余额 15（含静默开关 2）/ 导出下拉 2 / 周期设置 4 / 经常性支出 4 / 持久化容量 3 / 钱包·三页 8, 明细见 mutate-amort.mjs 的 MUTANTS, 必须全部被抓住）
 node tests/mutate-amort.mjs
 ```
 
@@ -38,7 +38,7 @@ node tests/mutate-amort.mjs
 | `test.mjs` | 152 | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + **分摊成本 `amort`（T28）** + **分摊窗口口径（T29）** + **P2**（导入提示 / 持久化诊断 / 导出转义） |
 | `test2.mjs` | 59 | 端到端命令流/弹窗/备份数据冒烟/阈值与红黄绿圆点 |
 | `test3.mjs` | 123 | P1 护栏：颜色令牌一致、`kvRow`、自适应列宽、死代码已删、响应式 CSS + v0.0.11 统一视觉组件 + v0.0.12 自定义类别独立色板（C9/C10） |
-| `test4.mjs` | 125 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表（v0.0.13 起含 `search`/`find`） + P0 `config`/`set` 比例与金额边界（M1.53–60） + **P2** `config` 第四 token/help 与补全暴露 |
+| `test4.mjs` | 127 | M1 护栏：`COMMANDS` ↔ `dispatch` ↔ `help` ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表（v0.0.13 起含 `search`/`find`） + P0 `config`/`set` 比例与金额边界（M1.53–60） + **P2** `config` 第四 token/help 与补全暴露 |
 | `test5.mjs` | 92 | M2 护栏：语义槽位、`@日期` 位置无关、ghost 预览 + `amort` 补全与双选项卡（含起始日精确到日）+ P0 分摊预览口径（`config` 不再整体返回空） |
 | `test6.mjs` | 59 | **H5 护栏**：双通道对称（`pay full` 命令 / `config` 按钮 / 弹窗 edit 分支可达、提交走 `update`、失效行不可编辑）+ 程序化入口统一提交 |
 | `test7.mjs` | 241 | **v0.0.10 图表总结 + 合并入口 `report`**：四窗口 / 三图型 / 桶金额恒等式 / 分摊口径 / 预算口径 / 分析与结论 / 空数据 / 双通道 / 日期弹窗复用 / 规范自检 + 同版浮层互斥（CH10.1–10.9）+ **v0.0.13 预算行按窗口覆盖的各期合计**（CH11.1–11.32） |
@@ -48,7 +48,8 @@ node tests/mutate-amort.mjs
 | `test11.mjs` | 70 | **v0.0.15 周期设置**：`config set period\|periodstart\|periodend` 三种写法与边界（不含今天 / 1 天 / >366 天 / 非法日期）/ 旧写法兼容 / 「配置周期」弹窗天数自动同步与校验不落库 / 补全 / 归一化放宽到 366 |
 | `test12.mjs` | 65 | **v0.0.15 经常性支出 `recur`**：持续 × 频率（日/周/周期/月）/ 月末夹取不漂移 / 分摊与单日回落 / 500 笔上限 / 一次撤销 / 统计口径（list·search·summary·窗口）/ 持久化 / 「记一笔」第三选项卡预览与回灌命令 |
 | `test13.mjs` | 50 | **持久化容量**：`localStorage` 写满（`QuotaExceededError`）时 `.json` 仍全量落盘 / 落盘内容取自内存 `state`（非从 localStorage 复制）/ 每次全量快照（非增量）/ 关闭自动写盘时数据仅在内存的风险 / 预计最大可记账条数换算（实测配额 5,241,856 字符） |
-| **合计** | **1399** | 权威值见 `run-all.mjs` 顶部 `SUITES` |
+| `test14.mjs` | 220 | **v0.1.0 三页外壳 + 钱包 + 设置页**：钱包归一化/迁移/备份往返 / `wallet` 命令族（add·in·out·mv·use·name·del·log）与全部非法输入 / 付款口径 = **总价**且只算**截至今天** / `$钱包` 位置无关（含 `$"带 空格"`）/ 「记一笔」三个选项卡的支付钱包下拉与命令回灌 / 页面切换（主页五元素收起、浮层全关、回显条最多 30 行）/ 钱包页内联表单（新建·存入·取出·重命名·两步删除）/ 设置页**同一个面板 DOM** 在卡片与遮罩层之间搬动、数据没变不回填 / 月起始日收进 `config` / `@日期` 非法日期不再落库 |
+| **合计** | **1621** | 权威值见 `run-all.mjs` 顶部 `SUITES` |
 
 ## 环境变量（都有默认值，通常不用设）
 
@@ -138,9 +139,9 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 
 ## 变异测试（证明护栏真的有效）
 
-把已知缺陷改回去，确认对应断言会红。装置已用此法验证 **123 组**（脚本 116 组 + 早期手工 7 组），覆盖全部 **13** 个套件。
+把已知缺陷改回去，确认对应断言会红。装置已用此法验证 **131 组**（脚本 124 组 + 早期手工 7 组），覆盖全部 **14** 个套件。
 
-**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 116 组、
+**v0.0.6 起有脚本**（推荐照它加一组，别手搓）：`node tests/mutate-amort.mjs` 一次跑 124 组、
 自动校验"变异点恰好命中一次"、并汇总哪些没被抓住。
 
 | 变异体 | 套件 | 还原的缺陷 | 结果 |
@@ -179,6 +180,14 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 | `m_report_both` | test7 | 合并入口退化成只画柱状图（要求同时出两图） | 8 条红 |
 | `m_report_date_modal` | test7 | 手动输日期弹窗又拼回 `list` 命令 | 2 条红 |
 | `m_report_date_window` | test7 | 填了具体日期却按整月统计 | 2 条红 |
+| `m_wallet_pay_amount` | test14 | 钱包扣款按"每天金额"而不是总价（分摊只减一点点） | 3 条红 |
+| `m_wallet_future` | test14 | 未来日期的支出提前扣钱包（"截至今天"口径丢失） | 2 条红 |
+| `m_wallet_default_assign` | test14 | `doAdd` 不写默认钱包（记录永远未指定、余额不减） | 22 条红 |
+| `m_wallet_token` | test14 | `$钱包` 被忽略（选了钱包也按默认钱包付款） | 31 条红 |
+| `m_wallet_norm_dup` | test14 | 归一化放过重名钱包（`$钱包` 指向不明） | 3 条红 |
+| `m_wallet_window` | test14 | 钱包本期支出按 `r.date` 求和（分摊只算记账当天） | 2 条红 |
+| `m_page_hide` | test14 | 换页不收起主页（两页叠在一起） | 1 条红 |
+| `m_settings_mount_dup` | test14 | 设置页不挂载既有面板（表单消失/被迫复制第二套） | 2 条红 |
 
 做法：改一份副本 → `$env:BT_HTML` 指过去 → 跑对应套件，**必须变红**。新写的护栏也应做一次。
 
@@ -190,12 +199,12 @@ node tests/gen-window.mjs $env:TEMP\bt-window.html   # 分摊"窗口口径"端�
 
 ```
 tests/
-├─ run-all.mjs            单一入口(13 套件 + 基线校验, 合计 1399)
-├─ mutate-amort.mjs       变异测试(116 组: 分摊成本 9 + H5 6 + H4 4 + 图表 5 + 合并入口 5 + 统一视觉 4 + 地点 13 + P0 6 + 浮层互斥 2 + P1 14 + P2 8 + 查找 6 + 预算行口径 5 + 类别余额 15 + 导出下拉 2 + 周期设置 4 + 经常性支出 4 + 持久化容量 3)
+├─ run-all.mjs            单一入口(14 套件 + 基线校验, 合计 1621)
+├─ mutate-amort.mjs       变异测试(124 组: 分摊成本 9 + H5 6 + H4 4 + 图表 5 + 合并入口 5 + 统一视觉 4 + 地点 13 + P0 6 + 浮层互斥 2 + P1 14 + P2 8 + 查找 6 + 预算行口径 5 + 类别余额 15 + 导出下拉 2 + 周期设置 4 + 经常性支出 4 + 持久化容量 3 + 钱包/三页 8)
 ├─ env.mjs                路径解析单一入口(仓库根 / HTML / README / 夹具)
 ├─ dom.mjs                极简 DOM stub(元素/classList/style/事件/localStorage)
 ├─ app.mjs                加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, now, navigator, TMap})
-├─ test.mjs test2..test13 13 个套件(含 test6 H5 专项 / test7 图表专项 / test8 地点专项 / test9 查找专项 / test10 类别余额专项 / test11 周期设置专项 / test12 经常性支出专项 / test13 持久化容量专项)
+├─ test.mjs test2..test14 14 个套件(含 test6 H5 专项 / test7 图表专项 / test8 地点专项 / test9 查找专项 / test10 类别余额专项 / test11 周期设置专项 / test12 经常性支出专项 / test13 持久化容量专项 / test14 三页外壳·钱包·设置页专项)
 ├─ gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window/gen-h5/gen-chart.mjs   浏览器验证用页面生成器
 └─ fixtures/user_backup.json                            合成账本夹具(无真实数据)
 ```

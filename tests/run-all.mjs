@@ -13,7 +13,7 @@ const SUITES = [
   { file:"test.mjs",  expect:152, what:"账本/周期/结转/投资池/导入导出/持久化/撤销重做 + 分摊成本(amort) + 分摊窗口口径 + P2 导入提示/持久化诊断/导出转义" },
   { file:"test2.mjs", expect:59,  what:"端到端命令流/弹窗/备份数据冒烟/阈值与圆点 + v0.0.14 首屏自动输出预算/工具栏不再留「预算进度」按钮" },
   { file:"test3.mjs", expect:123,  what:"P1 护栏: 颜色令牌/kvRow/自适应列宽/死代码/响应式 + v0.0.11 统一视觉组件(标题/比例条/堆叠条/类别行/迷你柱) + v0.0.12 P1 自定义类别独立色板(B-15)" },
-  { file:"test4.mjs", expect:125,  what:"M1 护栏: 登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 + P0 config/set 比例与金额边界 + P2 config 第四 token/help 与补全暴露 (+v0.0.13 search/find 登记)" },
+  { file:"test4.mjs", expect:127,  what:"M1 护栏: 登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表 + P0 config/set 比例与金额边界 + P2 config 第四 token/help 与补全暴露 (+v0.0.13 search/find 登记)" },
   { file:"test5.mjs", expect:92,  what:"M2 护栏: 语义槽位/@日期位置无关/ghost 预览 + amort 补全与双选项卡(含起始日精确到日) + P0 分摊预览口径(config 不再整体返回空)" },
   { file:"test6.mjs", expect:59,  what:"H5 护栏: 双通道对称(pay full 命令/按钮同通道、config 按钮、弹窗 edit 分支可达) + 程序化入口统一提交" },
   { file:"test7.mjs", expect:241, what:"v0.0.10/0.11 图表总结 + 合并入口 report: 四窗口/三图型/饼图闭合/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用/输出去重与排序/规范自检 + 浮层互斥(下拉/弹窗全局最多一个 open) + v0.0.13 预算行按窗口覆盖的各期合计(跨两个记账周期 = 两期之和)" },
@@ -23,6 +23,7 @@ const SUITES = [
   { file:"test11.mjs", expect:70,  what:"v0.0.15 周期设置: config set period|periodstart|periodend 三种写法与边界(不含今天/1 天/>366 天/非法日期)/旧写法兼容/「配置周期」弹窗天数自动同步与校验不落库/补全/归一化放宽到 366/README 同步" },
   { file:"test12.mjs", expect:65,  what:"v0.0.15 经常性支出 recur: 持续×频率(日/周/周期/月)/月末夹取不漂移/分摊与回落/500 笔上限/一次撤销/统计口径/持久化/「记一笔」第三选项卡预览与回灌命令" },
   { file:"test13.mjs", expect:50,  what:"持久化容量: localStorage 写满(QuotaExceededError)时 .json 仍全量落盘/内容取自内存 state(非复制)/每次全量非增量/关闭自动写盘的真实风险/最大可记账条数换算" },
+  { file:"test14.mjs", expect:220, what:"v0.1.0 三页外壳 + 钱包 + 设置页: 归一化/迁移/备份往返/wallet 命令族/付款口径(总价且截至今天)/钱包参数 $钱包 位置无关/「记一笔」支付钱包下拉/页面切换与浮层/终端回显/钱包页内联表单/设置页面板共享挂载与回填时机/月起始日收进 config/日期校验" },
 ];
 
 const indent = (s)=> (s||"").trim().split("\n").map(l=>"      "+l).join("\n");

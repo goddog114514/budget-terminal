@@ -8,7 +8,8 @@
 > **审查方式**：静态走查 → 350+ 条无头断言复现 → 真实浏览器（无头 Edge）渲染/交互验证
 > **本文件位置**：项目主文件夹（与 `README.md` 同级）
 > **行号说明**：行号为 v0.0.5 时点值，代码改动后会漂移；定位请优先用**符号名**（§1.5 有索引）。
-> **版本时点**：`v0.0.9`（合并 v0.09-rev.1 的 H5 与 v0.09-rev.2 的 H4：双通道对称 + 弹窗 edit 分支 + 统一提交点；此前 v0.0.8 分摊起始日期精确到日）。
+> **版本时点**：`v0.1.0`（三页外壳：主页 / 钱包 / 设置 + 多钱包付款；钱包余额手动维护、按总价扣款，预算口径零改动）。
+> §1.5 的行号仍是 v0.0.8 时点，定位以符号名为准。
 
 ---
 
@@ -40,19 +41,23 @@ v0.0.6 的新增代码（分摊成本）**没有引入新的重复**，反而新
 ### 1.1 代码分区
 
 ```
-index.html (3404 行, LF, 单文件, 无构建, 无依赖)
-├─ <style>  ~310 行  :root 19 个令牌 → 组件规则 → 弹窗规则 → 终端/表格规则 → 选项卡规则
-│                     → 图表规则(.chart-bars/.chart-pie/.chart-legend, v0.0.10)
-├─ <body>   ~140 行  header#statusbar · nav.toolbar(命令按钮 + 2 个范围下拉: 消费列表 / 总结与图表) · #investbar
-│                     main#term · footer(输入框 + ghost) · 3 个弹窗(XWrap > XModal,
-│                     记一笔弹窗内含 2 个选项卡面板 #mp_add / #mp_amort)
-└─ <script> ~2790 行 按分区注释组织：
-    常量(含 AMORT_* / CHART_* / COLOR / CAT_PALETTE / COMMANDS) → 比率助手 → 状态与持久化 → undo/redo →
+index.html (7070 行, 单文件, 无构建, 无依赖)
+├─ <style>  ~840 行  :root 令牌 → 组件规则 → 弹窗规则 → 终端/表格规则 → 选项卡规则
+│                     → 图表规则(.chart-bars/.chart-pie/.chart-legend) → 三页外壳/钱包页/设置页/终端回显(v0.1.0)
+├─ <body>   ~230 行  nav.pages(● 主页 / 钱包 / 设置, v0.1.0) · header#statusbar · nav.toolbar
+│                     (命令按钮 + 3 个下拉; v0.1.0 移除「配置 ▾」「地点 ▾」) · #investbar · main#term · footer#pageFooter
+│                     main#pageWallet(钱包页, 内容由 renderWalletPage 现算)
+│                     main#pageSettings(设置页, 卡片由 SETTING_CARDS 生成并挂载弹窗面板)
+│                     · 7 个弹窗(XWrap > XModal; 记一笔弹窗内含 3 个选项卡面板)
+└─ <script> ~6000 行 按分区注释组织：
+    常量(含 AMORT_* / WALLET_* / CHART_* / COLOR / CAT_PALETTE / COMMANDS) → 比率助手 → 状态与持久化(含 normalizeWallets/ensureWallets) → undo/redo →
     FSA 自动写盘 → 日期工具 → 周期引擎 → 投资换算(含 recDays/recTotal/recWindow) →
     ★窗口统计唯一入口(collectWindow/sumRange/recAmountInRange) → 预算派生 →
-    渲染助手(kvRow) → 输入/分发(COMMANDS→dispatch) → 各命令(含 doAmort) →
-    ★窗口解析唯一入口(resolveWindow, summary/chart/report 共用) → 总结/图表/合并入口/导出 →
-    配置/燃尽/资产 → UI 装配(弹窗/选项卡/工具栏/下拉/补全) → boot
+    渲染助手(kvRow / 图形块) → 输入/分发(COMMANDS→dispatch, 含 $钱包 参数) → 各命令(含 doAmort/doWallet) →
+    ★钱包口径唯一入口(walletRows/walletBalance/walletLedger) →
+    ★窗口解析唯一入口(resolveWindow) → 总结/图表/合并入口/导出 →
+    配置/燃尽/资产 → UI 装配(弹窗/选项卡/工具栏/下拉/补全) →
+    ★三页外壳(showPage/afterPageCommand/SETTING_CARDS/renderWalletPage) → boot
 ```
 
 ### 1.2 数据流（每个命令都走这条线）
@@ -78,7 +83,7 @@ UI(按钮/弹窗/下拉) ──拼命令字符串──▶ runCommand(raw)
 ### 1.3 存储与仓库形态
 
 ```
-localStorage[budget_term_v1]  ⇄  budget_term_backup.json（FSA，带 {app,version,savedAt} 头）
+localStorage[budget_term_v1]  ⇄  budget_term_backup.json（FSA，带 {app,version,savedAt} 头；v0.1.0 起另含 wallets/wops 增量字段）
 目录句柄 → IndexedDB(budget_term_fs / kv)
 仓库：index.html · README.md · ARCHITECTURE-REVIEW.md · LICENSE · NOTICE · .gitignore
       · release-notes/ · tests/          （HANDOVER.md 有意不入库，见 §8）
@@ -87,7 +92,7 @@ localStorage[budget_term_v1]  ⇄  budget_term_backup.json（FSA，带 {app,vers
 **设计基准（判断"统一"的标尺）**：单文件、零依赖、命令行 + 按钮双通道、单一可变 `state` + 纯派生计算、
 所有用户数据走 `textContent`（无注入）、中文注释 + 英文标识符。
 
-### 1.4 命令表（47 个名字 = 22 主名 + 25 别名；设置入口在 config 下）
+### 1.4 命令表（49 个名字 = 23 主名 + 26 别名；设置入口在 config 下）
 
 由代码里的 `COMMANDS` 登记表派生 —— 改命令请改登记表，别在别处抄（M1）。
 
@@ -96,6 +101,7 @@ help(?) (h)      查看帮助                     set            周期/投资/�
 budget           当期预算进度                  forecast(burn)(predict)  燃尽预测
 add(a)           记一笔                        amort(amortize) 分摊成本(总价/天数/类别)
 recur(repeat)    经常性支出(持续/频率/分摊)    config set period|periodstart|periodend  周期设置
+wallet(acct)     钱包(付款账户)                config set monthstart <1-28>  按月模式每期起始日
 list(ls)         消费列表(类别/@日期/@period)   search(find)   查找(类别/#编号/金额/@日期)
 del(rm)(delete)  删除                          update(edit)   修改/改地点(#-)
 pay(invest)      标记已投                      place(where)   手动设置/清除地点
@@ -109,9 +115,12 @@ report(overview) 总结与图表(合并入口)          export         导出 md
 assets(asset)(networth)  资产看板              undo(u)        撤销
 redo             重做                          config(settings)(thresholds)(alerts)  查看配置
 cls(clear)       清屏
+wallet 子命令: add | in | out | mv | use | name | del | log          # v0.1.0 钱包
+add/amort/recur/update 的付款钱包参数: $钱包(位置无关, 如 add 50 餐饮 $微信; 名字带空格写 $"…")
 set 子命令: daily | monthstart | weekstart | alert | rate | category
 注: 旧写法 set budget / set invest(consume/ratio) / set period(periodstart|periodend) 仍兼容,
-    但 help 只推荐 config set … (v0.0.15: 周期设置搬进 config, 界面在「配置 ▾ → 配置周期」)
+    但 help 只推荐 config set … (v0.0.15: 周期设置搬进 config;
+    （v0.1.0: 界面全部收进「设置」页 —— 主页工具栏的「配置 ▾」已移除, 月起始日也收进 config）)
 ```
 
 ### 1.5 关键符号索引（v0.0.8 行号，仅作起点，定位以符号名为准）
@@ -128,11 +137,16 @@ set 子命令: daily | monthstart | weekstart | alert | rate | category
 | `investOf` / `recomputeAllInvest` / `recDays` / `recTotal` / `recAmortized` | 912 / 918 / 902 / 903 / 908 | 投资换算（按**总价**）、比例变更重算、分摊记录读取入口 |
 | `recWindow` / `recDaysInRange` / `recInWindow` / `recAmountInRange` / `recAmountUpToToday` / `sumRange` / `collectWindow` / `investTotalsOf` | 912 / 917 / 924 / 926 / 933 / 937 / 993 / 1008 | **窗口统计唯一入口**（v0.0.7）：分摊按"落在统计窗口内的天数"计；`collectWindow` 是总结/报告/`periodSnapshot` 共用的窗口统计，`investTotalsOf` 是应投/已投合计 |
 | `periodBounds` / `currentPeriod` / `ensureEpoch` | 840 / 871 / 1002 | 周期引擎与账本起点对齐 |
-| `monthPeriodBounds` / `periodSetDays` / `periodSetStart` / `periodSetEnd` / `periodSetRange` / `periodErrText` | ~1150 / ~2290 | **周期设置唯一入口（v0.0.15）**：命令 `config set period|periodstart|periodend` 与「配置 ▾ → 配置周期」弹窗共用；天数(`lengthDays`)一律由起止日期推导，失败原因统一出文案 |
+| `monthPeriodBounds` / `periodSetDays` / `periodSetStart` / `periodSetEnd` / `periodSetRange` / `periodErrText` | ~1150 / ~2290 | **周期设置唯一入口（v0.0.15）**：命令 `config set period|periodstart|periodend`、设置页「周期持续时间」卡与 `periodModal` 面板共用；天数(`lengthDays`)一律由起止日期推导，失败原因统一出文案 |
 | `investAmount` / `investFull` | 951 / 987 | 池分摊、全额投资 |
 | `moneyPending` / `indexPending` / `totalCharge` / `grantedTotal` / `availableBalance` / `periodSnapshot` | 934 / 935 / 1104 / 1033 / 1041 / 1110 | 池累计、占用合计（**只累计到今天**）、发放/结转/当期口径（复用 `collectWindow`） |
 | `catPool` / `catAllocated` / `catPoolLeft` / `catBudgetRows` / `catAlertList` / `set category` | ~1550 附近 | **类别余额（信封）唯一口径来源（v0.0.14）**：总可用余额 = 当期预算 × N%、可配置余额 = 总可用 − 已配置、每类使用率（`collectWindow` 单类别）、预警阈值（与今日/周期预算同一份 `thresholds`）。顶栏、`budget`、`config`、弹窗全部复用，不再各写一遍求和 |
 | `kvColWidth` / `kvRow` | 1092 / 1102 | **统一表格渲染器（含窗口自适应列宽）** |
+| `normalizeWallets` / `cleanWalletName` / `ensureWallets` | ~1030 附近 | **钱包归一化与不变量修复（v0.1.0）**：加载与导入共用；重名/空名/超长名丢弃，至少一个钱包、默认 id 与记录引用自愈 |
+| `walletRows` / `walletBalance` / `walletLedger` / `walletBudgetCompare` | ~2900 附近 | **钱包口径唯一入口（v0.1.0）**：余额=存入−取出−已付支出(总价, 截至今天)、本期支出=消费口径(collectWindow)、流水(存入/取出/支出)、与预算对照；命令与钱包页共用 |
+| `doWallet` / `walletAdd` / `walletInOut` / `walletMv` / `walletUse` / `walletRename` / `walletDel` | ~3000 附近 | 钱包命令族（v0.1.0）：add/in/out/mv/use/name/del/log，全部在落账前校验（钱包不存在则整条中止） |
+| `showPage` / `afterPageCommand` / `renderWalletPage` / `SETTING_CARDS` / `mountSettingsCards` | ~6500 附近 | **三页外壳（v0.1.0）**：页面切换(.page-hide)、非主页命令输出回显与设置页回填、钱包页渲染、设置页"卡片挂载既有弹窗面板"的唯一清单 |
+| `findMarkedToken` / `quoteWallet` / `modalWalletPart` | ~2350 附近 | **`$钱包` 参数（v0.1.0）**：与 `#地点` 共用一份"带前缀标记"解析；弹窗下拉只在非默认钱包时才拼 `$"…"` |
 | `COMMANDS` / `CMD_ALIAS` / `canonicalCmd` | 1177 / 1209 / 1217 | **命令登记表与别名解析** |
 | `dateCondOf` / `dateKeywordCond` / `parseSearchQuery` / `searchAmountHit` / `doSearch` / `bindSearch` | 2800 附近 | **查找唯一实现（v0.0.13）**：`@日期`条件由 `list`/`search` 共用；查询解析（关键词/#编号/金额/日期）、金额双口径（等值认两种、比较只按总价）、结果渲染复用 `renderRecordRow`；工具栏搜索框回车回灌 `search …` |
 | `resolveWindow` / `noCategoryHint` | 2130 附近 | **窗口解析唯一入口**：`summary` / `chart` / `report` 共用，返回 `{win,name,isDay}`；`kind="date"` 支持指定某一天 |
@@ -166,6 +180,8 @@ set 子命令: daily | monthstart | weekstart | alert | rate | category
 | 批次 | 每次「全额投资」分摊时处理的池子；支持一笔只投一部分 |
 | **分摊成本** | 一次性付掉的总价按天数摊到每天：`amount`=每天金额，`amortDays`=天数，`amortTotal`=总价；**投资按总价记一次**（v0.0.6） |
 | 口径 | 同一个数字的两种读法：**消费口径=每天**、**投资口径=总价**（v0.0.6 起的分摊成本要严格区分，§10 的 F13） |
+| 钱包 | 付款账户（现金/微信/…），**余额手动维护**；对钱包的扣款永远按**总价**且只算截至今天 —— 与预算的发放/占用/结转互不参与（v0.1.0） |
+| 页面 | 主页（原终端）/ 钱包 / 设置三个顶层视图，同一时间只显示一个（v0.1.0） |
 
 ---
 
@@ -355,7 +371,7 @@ v0.0.5 已把它整体移入仓库并相对化：
 
 ```
 tests/
-  run-all.mjs        全量入口：顺序跑 13 个套件 + 按 §7.2 基线校验断言数（护栏被删/改期望值也会红）
+  run-all.mjs        全量入口：顺序跑 14 个套件 + 按 §7.2 基线校验断言数（护栏被删/改期望值也会红）
   env.mjs            路径解析单一入口（仓库根 / index.html / README / 夹具）
   dom.mjs            极简 DOM stub（元素/classList/style/事件/localStorage）
   app.mjs            加载 index.html 内联脚本并暴露内部符号 loadApp({seedStorage, storageQuota, now, navigator, TMap})
@@ -371,10 +387,11 @@ tests/
   test10.mjs  127 条  **v0.0.14 类别余额(信封)护栏**（总可用=当期预算×N%/可配置余额/set category 多类别原子性与 off·reset/超额只能减/使用率含分摊/预警阈值与"未超标不渲染"/顶栏与 budget 顺序/归一化与撤销/弹窗实时预览与单命令回灌 + **静默开关(nowarn 只关警告、不改口径)**）
   test9.mjs   73 条  **v0.0.13 查找护栏**（关键词 类别/备注/地点 + #编号 + 金额 等值/比较/区间/分摊总价 + 日期窗口 + 多条件 AND + 非法条件/无结果 + 合计口径 + 结果行与 list 同构 + 行内按钮 + 工具栏搜索框双通道 + 日期解析共用）
   test13.mjs  50 条  **持久化容量护栏**（localStorage 配额写满 QuotaExceededError 时 .json 仍全量落盘 / 落盘源是内存 state 而非 localStorage 副本 / 每次全量快照非增量 / 自动写盘关闭的风险路径 / 最大可记账条数换算）
-  test11.mjs  70 条  **v0.0.15 周期设置护栏**（config set period|periodstart|periodend 三种写法/边界(不含今天·1 天·>366 天·非法日期)/旧写法兼容/「配置 ▾ → 配置周期」弹窗天数自动同步与校验不落库/补全/归一化放宽到 366/README 同步）
+  test11.mjs  70 条  **v0.0.15 周期设置护栏**（config set period|periodstart|periodend 三种写法/边界(不含今天·1 天·>366 天·非法日期)/旧写法兼容/设置页「周期持续时间」卡(= `periodModal` 面板)天数自动同步与校验不落库/补全/归一化放宽到 366/README 同步）
+  test14.mjs 220 条  **v0.1.0 三页外壳 + 钱包 + 设置页护栏**（钱包归一化/迁移/备份往返/命令族/付款口径=总价且截至今天/\$钱包 位置无关/弹窗下拉/三页切换/终端回显/钱包页内联表单/设置页"同一份面板 DOM 挂载"与"数据没变不回填"/月起始日收进 config/日期校验）
   test12.mjs  65 条  **v0.0.15 经常性支出 recur 护栏**（持续×频率(日/周/周期/月)/月末夹取不漂移/分摊与单日回落/500 笔上限/一次撤销/统计口径(list·search·summary·窗口)/持久化/「记一笔」第三选项卡预览与回灌命令/编辑模式不回退）
-  mutate-amort.mjs   **变异测试**: 116 组"把缺陷改回去" → 期望对应断言变红
-                     （amort 9 + H5 6 + H4 4 + 图表 5 + 合并入口 5 + 视觉 4 + 地点 13 + P0 6 + 浮层互斥 2 + P1 14 + P2 8 + 查找 6 + 预算行口径 5 + 类别余额 15 + 周期设置 4 + 经常性支出 4 + 持久化容量 3）
+  mutate-amort.mjs   **变异测试**: 124 组"把缺陷改回去" → 期望对应断言变红
+                     （amort 9 + H5 6 + H4 4 + 图表 5 + 合并入口 5 + 视觉 4 + 地点 13 + P0 6 + 浮层互斥 2 + P1 14 + P2 8 + 查找 6 + 预算行口径 5 + 类别余额 15 + 周期设置 4 + 经常性支出 4 + 持久化容量 3 + 钱包/三页 8）
   gen-clean/gen-help/gen-probe/gen-tab/gen-amort/gen-window/gen-h5/gen-chart.mjs   浏览器验证用页面生成器（默认输出到系统临时目录；
                                                     gen-window / gen-chart 自带 Date 桩把时钟钉在 2027-08-30，见 §7.3）
   fixtures/user_backup.json                  **全合成**账本夹具（不含任何真实账目）
@@ -393,9 +410,9 @@ tests/
 ### 7.2 跑法与验证闸门（两档）
 
 ```powershell
-# 全量（发版 / 跨模块改动）：顺序跑 13 个套件 + 基线校验，任一项失败/断言数不符即非 0 退出
+# 全量（发版 / 跨模块改动）：顺序跑 14 个套件 + 基线校验，任一项失败/断言数不符即非 0 退出
 node tests/run-all.mjs
-#   ✓ 152 / 59 / 123 / 125 / 92 / 59 / 241 / 163 / 73 / 127 / 70 / 65 / 50 → 合计 1399
+#   ✓ 152 / 59 / 123 / 127 / 92 / 59 / 241 / 163 / 73 / 127 / 70 / 65 / 50 / 220 → 合计 1621
 
 # 日常小更新：只跑本次改动涉及的套件 —— 这已经满足低档闸门
 node tests/test5.mjs
@@ -419,7 +436,7 @@ $env:BT_FIXTURE="C:\...\budget_term_backup.json"; node tests/run-all.mjs
 **高档 · 发版，或改动落在共享抽象上（跨模块）**
 
 ```
-[ ] node tests/run-all.mjs  → 合计 1399 PASS / 0 FAIL（152/59/123/125/92/59/241/163/73/127/70/65/50，且与基线一致）
+[ ] node tests/run-all.mjs  → 合计 1621 PASS / 0 FAIL（152/59/123/127/92/59/241/163/73/127/70/65/50/220，且与基线一致）
 [ ] 改动涉及 UI/视觉 → 浏览器确认改的那块对；**发版或专门动样式**时顺带量 1400 / 900 / 520 三档，
     scrollWidth === clientWidth（适配性是发版检查项，不是每次小更新的检查项）
 [ ] 改动涉及颜色/主题 → 探针确认 COLOR.* 与 CSS 令牌（js_* vs css_*）逐项相等
@@ -627,9 +644,12 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑全
 | 断言总数 | 353 | **415** | **455** | **455** | **498** | **718** | v0.0.11 相对 v0.0.10 +19：`test3.mjs` §8 统一视觉（标题/比例条/堆叠条/类别行/迷你柱）；v0.0.10 曾相对 v0.0.9 +201（`test7.mjs` 196 条 + `test4.mjs` 5 条） |
 | 变异测试组数 | 7 | 13 | **16** | **16** | **26** | **35** | v0.0.10 新增 9 组（图表 4 组 + 合并入口 4 组：`m_report_summary` / `m_report_both` / `m_report_date_modal` / `m_report_date_window`），全部被抓住 |
 
-> **v0.0.15 当前权威基线**：`run-all.mjs` 的 `SUITES` = **1399 条全绿**（152/59/123/125/92/59/241/163/73/127/70/65/50），
-> `mutate-amort.mjs` **116 组变异全部被抓住**（13 组地点 + 6 组 P0 + 2 组浮层互斥 + 14 组 P1 + 8 组 P2 + 6 组查找 + 5 组预算行口径 + 15 组类别余额 + 2 组导出下拉 + 4 组周期设置 + 4 组经常性支出 + **3 组持久化容量**）。上表是各版历史快照，
-> 历史时点：840/42 → 871/51 → 896/55 → 948/69 → 971/77 → 1046/83 → 1078/88 → 1182/101 → 1209/103 → 1212/105 → 1282/109 → **1399/116**；一切数字以 `run-all.mjs` / `mutate-amort.mjs` 的实际输出为准。
+> **v0.1.0 当前权威基线**：`run-all.mjs` 的 `SUITES` = **1621 条全绿**（152/59/123/127/92/59/241/163/73/127/70/65/50/220），
+> `mutate-amort.mjs` **124 组变异全部被抓住**（13 组地点 + 6 组 P0 + 2 组浮层互斥 + 14 组 P1 + 8 组 P2 + 6 组查找 + 5 组预算行口径 + 15 组类别余额 + 2 组导出下拉 + 4 组周期设置 + 4 组经常性支出 + 3 组持久化容量 + **8 组钱包/三页**）。上表是各版历史快照，
+> 历史时点：840/42 → 871/51 → 896/55 → 948/69 → 971/77 → 1046/83 → 1078/88 → 1182/101 → 1209/103 → 1212/105 → 1282/109 → 1399/116 → **1621/124**；一切数字以 `run-all.mjs` / `mutate-amort.mjs` 的实际输出为准。
+>
+> v0.1.0 时点：`index.html` **7091 行**、`COLOR.*` 597 处 / JS 颜色字面量 23 处（全在 `COLOR` 默认值与两套类别色板里）、`innerHTML` 14 处（全为清空）、
+> 断言 1621 条 / 14 套件、变异 124 组、命令 **49 个名字**（23 主名 + 26 别名，53 行登记）。
 
 ### 8.1 测试装置自身的量化（增删护栏时同步这里与 `run-all.mjs` 的基线表）
 
@@ -638,7 +658,7 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑全
 | `test.mjs` | 78 | 110 | **138** | 138 | 138 | 152 | **152** | 账本/周期/结转/投资池/导入导出/持久化/撤销重做 + `amort`(T28) + 分摊窗口口径(T29) + P2 导入/持久化/导出（+14） |
 | `test2.mjs` | 55 | 55 | 55 | 55 | 55 | 55 | **55** | 端到端命令流/弹窗/备份冒烟/阈值与圆点 |
 | `test3.mjs` | 84 | 84 | **85** | 85 | 114 | 123 | **123** | P1 护栏：颜色令牌/`kvRow`/自适应列宽/死代码/响应式 + 统一视觉组件 + v0.0.12 自定义类别色板（+9） |
-| `test4.mjs` | 79 | 85 | 85 | 85 | 101 | 121 | **123** | M1 护栏：登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表（v0.0.12 +2 = `place`/`where`；同版 P0 +8 = 金额/比例口径；P2 +10 = config 第四 token/help/补全；v0.0.13 +2 = `search`/`find`） |
+| `test4.mjs` | 79 | 85 | 85 | 85 | 101 | 121 | **127** | M1 护栏：登记表 ↔ dispatch ↔ help ↔ 补全 ↔ README ↔ 架构文件 §1.4 命令表（v0.0.12 +2 = `place`/`where`；同版 P0 +8 = 金额/比例口径；P2 +10 = config 第四 token/help/补全；v0.0.13 +2 = `search`/`find`） |
 | `test5.mjs` | 57 | 81 | **92** | 92 | 92 | 92 | **92** | M2 护栏：语义槽位/`@日期`/ghost + `amort` 补全与双选项卡 + 起始日精确到日（同版 P0 +1 = 预览口径；P2 断言改写至 92） |
 | `test6.mjs` | — | — | — | **43** | 59 | 59 | **59** | **H5 护栏**：双通道对称 + 程序化入口统一提交 |
 | `test7.mjs` | — | — | — | — | 197 | 206 | **238** | **v0.0.10 图表总结 + 合并入口**：四窗口/三图型/分摊口径/预算口径/分析与结论/空数据/双通道/日期弹窗复用（同版浮层互斥 +9 = CH10；**v0.0.13 +32 = 预算行按窗口覆盖的各期合计 CH11**） |
@@ -648,7 +668,8 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑全
 | `test10.mjs` | — | — | — | — | — | — | **—** | **v0.0.14 类别余额（信封）**新增 **127** 条（口径/命令原子性/超额只减/使用率含分摊/预警阈值与不渲染/顶栏顺序/归一化/弹窗实时预览/静默开关只关警告） |
 | `test11.mjs` | — | — | — | — | — | — | **—** | **v0.0.15 周期设置**新增 **70** 条（命令登记/help/三种写法/边界/旧写法兼容/「配置周期」弹窗实时天数与校验/补全/归一化放宽/README） |
 | `test12.mjs` | — | — | — | — | — | — | **—** | **v0.0.15 经常性支出**新增 **65** 条（持续×频率四单位/月末不漂移/分摊与回落/500 笔上限/一次撤销/统计口径/持久化/第三选项卡预览与回灌） |
-| `test13.mjs` | — | — | — | — | — | — | **—** | **持久化容量** 新增 **50** 条（写满时 `.json` 仍全量落盘/全量快照/取自内存 state/关自动写盘的风险/最大可记账条数）；**当前合计 1399** |
+| `test13.mjs` | — | — | — | — | — | — | **—** | **持久化容量** 新增 **50** 条（写满时 `.json` 仍全量落盘/全量快照/取自内存 state/关自动写盘的风险/最大可记账条数） |
+| `test14.mjs` | — | — | — | — | — | — | **—** | **v0.1.0 三页外壳 + 钱包 + 设置页** 新增 **220** 条（归一化/迁移/备份/钱包命令/付款口径/\$钱包/弹窗下拉/页面切换/回显/页内表单/面板挂载/回填时机/月起始日/日期校验）；**当前合计 1621** |
 
 ---
 
@@ -680,6 +701,21 @@ v0.0.6 起把这套做法写成了脚本 `tests/mutate-amort.mjs`（一次跑全
 ---
 
 ## 10. 各版变更对既有结论的影响
+
+### v0.1.0：三页外壳（主页/钱包/设置）+ 多钱包 —— 新增一个"付款账户"维度，预算口径零改动
+
+| 既有结论 | 本版影响 | 依据 |
+| --- | --- | --- |
+| 数据结构（`{settings, seq, records}`） | **新增 `wallets` / `wops` 与记录字段 `wallet`**，`LS_KEY` / 备份头 / `amount` 语义 / 精度未改 | §1.3、test14 A 组、`normalizeWallets` |
+| 预算的发放/占用/结转/可投/资产 | **一律未改**：钱包不参与这些派生，只在 `budget`/钱包页并排对照 | test14 C19c（`availableBalance` 不受钱包影响） |
+| 窗口统计唯一入口 `collectWindow` | 钱包"本期支出"**复用它**（不新写筛选/金额口径），因此 `Σ 各钱包本期支出 = 本期消费` | test14 C18/C18b |
+| 付款口径 | 新增一类口径：对钱包的扣款 = `recTotal()` **总价**、只算**截至今天**；与"消费口径=每天"严格分开 | test14 C10/C11、§1.6 F13 |
+| 双通道对称（H5） | 钱包页/设置页的每个动作都回灌命令；设置页表单**就是**既有弹窗的 DOM 节点（不建第二套） | test14 H13、G3/G31 |
+| 统一提交点（H4） | 钱包命令只改 `state`，落盘/刷新仍只经 `commit()`；钱包页在 `refreshAll()` 里跟着刷新 | test14 E21、`save()` 计数未增 |
+| 浮层互斥 | 换页会 `closeAllOverlays()`；设置页里的面板不在遮罩层，但主页面板搬回后照旧 | test14 E8/G33 |
+| 日期口径 | `cleanDateStr()` 改走 `normDateText()`：`@2027-13-40`/`@2027-02-30` 不再落库（以前下次加载会被当损坏记录丢掉） | README v0.1.0「同版修复·日期校验」、test14 B18 |
+| 工具栏入口 | 「配置 ▾」「地点 ▾」两个下拉移除：预算/周期/投资比例/类别余额/地图 Key/地点补填只从「设置」页进入；面板与回填函数原样保留（设置页挂载的就是它们，另保留"以浮层打开"的程序化入口），左上角定位 badge 保留 | §1.1、test6 H5.44–46、test10 CB11.19、test11 P7.1、test8 GEO.63–67 |
+| 回归装置 | 新增 `test14.mjs`(220)；`test7`(CH1.10/CH9.9) 与 `test10`(CB12.2/12.4) 版本断言升到 v0.1.0；`test4` 因新增命令/别名 +2 条(127)；合计 1621 / 变异 124 | §7.1、§7.2 |
 
 ### v0.0.14：类别余额（信封预算）—— 新增一份"计划"，不碰账本与占用口径
 
