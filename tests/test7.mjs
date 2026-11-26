@@ -52,8 +52,8 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
   eq("CH1.8 别名 charts 的参数补全与 chart 一致",
      S.argCandidates("charts", 1, ["charts"], ""), cands);
   eq("CH1.9 第二槽位仍给候选(顺序自由)", S.argCandidates("chart", 2, ["chart","week"], ""), cands);
-  eq("CH1.10 版本号已升到 v0.1.0", S.APP_VERSION, "v0.1.0");
-  ok("CH1.11 README 当前版本同步", /当前版本：\*\*v0\.1\.0\*\*/.test(readme), "");
+  eq("CH1.10 版本号已升到 v0.1.1", S.APP_VERSION, "v0.1.1");
+  ok("CH1.11 README 当前版本同步", /当前版本：\*\*v0\.1\.1\*\*/.test(readme), "");
   ok("CH1.12 README 命令表含 chart", /`chart \[/.test(readme), "");
   /* 工具栏(v0.0.10 同版迭代): 周期/日/周总结 + 图表总结 四个入口合成一个 */
   ok("CH1.13 旧的四个总结按钮与图表下拉已移除",
@@ -303,7 +303,7 @@ function runChart(S, cmd){ S.clearTerm(); S.runCommand(cmd); return S.lines().jo
   const rc = S.argCandidates("report", 1, ["report"], "");
   for(const w of ["day","week","period","month"]) ok("CH9.7 补全含 "+w, rc.includes(w), rc.join(","));
   ok("CH9.8 report 补全不含图型(固定双图)", !rc.includes("bar") && !rc.includes("pie") && !rc.includes("both"), rc.join(","));
-  eq("CH9.9 版本号升到 v0.1.0", S.APP_VERSION, "v0.1.0");
+  eq("CH9.9 版本号升到 v0.1.1", S.APP_VERSION, "v0.1.1");
 
   /* 一次输出必须同时含总结表 / 柱状图 / 饼图 / 自动分析 / 结论 */
   const txt = runChart(S, "report week");

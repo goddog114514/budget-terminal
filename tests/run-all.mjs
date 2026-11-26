@@ -23,7 +23,7 @@ const SUITES = [
   { file:"test11.mjs", expect:70,  what:"v0.0.15 周期设置: config set period|periodstart|periodend 三种写法与边界(不含今天/1 天/>366 天/非法日期)/旧写法兼容/「配置周期」弹窗天数自动同步与校验不落库/补全/归一化放宽到 366/README 同步" },
   { file:"test12.mjs", expect:65,  what:"v0.0.15 经常性支出 recur: 持续×频率(日/周/周期/月)/月末夹取不漂移/分摊与回落/500 笔上限/一次撤销/统计口径/持久化/「记一笔」第三选项卡预览与回灌命令" },
   { file:"test13.mjs", expect:50,  what:"持久化容量: localStorage 写满(QuotaExceededError)时 .json 仍全量落盘/内容取自内存 state(非复制)/每次全量非增量/关闭自动写盘的真实风险/最大可记账条数换算" },
-  { file:"test14.mjs", expect:220, what:"v0.1.0 三页外壳 + 钱包 + 设置页: 归一化/迁移/备份往返/wallet 命令族/付款口径(总价且截至今天)/钱包参数 $钱包 位置无关/「记一笔」支付钱包下拉/页面切换与浮层/终端回显/钱包页内联表单/设置页面板共享挂载与回填时机/月起始日收进 config/日期校验" },
+  { file:"test14.mjs", expect:253, what:"v0.1.1 钱包间转账 + v0.1.0 三页外壳/钱包/设置页: 归一化/迁移/备份往返/wallet 命令族/付款口径(总价且截至今天)/$钱包 位置无关/「记一笔」下拉/页面切换与浮层/回显/页内表单/设置页挂载/月起始日/日期校验" },
 ];
 
 const indent = (s)=> (s||"").trim().split("\n").map(l=>"      "+l).join("\n");

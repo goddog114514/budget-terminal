@@ -88,8 +88,8 @@ export function loadApp(opts = {}){
     parseRecurUnit, parseRecurSpan, recurEveryLabel, RECUR_UNITS, RECUR_MAX_COUNT,
     updateRecurHint, submitRecur, MODAL_PANELS,
     /* v0.1.0 钱包: 口径单一入口 / 归一化 / 命令 / 参数解析 */
-    doWallet, walletRows, walletBalance, walletLedger, walletBudgetCompare, walletSpendMap,
-    walletOpsSum, walletPaidSum, defaultWallet, findWalletByName, pickWalletId, walletNameOf,
+    doWallet, walletRows, walletBalance, walletBalanceAt, walletLedger, walletBudgetCompare, walletSpendMap,
+    walletOpsSum, walletPaidSum, walletTransfer, defaultWallet, findWalletByName, pickWalletId, walletNameOf,
     normalizeWallets, ensureWallets, cleanWalletName, nextWalletId, printWallets, printWalletLog,
     findWalletToken, findMarkedToken, quoteWallet, WALLET_NAME_MAX, DEFAULT_WALLET_NAME,
     /* v0.1.0 三页外壳 + 钱包页 + 「记一笔」支付钱包下拉 */

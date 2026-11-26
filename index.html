@@ -77,7 +77,7 @@
   .stat .v.ok{color:var(--green);}
   .stat .v.warn{color:var(--yellow);}
   .spacer{flex:1;}
-  /* v0.0.12 同版迭代 · 左上角定位状态: 图标 + 区名。由 refreshHeader() 每次重建并放在第一个子项,
+  /* 左上角定位状态: 图标 + 区名。由 refreshHeader 每次重建并放在第一个子项,
      不占 .stat 索引(浏览器探针按 #statusbar .stat 取列), 点击可手动重定位。 */
   .geo-badge{
     display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;cursor:pointer;
@@ -94,7 +94,7 @@
   /* 行内地点图标: 与左上角 badge 共用同一套 Canvas 准星绘制(makeGeoIcon 用, 不是 Emoji) */
   .geo-ic{width:16px;height:16px;display:inline-block;vertical-align:-3px;flex:0 0 auto;}
   /* 右上角 今日/周期 预算指示: 红黄绿"实心圆点", 不闪烁。
-     v0.0.14: 类别余额超额时也会插到这里(在今日/周期预算**之前**), 多项可横向列出 —— 
+     类别余额超额时也会插到这里(在今日/周期预算**之前**), 多项可横向列出 —— 
      窄屏放不下时自动换行, 不再把顶栏撑出横向滚动条。 */
   .mini-alert{
     font-size:12px;border:1px solid var(--border);padding:2px 8px;border-radius:3px;
@@ -136,7 +136,7 @@
   }
   nav.toolbar .dd-menu button:hover{background:rgba(61,255,122,.12);color:var(--white);}
   nav.toolbar .dd-menu .dd-hint{color:var(--gray);font-size:11px;padding:4px 10px 2px;}
-  /* v0.0.13 · 查找框: 工具条最右侧的**唯一**搜索入口 —— 回车回灌 `search …` 命令,
+  /* 查找框: 工具条最右侧的**唯一**搜索入口 —— 回车回灌 `search …` 命令,
      查询语法/结果渲染只有一套实现(与命令行完全等价, 不新建第二套查询状态)。 */
   nav.toolbar .searchbox{margin-left:auto;display:flex;align-items:center;}
   nav.toolbar #searchBox{
@@ -206,7 +206,7 @@
      图例为「色块 + 类别 + 金额 + 占比」四列, 类别列定宽以保证金额纵向对齐。 */
   .chartbox{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;margin:10px 0 8px 2px;max-width:100%;}
   .chart-h{font-size:15px;letter-spacing:.4px;margin:6px 0 2px;}
-  /* 柱状图**随分辨率自适应**(v0.0.12):
+  /* 柱状图**随分辨率自适应**:
      - 绘图区高度由 JS 写入 --plot-h(按视口高度缩放, 见 plotHeight()), CSS 只负责加顶部标签留白,
        两者共用同一个数字, 不会出现"柱高 192px、容器只有 150px"的错位;
      - 柱列 flex:1 均分可见宽度: 宽屏柱距拉开、柱宽随列宽收放(clamp), 窄屏自动收窄不溢出;
@@ -281,7 +281,7 @@
   .cat-track i{display:block;height:100%;border-radius:0;}
   .cat-pc{color:var(--green);text-align:right;}
   .cat-amt{color:var(--gray);text-align:right;}
-  /* ---- v0.0.14 类别余额(信封预算) ---- */
+  /* ---- 类别余额(信封预算) ---- */
   /* 命令输出: 类别 / 已分配 / 已支出 / 剩余 / 使用率 —— 五列网格(中文名按列对齐, 不靠空格凑) */
   .cb-table{display:flex;flex-direction:column;gap:2px;margin:6px 0 8px;max-width:680px;font-size:12.5px;}
   .cb-tr{display:grid;grid-template-columns:minmax(4em,1fr) 7.6em 7.6em 7.6em 4.8em;gap:10px;align-items:center;}
@@ -436,7 +436,7 @@
   #dateModal .hint{color:var(--gray);font-size:12px;margin-top:10px;line-height:1.6;}
   #dateModal .hint.bad{color:var(--yellow);}
 
-  /* ---- v0.1.0 三页外壳: 页面导航 / 钱包页 / 设置页 / 终端回显 ----
+  /* ---- 三页外壳: 页面导航 / 钱包页 / 设置页 / 终端回显 ----
      主页的顶层元素不动(只是多了一个 .page-hide 开关); 另两页是独立 <main>, 各自滚动。
      视觉沿用整站语言: 近黑面板 + 1px 暗边框 + 直角方块 + 等宽字体; 颜色一律取主题令牌。 */
   nav.pages{
@@ -496,11 +496,12 @@
   .wform{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
   .wform .wf{display:flex;align-items:center;gap:6px;flex:1 1 190px;min-width:0;}
   .wform .wf label{color:var(--gray);font-size:12px;white-space:nowrap;}
-  .wform input{
+  .wform input,.wform select{
     flex:1 1 80px;min-width:0;background:var(--field);border:1px solid var(--border);color:var(--white);
     font-family:inherit;font-size:13px;padding:4px 8px;border-radius:3px;outline:none;color-scheme:dark;
   }
-  .wform input:focus{border-color:var(--green);}
+  .wform input:focus,.wform select:focus{border-color:var(--green);}
+  .wform select{cursor:pointer;}
   .wform .werr{flex:1 1 100%;color:var(--yellow);font-size:12px;}
   .wform .werr:empty{display:none;}
   /* 设置页 */
@@ -542,7 +543,7 @@
 </style>
 </head>
 <body>
-<!-- v0.1.0 三页外壳: 主页 / 钱包 / 设置。主页 = 原终端界面(下面的 header / 工具栏 / 理财条 / 终端 / 输入行, 原样保留);
+<!-- 三页外壳: 主页 / 钱包 / 设置。主页 = 原终端界面(下面的 header / 工具栏 / 理财条 / 终端 / 输入行, 原样保留);
      钱包页与设置页是两个独立的 <main>, 同一时间只显示一页(见 showPage)。两页上的操作同样回灌命令。 -->
 <nav class="pages" id="pageNav" aria-label="页面切换">
   <button type="button" class="pg on" data-page="home">● 主页</button>
@@ -553,14 +554,14 @@
 <header id="statusbar"></header>
 <nav class="toolbar" id="toolbar">
   <button data-cmd="help">[F1] 帮助</button>
-  <!-- v0.0.14: 工具栏不再留「预算进度」按钮 —— 周期预算在 boot() 的首屏由 showBudget() 自动输出,
+  <!-- 工具栏不再留「预算进度」按钮 —— 周期预算在 boot 的首屏由 showBudget 自动输出,
        之后只能用 `budget` 命令重看(toolbar 只是辅助入口, 不再重复一个"已经一直看得见"的视图)。 -->
-  <!-- v0.1.0: 原来的「配置 ▾」下拉已移除 —— 配置预算 / 周期持续时间 / 投资比例 / 类别余额 / 地图 Key
+  <!-- 原来的「配置 ▾」下拉已移除 —— 配置预算 / 周期持续时间 / 投资比例 / 类别余额 / 地图 Key
        全部在顶部「设置」页里**页内直接改**(用的还是这五个面板的同一份 DOM, 见 SETTING_CARDS)。
        主页工具栏只保留"一次性的动作"(记一笔/查看类/导出/备份), 不再重复一套配置入口。 -->
   <button data-cmd="forecast">燃尽预测</button>
   <button data-cmd="open-add" class="accent">+ 记一笔</button>
-  <!-- v0.1.0: 原来的「地点 ▾」下拉已移除 —— 地点模式 / 地图 Key / 按 id 手动补填
+  <!-- 原来的「地点 ▾」下拉已移除 —— 地点模式 / 地图 Key / 按 id 手动补填
        全部在顶部「设置」页的「地点与地图 Key」卡片里页内直接改(就是同一个 geoModal DOM)。
        主页工具栏不再重复一套配置入口; 模式切换仍回灌 config 命令, 左上角 badge 保留。 -->
   <span class="dd" id="listDd">
@@ -573,7 +574,7 @@
       <button type="button" data-range="manual" data-range-target="list">手动输日期…</button>
     </div>
   </span>
-  <!-- v0.0.10: 原先「周期总结 / 日总结 / 周总结 / 图表总结」四个入口合成一个。
+  <!-- 原先「周期总结 / 日总结 / 周总结 / 图表总结」四个入口合成一个。
        范围选项与「消费列表」共用同一套 data-range + onRangeMenuItem + 手动输日期弹窗。 -->
   <span class="dd" id="reportDd">
     <button id="btnReportDd" class="accent" type="button">总结与图表 ▾</button>
@@ -590,7 +591,7 @@
   <button data-cmd="config">当前配置</button>
   <button id="btnUndo" data-cmd="undo" disabled>↩ 撤销</button>
   <button id="btnRedo" data-cmd="redo" disabled>↪ 重做</button>
-  <!-- v0.0.14: 两个「导出 .md / .txt」并成「导出 ▾」下拉(与「配置 ▾」同一套 dd 结构),
+  <!-- 两个「导出 .md / .txt」并成「导出 ▾」下拉(与「配置 ▾」同一套 dd 结构),
        省一行宽度; 两个子项仍各回灌 export 命令(鼠标与键盘同一条通道)。 -->
   <span class="dd" id="exportDd">
     <button id="btnExportDd" class="accent" type="button">导出 ▾</button>
@@ -604,7 +605,7 @@
   <button data-cmd="restore-file">导入 .json…</button>
   <button id="btnAutosave" data-cmd="autosave-dir" class="accent">存到本地目录: 关</button>
   <button data-cmd="cls" class="danger">清屏</button>
-  <!-- v0.0.13: 单一搜索框 —— 回车回灌 `search <内容>` 命令(与命令行等价), Esc 清空 -->
+  <!-- 单一搜索框 —— 回车回灌 `search <内容>` 命令(与命令行等价), Esc 清空 -->
   <span class="searchbox">
     <input id="searchBox" type="search" autocomplete="off" spellcheck="false"
            placeholder="查找 类别/编号/金额/日期…" aria-label="查找消费记录"
@@ -622,7 +623,7 @@
   </span>
 </footer>
 
-<!-- v0.1.0 钱包页: 内容全部由 renderWalletPage() 按当前 state 现算(renderWalletRows 的同一份数据);
+<!-- 钱包页: 内容全部由 renderWalletPage 按当前 state 现算(renderWalletRows 的同一份数据);
      每个按钮都回灌 wallet / add 等命令, 命令输出镜像到页底的回显条。 -->
 <main id="pageWallet" class="page page-hide" aria-label="钱包页">
   <div id="walletBody"></div>
@@ -632,7 +633,7 @@
   </div>
 </main>
 
-<!-- v0.1.0 设置页: 卡片由 SETTING_CARDS(脚本里的唯一清单)生成, 五张配置卡直接挂载既有弹窗的面板
+<!-- 设置页: 卡片由 SETTING_CARDS(脚本里的唯一清单)生成, 五张配置卡直接挂载既有弹窗的面板
      (同一份表单 DOM, 不写第二套); 「预警与收益参数」卡与月起始日一行是本页专有的小表单, 同样回灌命令。 -->
 <main id="pageSettings" class="page page-hide" aria-label="设置页">
   <div class="pg-title"><span class="pg-name">设置</span><span class="pg-sub" id="settingsSub"></span></div>
@@ -679,7 +680,7 @@
       <select id="fa_wallet" aria-label="支付钱包"></select>
       <div class="mhint" id="fa_hint"></div>
     </div>
-    <!-- 经常性支出(v0.0.15): 每 <频率> 扣一次, 持续 <N>日/周/周期/月。
+    <!-- 经常性支出: 每 <频率> 扣一次, 持续 <N>日/周/周期/月。
          默认生成 N 笔独立记录; 勾选「自动分摊」则只记 1 笔分摊成本(总价摊到整个持续期)。 -->
     <div class="mpanel hide" id="mp_recur">
       <label>每次金额 (元) — 每次扣多少，如每月房租 100</label>
@@ -751,7 +752,7 @@
   </div>
 </div>
 
-<!-- v0.0.15 配置周期(v0.1.0 起常驻在「设置」页的「周期持续时间」卡里, 这里只是它的弹出宿主)。
+<!-- 配置周期(常驻在「设置」页的「周期持续时间」卡里, 这里只是它的弹出宿主)。
      · 只填起止日期 —— 周期天数(滚动长度)由日期自动算出并实时显示, 不单独填, 避免"天数与日期打架";
      · 按月模式把起止日交回 monthStart 规则(输入框只读), 保存回灌 `config set period natural`;
      · 自定义模式保存回灌**一条** `config set period <起> <止>`, 与命令行同一条通道、一步撤销。 -->
@@ -802,7 +803,7 @@
   </div>
 </div>
 
-<!-- v0.0.14 类别余额(信封预算): v0.1.0 起常驻在「设置」页的「类别余额」卡里(这里只是弹出宿主)。
+<!-- 类别余额(信封预算): 常驻在「设置」页的「类别余额」卡里(这里只是弹出宿主)。
      每个类别一个数字输入框, 输入框后用低透明度字体显示**实时可配置余额**
      (= 总可用余额 − 已配置类别余额), 末尾显示该类别余额占总可用余额的实时占比。
      类别名后的勾选框(默认勾选) = 是否提示该类别超额; 取消后该类别完全静默(只影响警告)。
@@ -854,8 +855,8 @@
    ========================================================================== */
 
 const LS_KEY = "budget_term_v1";
-const APP_VERSION = "v0.1.0";          // 版本号(与 git tag 对应)
-/* ---- 钱包 (v0.1.0) · 口径 ----
+const APP_VERSION = "v0.1.1";          // 版本号(与 git tag 对应)
+/* ---- 钱包 · 口径 ----
    钱包 = 付款账户(现金 / 微信 / 支付宝 / 银行卡…), 余额**手动维护**:
      · 余额不参与预算的发放/占用/结转口径, 与预算各自独立(只做对照展示);
      · 余额 = Σ 手动流水(存入 + / 取出 −) − Σ 由该钱包支付的支出, 两者都**只算截至今天**的;
@@ -867,7 +868,7 @@ const APP_VERSION = "v0.1.0";          // 版本号(与 git tag 对应)
 const WALLET_NAME_MAX = 24;
 const DEFAULT_WALLET_NAME = "默认钱包";
 const DEFAULT_BUDGET = 1000;          // 每周期总预算(可动用现金总额)
-/* ---- 地点 (v0.0.12) · 合规边界 ----
+/* ---- 地点 · 合规边界 ----
    只用腾讯地图 JSAPI GL + service 库。本应用是"本地双击"的单文件应用, 属非默认场景:
    SDK URL 需要用户自己的 key, 代码里只保留下面这条**显式占位符模板**:
      https://map.qq.com/api/gljs?v=1.exp&libraries=service&key="请在腾讯位置服务开放平台申请自己的key并替换此占位符"
@@ -905,7 +906,7 @@ const IDX_RATE  = 0.02;               // 基准: 其中指数基金占比(占总
 const INVEST_MONEY_LOT = 100;         // 货币基金每次投入额(触发阈值)
 const INVEST_INDEX_LOT = 20;          // 指数基金每次投入额(触发阈值)
 const DEFAULT_CATEGORIES = ["餐饮","交通","购物","娱乐","居住","医疗","教育","人情","旅行","其他"];
-/* v0.0.14 类别余额(信封预算):
+/* 类别余额(信封预算):
    总可用余额 = 当期预算 × 可消费比例(consumeShare, 默认 85%) —— 与"占用 = 消费 ÷ N"是同一把尺子,
    所以每个类别再被 `已分配` 切分时, 单元格里装的是**消费额度**(元), 使用率 = 已消费 ÷ 已分配。
    配置类别余额**不转账**, 只是给每个类别一个天花板; 已配置合计不得超过总可用余额。
@@ -990,9 +991,9 @@ function defaultSettings(){
            periodMode:"month", lengthDays:15, anchor:null, epoch:null,
            consumeShare:CONSUME_SHARE, rateMoney:0.02, rateIndex:0.08, periodBudget:{},
            dailyBudget:null,                 // 手动设置的"每日可用余额"(null = 未设置)
-           categoryBudget:{},                // v0.0.14 类别余额(信封): {类别: 已分配金额}
-           categoryMute:{},                  // v0.0.14 静默开关: {类别:true} = 该类别不产生超额警告(缺省 = 提示)
-           walletDefault:null,               // v0.1.0 默认钱包 id(记支出时默认用它付款); null = 第一个钱包
+           categoryBudget:{},                // 类别余额(信封): {类别: 已分配金额}
+           categoryMute:{},                  // 静默开关: {类别:true} = 该类别不产生超额警告(缺省 = 提示)
+           walletDefault:null,               // 默认钱包 id(记支出时默认用它付款); null = 第一个钱包
            geoMode:"auto", geoKey:"" };    // 地点: auto=add 时自动定位 / manual=全手动; key 只存本机
 }
 function loadState(){
@@ -1005,7 +1006,7 @@ function loadState(){
   state.seq = Math.max(
     (typeof parsed.seq==="number" && isFinite(parsed.seq)) ? Math.round(parsed.seq) : 0,
     state.records.reduce((m,r)=>Math.max(m,r.id), 0));   // 序号必须大于所有已有 id, 否则新增会撞号
-  /* v0.1.0 钱包: 与记录走同一套归一化(加载与导入共用), 然后 保证至少一个钱包 + 修正悬空引用 */
+  /* 钱包: 与记录走同一套归一化(加载与导入共用), 并保证至少一个钱包 + 修正悬空引用 */
   const wn = normalizeWallets(parsed.wallets, parsed.wops);
   state.wallets = wn.wallets;
   state.wops = wn.wops;
@@ -1027,7 +1028,7 @@ function normalizeSettings(raw){
   s.thresholds = [...new Set(th)].sort((a,b)=>a-b);
   if(!s.thresholds.length) s.thresholds = def.thresholds.slice();
   if(s.periodMode!=="month" && s.periodMode!=="rolling") s.periodMode = def.periodMode;
-  /* v0.0.15: 上限放宽到 PERIOD_RANGE_MAX —— config set period <起> <止> / periodend 可以设半年、一年为一期,
+  /* 周期上限放宽到 PERIOD_RANGE_MAX —— config set period <起> <止> / periodend 可以设半年、一年为一期,
      旧上限 90 会让这种周期"存得住、重启回落成 15 天"。 */
   if(!(Number.isInteger(s.lengthDays) && s.lengthDays>=PERIOD_DAYS_MIN && s.lengthDays<=PERIOD_RANGE_MAX)) s.lengthDays = def.lengthDays;
   if(!isYMDish(s.anchor)) s.anchor = null;
@@ -1043,7 +1044,7 @@ function normalizeSettings(raw){
     }
   }
   s.periodBudget = pb;
-  /* v0.0.14 类别余额: 只保留"类别名非空且 ≤ CAT_NAME_MAX + 金额 r2 后仍 >0"的项。
+  /* 类别余额: 只保留"类别名非空且 ≤ CAT_NAME_MAX + 金额 r2 后仍 >0"的项。
      手改坏的/旧备份里的 0、负数、字符串金额一律丢弃 —— 否则"已配置合计"会被 NaN 污染。 */
   const cb = {};
   if(s.categoryBudget && typeof s.categoryBudget==="object" && !Array.isArray(s.categoryBudget)){
@@ -1054,7 +1055,7 @@ function normalizeSettings(raw){
     }
   }
   s.categoryBudget = cb;
-  /* v0.0.14 静默开关: {类别:true} = 该类别不再产生超额警告。
+  /* 静默开关: {类别:true} = 该类别不再产生超额警告。
      只保留"值 truthy 且类别仍在 categoryBudget 里"的项 —— 取消分配后残留的静默标记不能活下去
      (否则下次重新配置该类别会莫名其妙不报警)。类别名与 categoryBudget 同一套 trim/截断规则。 */
   const cm = {};
@@ -1067,7 +1068,7 @@ function normalizeSettings(raw){
   }
   s.categoryMute = cm;
   if(!(typeof s.dailyBudget==="number" && isFinite(s.dailyBudget) && s.dailyBudget>0 && r2(s.dailyBudget)>0)) s.dailyBudget = null;
-  /* v0.1.0 默认钱包: 只接受正整数 id; 指向不存在的钱包时由 ensureWallets() 回落到第一个钱包 */
+  /* 默认钱包: 只接受正整数 id; 指向不存在的钱包时由 ensureWallets 回落到第一个钱包 */
   if(!(typeof s.walletDefault==="number" && isFinite(s.walletDefault) && s.walletDefault>0)) s.walletDefault = null;
   if(s.geoMode!=="auto" && s.geoMode!=="manual") s.geoMode = def.geoMode;
   /* P1 B-12: 与 config set geokey 共用 normalizeGeoKey() 唯一入口 ——
@@ -1113,7 +1114,7 @@ function normalizeRecords(raw){
     const note = src.note==null ? "" : String(src.note).replace(/[\u0000-\u001f\u007f]/g," ");   // P2 B-19: 与 place 同一清洗纪律(只去控制字符, 不改变可见内容)
     const place = normalizePlace(src.place);   // 旧备份没有该字段 → 空串, 零迁移
     const created = repairDate(src.created) || date;
-    // v0.1.0 付款钱包: 只认正整数 id; 指向的钱包不存在时由 ensureWallets() 归 0(未指定), 旧备份没有该字段 → 0
+    // 付款钱包: 只认正整数 id; 指向的钱包不存在时由 ensureWallets 归 0(未指定), 旧备份没有该字段 → 0
     const walletId = (typeof src.wallet==="number" && isFinite(src.wallet) && src.wallet>0) ? Math.round(src.wallet) : 0;
     // 旧数据里已标记"已投足"的, 重算后要吸附到新的应投额, 避免因精度变化退回"部分/未投"
     const wasFullM = oldMm>0 && mInv0 >= oldMm - 0.005;
@@ -1128,7 +1129,7 @@ function normalizeRecords(raw){
   }
   return { records: out, dropped };
 }
-/* --- 钱包归一化(v0.1.0): 加载 localStorage 与导入备份共用(A8/F7) ---
+/* --- 钱包归一化: 加载 localStorage 与导入备份共用(A8/F7) ---
    钱包: id 必须是正整数(重复/缺失时顺延), 名称去首尾空白/控制字符后非空且 ≤ WALLET_NAME_MAX,
          **同名只留第一个**(命令行用 `$钱包名` 指定, 重名会让"付的是哪个"有歧义); 不合法的钱包整体丢弃并计数。
    流水: 只保留"钱包存在 + 金额 r2 后 ≠ 0"的项; 日期非法回落到创建日/今天。 */
@@ -1153,10 +1154,13 @@ function normalizeWallets(rawWallets, rawOps){
     if(!o || typeof o!=="object"){ dropped++; continue; }
     const v = r2(Number(o.amount));
     if(!usedIds.has(o.wallet) || !isFinite(v) || v===0){ dropped++; continue; }
-    wops.push({ wallet:o.wallet, amount:v,
-                date: repairDate(o.date) || repairDate(o.created) || todayYMD(),
-                note: o.note==null ? "" : String(o.note).replace(/[\u0000-\u001f\u007f]/g," "),
-                created: repairDate(o.created) || todayYMD() });
+    const op = { wallet:o.wallet, amount:v,
+                 date: repairDate(o.date) || repairDate(o.created) || todayYMD(),
+                 note: o.note==null ? "" : String(o.note).replace(/[\u0000-\u001f\u007f]/g," "),
+                 created: repairDate(o.created) || todayYMD() };
+    /* 成对转账标记: 只认短 ASCII id; 缺失/非法时降级成普通流水(旧备份与本字段无关) */
+    if(typeof o.xid==="string" && /^[A-Za-z0-9_-]{1,64}$/.test(o.xid)) op.xid = o.xid;
+    wops.push(op);
   }
   return { wallets, wops, dropped };
 }
@@ -1213,8 +1217,8 @@ function refreshAll(){
   refreshHistoryUI();    // 撤销/重做按钮可用态
   refreshCatlist();      // 类别下拉: 单一真相来源 knownCategories()(含记录里的自定义类别)
   refreshGeoUI();        // 左上角 badge 随 geoMode / Key 状态同步(配置入口在设置页卡片)
-  refreshWalletSelects();   // v0.1.0: 「记一笔」三个面板的支付钱包下拉
-  if(currentPage==="wallet") renderWalletPage();   // v0.1.0: 钱包页的数据视图跟着提交点刷新
+  refreshWalletSelects();   // 「记一笔」三个面板的支付钱包下拉
+  if(currentPage==="wallet") renderWalletPage();   // 钱包页的数据视图跟着提交点刷新
 }
 function commit(){
   if(!state) return;     // boot 之前(loadState)还没有完整 state, 不落盘
@@ -1278,7 +1282,7 @@ function serializeState(){
   return JSON.stringify({ app:"budget_term", version:2,
     savedAt: todayYMD()+" "+new Date().toTimeString().slice(0,8),
     settings: state.settings, seq: state.seq, records: state.records,
-    wallets: state.wallets, wops: state.wops }, null, 2);   // v0.1.0 钱包随备份走(格式仍是 version:2 的增量字段)
+    wallets: state.wallets, wops: state.wops }, null, 2);   // 钱包随备份走(格式仍是 version:2 的增量字段)
 }
 function restoreFromText(text){
   const data = JSON.parse(text);
@@ -1296,7 +1300,7 @@ function restoreFromText(text){
     state.seq      = Math.max(
       (typeof data.seq==="number" && isFinite(data.seq)) ? Math.round(data.seq) : 0,
       state.records.reduce((m,r)=>Math.max(m,r.id), 0));   // 防止后续新增记录与备份里的 id 撞号
-    /* v0.1.0 钱包: 与 loadState 同一套归一化; 备份里没有钱包字段(旧版本导出) → 回到「默认钱包」 */
+    /* 钱包: 与 loadState 同一套归一化; 备份里没有钱包字段(旧版本导出) → 回到「默认钱包」 */
     const wn = normalizeWallets(data.wallets, data.wops);
     state.wallets = wn.wallets;
     state.wops = wn.wops;
@@ -1516,7 +1520,7 @@ function periodStartOf(dateStr){
   return addDaysYMD(A, Math.floor(daysBetween(A, dateStr)/L)*L);
 }
 /* 按月规则的本期边界(与 periodMode 无关, 只看 monthStart)。
-   v0.0.15 抽出: 「配置周期」弹窗在按月模式下要预览起止日, 而那时 periodMode 可能还是 rolling ——
+    「配置周期」弹窗在按月模式下要预览起止日, 而那时 periodMode 可能还是 rolling ——
    不能借 periodBounds() 顺手改设置, 也不能再抄一份月边界算法。 */
 function monthPeriodBounds(dateStr){
   const P = parseYMD(dateStr);
@@ -1556,7 +1560,7 @@ function weekBounds(dateStr){
   const en = new Date(P.y,P.m-1,P.d-startD+6);
   return { start:fmtY(st), end:fmtY(en) };
 }
-/* 注: 原先这里有个 inRange(dateStr,start,end)。v0.0.7 把"按日期统计/筛选"统一收口到
+/* 注: 按日期统计/筛选统一收口到
    recInWindow()/recAmountInRange() 之后它就没有调用点了 —— 删掉, 避免"死代码漂移"(HANDOVER F12)。
    判断"某天是否落在区间内"请直接用 YYYY-MM-DD 字符串比较(ISO 格式可直接比大小)。 */
 /* P1 B-15: 自定义类别按「已知自定义类别」的排序索引取独立色板 —— 同一类别跨会话稳定,
@@ -1799,7 +1803,7 @@ function totalCharge(){ return totalChargeAt(todayYMD()); }
    传入某个周期(或预算行区间, 带 lastStart)时给的是**该区间末**的历史快照:
    - 发放累计到 min(区间最后一期, 当前周期) —— 未来的周期还没发放;
    - 占用累计到 min(区间末, 今天) —— 未来还没发生。
-   两者在当前区间上退化为今天的值(行为与 v0.0.12 完全一致)。 */
+   两者在当前区间上退化为今天的值。 */
 function availableBalance(p){
   const t = todayYMD(), cur = currentPeriod();
   const ref = p || cur;
@@ -1810,7 +1814,7 @@ function availableBalance(p){
 }
 function periodDayCount(p){ return daysBetween(p.start, p.end) + 1; }
 /* 预算行的首期 = 统计窗口**起点所在**的记账周期。
-   v0.0.13 修复: summary/report/chart 以前一律拿 currentPeriod() 当预算口径,
+    口径: summary/report/chart 按查询区间选预算口径,
    于是 `report @2026-09` 标题写着 2026-09, 表里的"本期发放/本期消费/累计余额"
    却全是今天这个周期的数字(用户报的 bug)。 */
 function periodOfWindow(win){
@@ -1831,7 +1835,7 @@ function budgetPeriodsOfWindow(win){
   }
   return out;
 }
-/* 预算行快照 = 窗口覆盖的**各期整期合计**(v0.0.13 用户口径):
+/* 预算行快照 = 窗口覆盖的**各期整期合计**(用户口径):
    发放 B = 各期发放之和; 消费/占用/结转取首期起点~末期终点这一整段。
    一期刚好覆盖窗口时(自然月周期看自然月)N=1, 数字与原「本期」口径完全一致。 */
 function budgetOfWindow(win){
@@ -1864,7 +1868,7 @@ function periodSnapshot(p){
            mm, idx, invest, usedUnits, ratio };
 }
 
-/* ====================== 类别余额 / 信封预算 (v0.0.14) ======================
+/* ====================== 类别余额 / 信封预算 ======================
    "账户余额"回答钱在哪里, "类别余额"回答钱准备做什么: 把**当期可消费额度**
    (当期预算 × N%)切给若干类别。切分只是计划, 不转账、不动可用余额、不影响占用口径 —— 
    所以这里所有的数字都是**消费口径**(元), 不与"占用 = 消费 ÷ N"混用。
@@ -1873,7 +1877,7 @@ function periodSnapshot(p){
         静默开关 settings.categoryMute = {类别:true} 只影响警告(catAlertList), 不进金额口径。 */
 function catAllocMap(){ return (state && state.settings && state.settings.categoryBudget) || {}; }
 function catAllocOf(cat){ const v = catAllocMap()[cat]; return (typeof v==="number" && isFinite(v) && v>0) ? v : 0; }
-/* v0.0.14 静默开关: 只关掉"该类别超额的警告", 不改金额/排序/占比/合计 */
+/* 静默开关: 只关掉"该类别超额的警告", 不改金额/排序/占比/合计 */
 function catMuteMap(){ return (state && state.settings && state.settings.categoryMute) || {}; }
 function catMuted(cat){ return catMuteMap()[cat] === true; }
 /* 总可用余额 = 当期预算 × 可消费比例(默认 85%) */
@@ -1995,7 +1999,7 @@ function kvRow(key, value, width, color, glow){
   return row;
 }
 
-/* ===================== 统一"图形块" (v0.0.11) =====================
+/* ===================== 统一"图形块" =====================
    budget / forecast / assets / summary / config / list 与图表共用一套视觉语言。
    全部是 DOM 元素(不是图片): 数字仍在可复制的文本里, 图形只负责"一眼看出比例/构成"。
      sectionHead() 章节标题 —— 「▓ + 大一档青色 + 灰色副标题」, 与图表章节同款
@@ -2060,7 +2064,7 @@ function ratioBar(ratio, opts){
     const sub = document.createElement("div"); sub.className = "hbar-sub"; sub.textContent = opts.sub;
     wrap.appendChild(sub);
   }
-  ((opts && opts.host) || term).appendChild(wrap);   // v0.1.0: opts.host 可把同一块图形挂到钱包页等非终端容器
+  ((opts && opts.host) || term).appendChild(wrap);   // opts.host 可把同一块图形挂到钱包页等非终端容器
   return wrap;
 }
 function stackBar(parts, opts){
@@ -2130,7 +2134,7 @@ function stackBar(parts, opts){
     it.append(sw, tx); leg.appendChild(it);
   }
   wrap.appendChild(leg);
-  ((opts && opts.host) || term).appendChild(wrap);   // v0.1.0: opts.host 可把同一块图形挂到钱包页等非终端容器
+  ((opts && opts.host) || term).appendChild(wrap);   // opts.host 可把同一块图形挂到钱包页等非终端容器
   return wrap;
 }
 /* 类别占比行: 名称 + 细条 + 占比 + 金额(四列, 与饼图图例同一套色块/配色),
@@ -2169,7 +2173,7 @@ function plotHeight(kind){
 /* 把柱高/柱顶数值/预算参考线/零轴按当前绘图区高度重算一遍。
    柱高仍是像素(测试与导出一致), 但像素来源是"当前视口"而不是写死的常量 ——
    这样窗口/分辨率变化后重新调用一次即可对齐 CSS 的 --plot-h。
-   负值处理(v0.0.12 bug 修复): 以前负值算出的高度是负数 → 被夹到 2px, 图形几乎不可见。
+   负值处理: 以前负值算出的高度是负数 → 被夹到 2px, 图形几乎不可见。
    现在用 [min, max] 值域排版, 0 刻度线落在零轴处, 负柱从零轴向**下**长, 正柱向上长。 */
 function applyPlotHeight(wrap){
   const kind = wrap.classList.contains("mini") ? "mini" : "chart";
@@ -2269,7 +2273,7 @@ function barLevel(ratio){
   return Math.min(lvl,4);
 }
 const LEVEL_COLOR = [COLOR.green,COLOR.yellow,COLOR.orange,COLOR.red,COLOR.magenta];
-/* 只算"等级色 + 百分比", 不再拼 █░ 字符条 —— v0.0.11 起所有进度条都是 DOM 的 hbarTrack()
+/* 只算"等级色 + 百分比", 不再拼 █░ 字符条 —— 所有进度条都是 DOM 的 hbarTrack
    (方形 + 分色), 顶部栏与终端共用同一份实现。 */
 function progressBar(ratio){
   ratio = Math.max(0, Math.min(1, ratio));
@@ -2349,6 +2353,7 @@ const COMMANDS = [
   { n:["wallet","acct"],                           u:"wallet [子命令]",                d:"钱包(付款账户): 不带参数=总览; 子命令见下, 也可在「钱包」页点按钮(同样回灌命令)" },
   { n:["wallet"], sub:true,                        u:"wallet add <名称> [初始余额] [备注..]", d:"新建钱包, 例 wallet add 微信 500; 初始余额记为第一条流水" },
   { n:["wallet"], sub:true,                        u:"wallet in|out <钱包> <金额> [备注..]", d:"存入 / 取出(手动维护余额), 例 wallet in 微信 1000 工资  ·  wallet out 微信 200" },
+  { n:["wallet"], sub:true,                        u:"wallet tr <转出钱包> <转入钱包> <金额> [备注..] [@日期]", d:"钱包间转账: 两条流水成对落账, 一步撤销, 例 wallet tr 微信 现金 500 提现" },
   { n:["wallet"], sub:true,                        u:"wallet mv <记录id> <钱包>",       d:"把某笔支出改为由该钱包支付(余额随之重算), 例 wallet mv 12 现金" },
   { n:["wallet"], sub:true,                        u:"wallet use <钱包>",               d:"设为默认钱包(记支出时不写 $钱包 就用它)" },
   { n:["wallet"], sub:true,                        u:"wallet name <钱包> <新名称>",     d:"重命名(已有记录自动跟着改, 因为记录存的是钱包 id)" },
@@ -2476,7 +2481,7 @@ function findDateToken(tokens){
   }
   return { tokens:out, date };
 }
-/* @日期 → 'YYYY-MM-DD'。v0.1.0: 改成走 normDateText() 单一入口 —— 以前只校验"长得像 YYYY-MM-DD",
+/* @日期 → 'YYYY-MM-DD'。改成走 normDateText 单一入口 —— 以前只校验"长得像 YYYY-MM-DD",
    于是 `add 50 餐饮 @2027-13-40` / `@2027-02-30` 能落库, 而下次加载 normalizeRecords→repairDate
    认定它非法, 那条记录会被当成"损坏"静默丢掉(记账变少)。现在不合法的日期当场拒绝(返回 null)。 */
 function cleanDateStr(d){
@@ -2484,11 +2489,11 @@ function cleanDateStr(d){
   const t = normDateText(d, "date");
   return (t.ok && t.value) ? t.value : null;
 }
-/* v0.0.12 · 地点参数: `#地点` 与 `@日期` 一样位置无关, 只认第一个 #token。
+/* 地点参数: `#地点` 与 `@日期` 一样位置无关, 只认第一个 #token。
    含空格写成 #"北京市 海淀区" (tokenize 会把引号内空格并进同一个 token); `#-`/`#off` = 清除。
    转义过的备注 token (\#… / \@…) 不参与参数识别, 原样透传。
    拆成一次调用, 让 add / amort / update 三条命令共用同一套参数口径。 */
-/* v0.1.0: #地点 与 $钱包 都是"位置无关的带前缀标记", 解析逻辑只有下面这一份(不再各写一遍循环)。 */
+/* #地点 与 $钱包 都是"位置无关的带前缀标记", 解析逻辑只有下面这一份(不再各写一遍循环)。 */
 function findMarkedToken(tokens, mark){
   const out=[]; let value=null;
   for(const tk of tokens){
@@ -2513,7 +2518,7 @@ function runCommand(raw){
   raw = raw.trim();
   if(!raw) return;
   if(raw && raw!==history[history.length-1]) history.push(raw); hIdx=-1;
-  /* v0.1.0 三页外壳: 命令输出永远进主页终端; 当前在「钱包 / 设置」页时, 本次新增的终端行
+  /* 三页外壳: 命令输出永远进主页终端; 当前在「钱包 / 设置」页时, 本次新增的终端行
      会镜像到该页底部的回显条, 数据确实变了再把设置页表单回填成已保存值(见 afterPageCommand)。 */
   const onPage = (currentPage!=="home");
   const before0 = onPage ? snapshotState() : null, lines0 = onPage ? term.children.length : 0;
@@ -2567,7 +2572,7 @@ function dispatch(cmd, tokens){
 
 
 /* ============================== config =================================
-   v0.0.11: 「配置预算」「配置投资比例」不再是散落的设置入口, 统一收进 config:
+   「配置预算」「配置投资比例」不再是散落的设置入口, 统一收进 config:
      config                      查看当前配置(原 showSettings 输出)
      config set budget <金额>     设默认周期预算(各期生效)
      config set budget <金额> now 只改当前周期(等同「应用于当期」)
@@ -2588,7 +2593,7 @@ function setPeriodBudget(n){
   state.settings.periodBudget[p.start] = v;
   return true;
 }
-/* ---------------------- 周期设置的唯一入口 (v0.0.15) ----------------------
+/* ---------------------- 周期设置的唯一入口 ----------------------
    以前周期只能从命令行改(`set period` / `set periodstart`), 界面上的「配置」页看不到也改不了;
    现在命令、设置页「周期持续时间」卡与「配置周期」弹窗共用下面这几个 setter, 天数(lengthDays)一律由起止日期推导:
      · periodSetDays(n)         → 滚动 N 天(N 只接受 2~90, 快捷写法)
@@ -2703,7 +2708,7 @@ function doConfig(tokens){
   if(!sub || sub==="show" || sub==="view" || sub==="list"){ showSettings(); return; }
   if(sub!=="set"){ configUsage(); return; }
   const what = (tokens[1]||"").toLowerCase();
-  /* v0.0.15 周期设置从 set 收进 config:
+  /* 周期设置从 set 收进 config:
        config set period <N天> | natural       滚动 N 天 / 回到按月
        config set period <起> <止>              直接指定本期起止日(天数自动算出)
        config set periodstart <日期>            设滚动锚点(只改起点, 天数不变)
@@ -2736,7 +2741,7 @@ function doConfig(tokens){
     if(!r.ok){ line([{t:periodErrText(r), c:COLOR.yellow}]); return; }
     showSettings(); return;
   }
-  /* v0.1.0: 月起始日收进 config(与周期其它三项同一入口, 设置页「周期持续时间」卡也回灌这条);
+  /* 月起始日收进 config(与周期其它三项同一入口, 设置页「周期持续时间」卡也回灌这条);
      旧写法 set monthstart 仍兼容 —— 两者共用 monthStartSet() 校验。 */
   if(what==="monthstart"){
     const d = monthStartSet(tokens[2]);
@@ -2819,7 +2824,7 @@ function doConfig(tokens){
 
 
 /* ------------------------------- set ----------------------------------- */
-/* 月起始日的唯一校验入口(v0.1.0): 1 / natural / 自然月 = 自然月; 其余必须是 1~28 的整数 */
+/* 月起始日的唯一校验入口: 1 / natural / 自然月 = 自然月; 其余必须是 1~28 的整数 */
 function monthStartSet(raw){
   const v = String(raw==null?"":raw).toLowerCase();
   let d;
@@ -2830,7 +2835,7 @@ function monthStartSet(raw){
 function doSet(tokens){
   const sub = (tokens[0]||"").toLowerCase();
   if(sub==="category" || sub==="cat" || sub==="categories"){
-    /* v0.0.14 类别余额(信封预算): 与其它子项一样走 mutate → 一次撤销步 */
+    /* 类别余额(信封预算): 与其它子项一样走 mutate → 一次撤销步 */
     doSetCategory(tokens.slice(1));
   } else if(sub==="budget"){
     const n = parseAmount(tokens[1]);
@@ -2840,7 +2845,7 @@ function doSet(tokens){
           {t:"  (各期生效; 只想改本期可用 budget set <金额>)",c:COLOR.gray}]);
     showForecastLine();
   } else if(sub==="monthstart"){
-    /* v0.1.0: 校验抽成 monthStartSet(), 与 config set monthstart 共用 */
+    /* 校验抽成 monthStartSet, 与 config set monthstart 共用 */
     const d = monthStartSet(tokens[1]);
     if(d==null){ line([{t:"用法: set monthstart <1-28>  (1=自然月, 例 15 表示每月15日~下月14日)",c:COLOR.yellow}]); return; }
     state.settings.monthStart = d; state.settings.periodMode = "month"; ensureEpoch();
@@ -2985,7 +2990,7 @@ function showBudget(){
   ], 0);
   kvRow("已占用(含应投)", "¥"+money(st.usedUnits), 0, bar.color, true);
   kvRow("累计可用余额(含结转)", "¥"+money(bal), 0, bal<0?COLOR.red:COLOR.green, true);
-  /* v0.1.0 钱包 ↔ 预算对照: 钱包余额是手动维护的"手里有多少", 只在这里并排给出, 不参与占用/结转 */
+  /* 钱包 ↔ 预算对照: 钱包余额是手动维护的"手里有多少", 只在这里并排给出, 不参与占用/结转 */
   const wcmp = walletBudgetCompare();
   kvRow("钱包余额合计", [
     {t:"¥"+money(wcmp.total), c:wcmp.total<0?COLOR.red:COLOR.green},
@@ -3008,7 +3013,7 @@ function showBudget(){
   }
   line([{t:aw.t,c:aw.c,cls:"glow"}]);
   /* 红黄绿实心圆点: 类别余额(仅已触发预警的类别, 未超额完全不显示) → 今日预算 → 周期预算。
-     v0.0.14: 类别超额要先于整体预算被看到, 所以排在「今日/周期预算」**之前**。 */
+     类别超额要先于整体预算被看到, 所以排在「今日/周期预算」**之前**。 */
   const ts = todaySnapshot();
   for(const a of catAlertList(p)) line(catDotLine(a));
   line(dotLine("今日预算", ratioDot(ts.ratio)));
@@ -3023,7 +3028,7 @@ function showBudget(){
   blank();
 }
 
-/* ====================== 类别余额(命令层, v0.0.14) ======================
+/* ====================== 类别余额(命令层, ) ======================
    set category                     查看类别余额表
    set category 餐饮 400 交通 300    一次配置多个类别(原子: 任一对不合法则整体不改)
    set category 餐饮 400 nowarn     只对"该类别超额提示"静默(nowarn|silent|静默); 不写 = 恢复提示
@@ -3168,7 +3173,7 @@ function doSetCategory(args){
   printCategoryBudget();
 }
 
-/* ===================== 地点 place (v0.0.12) =====================
+/* ===================== 地点 place =====================
    目标: 记账时自动带出**行政区地名**, 也允许手动填写; 只存地名字符串, 不存坐标。
    合规: 只接腾讯地图 JSAPI GL (service 库) 的 TMap.service.Geocoder; 不手写 fetch、
         不用任何境外/无资质地图源。key 由用户自己申请并写进本地 settings, 代码只有占位符。
@@ -3346,7 +3351,7 @@ function geoReverse(lat,lng){
     return { place, district: districtFromAddressComponent(ac) || districtOf(place) };
   });
 }
-/* ============ 启动预热 · v0.0.12 同版重构 ============
+/* ============ 启动预热 ============
    旧模型: 每笔 add 后异步定位 → 结果回来再回填记录。用户实测"定位晚于数据落盘",
      派生出 id 复用 / undo 吞掉地名 / 期间切模式 等一串竞态。
    新模型: **打开时只申请一次定位**; 结果只写内存 + 独立 localStorage 缓存 + 左上角 badge。
@@ -3507,7 +3512,7 @@ function currentGeoPlace(){
   return (state && state.settings.geoMode==="auto") ? geoCache.place : "";
 }
 /* ---------- 设置页「地点与地图 Key」卡片 (UI 一律回灌命令, H5 双通道对称) ----------
-   v0.1.0: 主页「地点 ▾」下拉已移除(同「配置 ▾」, 功能在设置页), 本函数只留左上角 badge 的状态同步。 */
+   主页「地点 ▾」下拉已移除(同「配置 ▾」, 功能在设置页), 本函数只留左上角 badge 的状态同步。 */
 const GEO_COMMANDS = { auto:"config set geo auto", manual:"config set geo manual" };
 function refreshGeoUI(){
   // 全手动时左上角不许残留上次定位的区名
@@ -3582,7 +3587,7 @@ function doAdd(tokens){
   const note = rest.slice(2).join(" ");
   const date = cleanDateStr(rawDate);
   if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
-  const wid = pickWalletId(rawWallet);   // v0.1.0: 钱包不存在则整笔不入账(校验在落账之前)
+  const wid = pickWalletId(rawWallet);   // 钱包不存在则整笔不入账(校验在落账之前)
   if(wid==null) return;
   const rec = makeRecord(amt, cat, note, date);
   rec.wallet = wid;
@@ -3621,7 +3626,7 @@ function makeRecord(amount, category, note, date, amortDays){
   const daily = days>1 ? r2(total/days) : total;
   const inv = investOf(total);
   return { id:state.seq, amount:daily, category, note, place:"", date,
-           wallet:0,                      // v0.1.0 付款钱包 id(由调用方在落账前指定; 0 = 未指定)
+           wallet:0,                      // 付款钱包 id(由调用方在落账前指定; 0 = 未指定)
            amortDays:days, amortTotal:total,
            mm:inv.mm, idx:inv.idx, moneyInv:0, indexInv:0, created: todayYMD() };
 }
@@ -3668,7 +3673,7 @@ function doAmort(tokens){
   const note = rest.slice(3).join(" ");
   const date = cleanDateStr(rawDate);
   if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
-  const wid = pickWalletId(rawWallet);   // v0.1.0: 钱包按**总价**一次扣款(不是每天扣)
+  const wid = pickWalletId(rawWallet);   // 钱包按**总价**一次扣款(不是每天扣)
   if(wid==null) return;
   const rec = makeRecord(total, cat, note, date, d.days);
   rec.wallet = wid;
@@ -3699,7 +3704,7 @@ function doAmort(tokens){
 }
 
 /* ============================ recur (经常性支出) ============================
-   v0.0.15: 一次录入"每隔一段时间付一次、持续一段时间"的支出(房租/会员/订阅/话费…)。
+   一次录入"每隔一段时间付一次、持续一段时间"的支出(房租/会员/订阅/话费…)。
    两种落账方式(用户勾选「自动分摊成本到每天」决定):
      · 不分摊 → 生成 **N 笔独立记录**(每笔 = 一次扣款, 日期 = 各扣款日) —— 与 add 完全同构,
        所以列表/搜索/总结/每日预算/投资池/导出**不需要任何特判**;
@@ -3824,7 +3829,7 @@ function doRecur(tokens){
   const date = cleanDateStr(rawDate);
   if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
   if(amt==null || !(r2(amt)>0)){ line([{t:"金额无效。例 recur 100 房租 12月 月 @2027-09-01",c:COLOR.yellow}]); return; }
-  const wid = pickWalletId(rawWallet);   // v0.1.0: 整批记录由同一个钱包付款; 钱包不存在则一笔都不生成
+  const wid = pickWalletId(rawWallet);   // 整批记录由同一个钱包付款; 钱包不存在则一笔都不生成
   if(wid==null) return;
   const plan = recurPlan({ amount:amt, durValue:span.n, durUnit:span.unit, freq, start:date, split });
   if(!plan.ok){ line([{t:plan.msg,c:COLOR.yellow}]); return; }
@@ -3873,7 +3878,7 @@ function doRecur(tokens){
   }
 }
 
-/* ============================ wallet (钱包, v0.1.0) ============================
+/* ============================ wallet (钱包, ) ============================
    钱包 = 付款账户, 余额**手动维护**(存入 / 取出), 记支出时选一个钱包付款 —— 钱包页与命令行同一通道。
    口径(三个数字, 三把尺子, 不要混用):
      · 余额   = Σ 手动流水(存入 + / 取出 −) − Σ 由它支付的支出(**总价**, 付款口径), 只算**截至今天**的;
@@ -3918,6 +3923,11 @@ function walletBalance(id){
   const t = todayYMD();
   return r2(walletOpsSum(id,t) - walletPaidSum(id,t));
 }
+/* 截至指定日期的余额(与 walletBalance 同一口径, 只是把"今天"换成 upTo):
+   转账落账前检查源钱包在转账日是否有足够余额, 不用今天的余额去误判未来的转账。 */
+function walletBalanceAt(id, upTo){
+  return r2(walletOpsSum(id,upTo) - walletPaidSum(id,upTo));
+}
 /* 当前周期每个钱包的已支出(消费口径): 与 collectWindow 同一行筛选 / 同一金额口径 */
 function walletSpendMap(p){
   const win = collectWindow(p.start, p.end), m = new Map();
@@ -3955,7 +3965,8 @@ function walletLedger(id, limit){
   const out = [];
   state.wops.forEach((o,i)=>{
     if(id!=null && o.wallet!==id) return;
-    out.push({ date:o.date, wallet:o.wallet, amount:o.amount, kind:"op", note:o.note, order:i });
+    out.push({ date:o.date, wallet:o.wallet, amount:o.amount,
+               kind:o.xid ? "xfer" : "op", note:o.note, xid:o.xid||"", order:i });
   });
   state.records.forEach((r,i)=>{
     if(id!=null ? r.wallet!==id : !(r.wallet>0)) return;
@@ -3970,6 +3981,7 @@ function walletUsage(){
   line([{t:"用法: wallet                         钱包总览(余额 / 本期支出 / 与预算对照); wallet <钱包> 看单个", c:COLOR.yellow}]);
   line([{t:"      wallet add <名称> [初始金额] [备注]   新建钱包, 例 wallet add 微信 500", c:COLOR.yellow}]);
   line([{t:"      wallet in|out <钱包> <金额> [备注..]  存入 / 取出(手动维护余额), 例 wallet in 微信 1000 工资", c:COLOR.yellow}]);
+  line([{t:"      wallet tr <转出钱包> <转入钱包> <金额> [备注..] [@日期]  钱包间转账(两条流水成对), 例 wallet tr 微信 现金 500 提现", c:COLOR.yellow}]);
   line([{t:"      wallet mv <记录id> <钱包>            把某笔支出改为由该钱包支付, 例 wallet mv 12 现金", c:COLOR.yellow}]);
   line([{t:"      wallet use <钱包>  ·  wallet name <钱包> <新名称>  ·  wallet del <钱包>", c:COLOR.yellow}]);
   line([{t:"      wallet log [钱包] [N]                钱包流水(最近 N 条, 默认 20)", c:COLOR.yellow}]);
@@ -4016,7 +4028,7 @@ function printWalletLog(id, limit){
     line([{t:"  "+it.date+"  ", c:COLOR.gray},
           {t:(walletNameOf(it.wallet)||"—").padEnd(6," "), c:COLOR.white},
           {t:(plus ? "+¥" : "−¥")+money(Math.abs(it.amount)).padStart(10," "), c:plus?COLOR.green:(it.kind==="pay"?COLOR.orange:COLOR.red)},
-          {t:"  "+(it.kind==="pay" ? "支出 " : (plus ? "存入 " : "取出 ")), c:COLOR.gray},
+          {t:"  "+(it.kind==="pay" ? "支出 " : (it.kind==="xfer" ? "" : (plus ? "存入 " : "取出 "))), c:COLOR.gray},
           {t:it.note||"", c:COLOR.gray}]);
   }
   blank();
@@ -4075,6 +4087,40 @@ function walletMv(rest){
         {t:"   "+w.name+" 余额 ¥"+money(walletBalance(w.id)), c:walletBalance(w.id)<0?COLOR.red:COLOR.green},
         {t:(fromId ? ("   "+fromName+" 余额 ¥"+money(walletBalance(fromId))) : ""), c:COLOR.gray}]);
 }
+/* 钱包间转账: 两条手动流水成对落账(转出 − / 转入 +, 同一 xid, 同日期),
+   合计对钱包的"总余额"无影响, 只是把钱从一个口袋挪到另一个口袋。
+   一条命令 = 一次 mutate = 一步撤销; 先校验完两个钱包 / 金额 / 日期 / 源钱包余额, 再落任何一条流水。 */
+function walletTransfer(rest){
+  const usage = "用法: wallet tr <转出钱包> <转入钱包> <金额> [备注..] [@日期]   例 wallet tr 微信 现金 500 提现";
+  const a = findDateToken(rest);
+  const from = findWalletByName(a.tokens[0]), to = findWalletByName(a.tokens[1]);
+  if(!from){ line([{t:"未找到转出钱包「"+String(a.tokens[0]||"")+"」。",c:COLOR.yellow},{t:usage,c:COLOR.yellow}]); return; }
+  if(!to){ line([{t:"未找到转入钱包「"+String(a.tokens[1]||"")+"」。",c:COLOR.yellow},{t:usage,c:COLOR.yellow}]); return; }
+  if(from.id===to.id){ line([{t:"转出与转入是同一个钱包「"+from.name+"」, 无需转账。",c:COLOR.yellow}]); return; }
+  const n = parseAmount(a.tokens[2]);
+  if(n==null){ line([{t:"金额无效(需为 ≥ ¥0.01 的数字)。"+usage, c:COLOR.yellow}]); return; }
+  const date = cleanDateStr(a.date);
+  if(!date){ line([{t:"日期无效，格式 @YYYY-MM-DD",c:COLOR.yellow}]); return; }
+  const available = walletBalanceAt(from.id, date);
+  if(available < n){
+    line([{t:"⚠ 钱包「"+from.name+"」截至 "+date+" 只有 ¥"+money(available)+", 不够转出 ¥"+money(n)+"。",c:COLOR.yellow}]);
+    return;
+  }
+  const note = a.tokens.slice(3).map(unescapeArg).join(" ");
+  const seq = state.wops.reduce((m,o)=>{
+    const g = /^x(\d+)-/.exec(o && o.xid ? o.xid : "");
+    return g ? Math.max(m, Number(g[1])) : m;
+  }, 0) + 1;
+  const xid = "x"+seq+"-"+date.replace(/-/g,"")+"-"+String(state.wops.length);
+  state.wops.push({ wallet:from.id, amount:-n, date, note:"转出至 "+to.name+(note ? " · "+note : ""), created:todayYMD(), xid });
+  state.wops.push({ wallet:to.id, amount:n, date, note:"转入自 "+from.name+(note ? " · "+note : ""), created:todayYMD(), xid });
+  line([{t:"✓ 转账 ",c:COLOR.green},{t:from.name+" → "+to.name,c:COLOR.pure},
+        {t:" ¥"+money(n)+(note ? "  "+note : ""),c:COLOR.white}]);
+  line([{t:"  日期 "+date+" · 两条流水成对记录(一步撤销) · ",c:COLOR.gray},
+        {t:from.name+" ¥"+money(walletBalance(from.id)),c:COLOR.gray},
+        {t:"  →  "+to.name+" ¥"+money(walletBalance(to.id)),c:COLOR.gray}]);
+  if(date > todayYMD()) line([{t:"  ※ 这条转账晚于今天, 到 "+date+" 才计入两个钱包的余额。", c:COLOR.gray}]);
+}
 function walletUse(rest){
   const usage = "用法: wallet use <钱包>   设为默认钱包(记支出时不写 $钱包 就用它)";
   const w = findWalletByName(rest[0]);
@@ -4102,9 +4148,11 @@ function walletDel(rest){
   if(!w){ line([{t:"未找到钱包「"+String(rest[0]||"")+"」。"+usage, c:COLOR.yellow}]); return; }
   if(state.wallets.length<=1){ line([{t:"至少要保留一个钱包(记支出需要指定付款钱包)。", c:COLOR.yellow}]); return; }
   const wasDefault = (state.settings.walletDefault===w.id);
-  const ops = state.wops.filter(o=>o.wallet===w.id).length;
+  /* 删钱包时, 与它成对的那条转账流水也要一并删除(否则对方钱包留下半笔凭空转入) */
+  const xids = new Set(state.wops.filter(o=>o.wallet===w.id && o.xid).map(o=>o.xid));
+  const ops = state.wops.filter(o=>o.wallet===w.id || (o.xid && xids.has(o.xid))).length;
   state.wallets = state.wallets.filter(x=>x!==w);
-  state.wops = state.wops.filter(o=>o.wallet!==w.id);
+  state.wops = state.wops.filter(o=>o.wallet!==w.id && !(o.xid && xids.has(o.xid)));
   if(wasDefault) state.settings.walletDefault = state.wallets[0].id;
   const toId = state.settings.walletDefault, toName = walletNameOf(toId);
   let moved = 0;
@@ -4121,6 +4169,7 @@ function doWallet(tokens){
   if(sub==="add"||sub==="new"||sub==="create"||sub==="新建"||sub==="添加"){ walletAdd(rest); return; }
   if(sub==="in"||sub==="fund"||sub==="deposit"||sub==="存入"||sub==="充值"){ walletInOut(rest, 1); return; }
   if(sub==="out"||sub==="take"||sub==="withdraw"||sub==="取出"||sub==="扣减"){ walletInOut(rest, -1); return; }
+  if(sub==="tr"||sub==="transfer"||sub==="转账"||sub==="转"){ walletTransfer(rest); return; }
   if(sub==="mv"||sub==="move"||sub==="改付"){ walletMv(rest); return; }
   if(sub==="use"||sub==="default"||sub==="默认"){ walletUse(rest); return; }
   if(sub==="name"||sub==="rename"||sub==="重命名"){ walletRename(rest); return; }
@@ -4152,7 +4201,7 @@ function addSeg(div, s){
   div.appendChild(sp);
 }
 function mkSpan(t,c){ const s=document.createElement("span"); s.textContent=t; if(c) s.style.color=c; return s; }
-/* v0.0.13 查找结果高亮: 把 text 里命中 needles 的片段切成"普通段 + .hl 段"。
+/* 查找结果高亮: 把 text 里命中 needles 的片段切成"普通段 + .hl 段"。
    只做字面量匹配(不构造正则), 大小写不敏感; 文本一个字都不改 —— 行的 textContent 与 list 完全一致。 */
 function hlSegs(text, color, needles){
   const s = String(text==null?"":text);
@@ -4172,7 +4221,7 @@ function hlSegs(text, color, needles){
   return out;
 }
 /* 每条记录一行; 点右侧"投资状态"按钮后, 行内状态/已投小计即时刷新(修复点了仍显示未投)
-   opts.hl (v0.0.13): 查找关键词数组 —— 命中片段加 .hl 底色, 其余渲染与 list 完全一致。 */
+   opts.hl : 查找关键词数组 —— 命中片段加 .hl 底色, 其余渲染与 list 完全一致。 */
 function renderRecordRow(r, opts){
   const hl = (opts && Array.isArray(opts.hl) && opts.hl.length) ? opts.hl : null;
   const d = document.createElement("div"); d.className = "l";
@@ -4193,7 +4242,7 @@ function renderRecordRow(r, opts){
   d.appendChild(invSpan); d.appendChild(stSpan);
   if(r.note) for(const s of (hl ? hlSegs("  · "+r.note, COLOR.gray, hl) : [{t:"  · "+r.note, c:COLOR.gray}])) addSeg(d,s);
   if(r.place) for(const s of geoPlaceSegs(r.place, "  · ", " ")) addSeg(d,s);
-  /* v0.1.0 付款钱包: 与地点一样是行内元信息(方括号灰字); 旧记录(未指定钱包)不显示 */
+  /* 付款钱包: 与地点一样是行内元信息(方括号灰字); 旧记录(未指定钱包)不显示 */
   const wName = walletNameOf(r.wallet);
   if(wName){
     const wTxt = "  ["+wName+"]";
@@ -4258,7 +4307,7 @@ function renderRecordRow(r, opts){
   refresh();   // 初始化行内状态
   term.appendChild(d);
 }
-/* ---- 日期条件解析(v0.0.13 抽成单一实现, list 与 search 共用) ----
+/* ---- 日期条件解析(抽成单一实现, list 与 search 共用) ----
    `@2027-08-18` / `@2027-08` / `@today` / `@period` / `@month` 以及中文关键字
    (`今日` / `本周期` / `本月`) 都归一到三种结果之一:
      {kind:"date",  date}   只看这一天
@@ -4370,7 +4419,7 @@ function doList(tokens){
   for(const r of rows){ renderRecordRow(r); }
   blank();
 }
-/* ============================== search (v0.0.13) =========================
+/* ============================== search ==========================
    一个入口覆盖「类别 / 编号 / 关键词 / 金额 / 日期」, 命令行与工具栏搜索框共用:
      search 餐饮               类别 / 备注 / 地点 任一处命中
      search 午餐 餐饮           多个关键词必须同时命中(AND; 每个词可命中任一文本字段)
@@ -4444,7 +4493,7 @@ function searchAmountHit(r, t){
   return true;
 }
 function searchTextHit(r, kw){
-  /* v0.1.0: 付款钱包名也参与关键词匹配(搜「微信」能搜到用它付的记录) */
+  /* 付款钱包名也参与关键词匹配(搜「微信」能搜到用它付的记录) */
   return [r.category, r.note, r.place, walletNameOf(r.wallet)].some(h=>String(h==null?"":h).toLowerCase().includes(kw));
 }
 function searchDesc(q){
@@ -4539,7 +4588,7 @@ function doUpdate(tokens){
   if(amt==null||amt<=0){ line([{t:"金额无效",c:COLOR.yellow}]); return; }
   const cat = validateCategory(rest[1]); if(!cat) return;
   const note = rest.slice(2).join(" ");
-  /* v0.1.0: $钱包 不写 = 不改付款钱包; 写了但不存在 → 整条 update 中止(先校验再改, 不留半更新) */
+  /* $钱包 不写 = 不改付款钱包; 写了但不存在 → 整条 update 中止(先校验再改, 不留半更新) */
   const wid = (rawWallet!=null) ? pickWalletId(rawWallet) : null;
   if(rawWallet!=null && wid==null) return;
   const days = recDays(rec);                    // 分摊成本: 天数不变, 金额按"每天"解释 → 总价同步重算
@@ -4622,7 +4671,7 @@ function doPayFull(rest){
 /* 窗口统计的唯一实现在"窗口统计"分区(collectWindow / investTotalsOf),
    这里只放 summary 命令本身 —— 别再复制一份窗口求和。 */
 /* 总结报告渲染。表里的"预算行"(本期发放/占用/结余/累计余额)按**窗口覆盖的记账周期合计**算
-   (v0.0.13): 预算按周期发放与结转, 所以它不跟着窗口内的天数走, 但要跟着**查询的那一段**走
+   预算按周期发放与结转, 所以它不跟着窗口内的天数走, 但要跟着**查询的那一段**走
    —— `report @2026-09` 看的是 2026-09 那一段的发放与结转(自然月跨两个记账周期时就是两期之和),
    不是今天这一期(旧实现一律 currentPeriod())。区间与窗口不完全重合时, 表头会标出预算行用的是哪一段。 */
 function printSummaryReport(win, windowName, opts){
@@ -4733,9 +4782,9 @@ function parseSummaryArgs(tokens){
   }
   return {kind, cat, ref};
 }
-/* 窗口解析唯一入口(v0.0.10): summary / chart / report 共用同一份窗口定义。
+/* 窗口解析唯一入口: summary / chart / report 共用同一份窗口定义。
    现象: 窗口边界原先整段写在 doSummary 里; 图表与合并后的总结也要按同样的窗口统计, 再抄一遍就会有两套边界。
-   原因: 分摊成本按"落在窗口内的天数"计入, 边界差一天数字就差一天(v0.0.7 的 F13)。
+   原因: 分摊成本按"落在窗口内的天数"计入, 边界差一天数字就差一天(F13)。
    修复: 抽成单一函数, 三个命令都只传 kind/ref/cat, 金额一律由 collectWindow() 给出。
    kind="date" 是"手动输日期"弹窗选了具体某天时的窗口(不是 todayYMD), 同样按单日分桶。 */
 function resolveWindow(kind, ref, cat){
@@ -4785,7 +4834,7 @@ function doSummary(tokens){
   printSummaryReport(win, name+tag, {isDay, catFilter:cat});
 }
 
-/* ============================ 图表总结 (v0.0.10) ============================
+/* ============================ 图表总结 ============================
    把 日 / 周 / 周期 / 自然月 的预算情况画成柱状图与饼图, 并给出自动分析与结论。
    口径纪律(§2.6 / F13): 窗口一律来自 resolveWindow(), 金额一律来自 collectWindow(),
    柱状图的每个桶也单独走 collectWindow(桶起, 桶止, 类别) —— 分摊成本按"落在桶内的天数"计入,
@@ -4869,7 +4918,7 @@ function chartFrame(){
   term.appendChild(box);
   return box;
 }
-/* 图表章节标题 = 全站统一的章节标题(v0.0.11 起 chartHead 只是 sectionHead 的别名,
+/* 图表章节标题 = 全站统一的章节标题(chartHead 只是 sectionHead 的别名,
    保证图表与 budget/forecast/assets 的标题永远同一套规格, 不出现两份实现)。 */
 function chartHead(text, color){
   return sectionHead(text, "", color);
@@ -5045,7 +5094,7 @@ function printChartAnalysis(win, data, meta){
   for(const s of advice) line([{t:"   · "+s, c:COLOR.gray}]);
   line([{t:"  口径: 柱高与饼图均为消费口径; 参考线 = 该窗口所在周期的日均发放 × "+consumePct()+"% × 桶天数; 分摊成本按落入桶内的天数计入。", c:COLOR.gray}]);
 }
-/* 图表输出的唯一实现(v0.0.10): chart 与 report 共用, 不在两处各画一遍。
+/* 图表输出的唯一实现: chart 与 report 共用, 不在两处各画一遍。
    type = bar | pie | both；合并后的「总结与图表」固定传 both, 一次同时出柱状图和饼图。 */
 function renderChartBody(win, name, isDay, cat, type, opts){
   opts = opts || {};
@@ -5209,7 +5258,7 @@ function showSettings(){
   const sp = rateSplit();
   kv("消费/投资比例", "消费 "+consumePct()+"%  |  投资 "+invPct()+"%  (货币 "+r2(sp.mm*100)+"% + 指数 "+r2(sp.idx*100)+"%)");
   kv("换算(占用)", "占用 = 消费 ÷ "+consumePct()+"%   (config set invest 15 / config set consume 85 可调)");
-  /* v0.0.14 类别余额: 设置页给三个总数 + 明细(每类 已分配 + 实时使用率), 不用打开弹窗也能核对 */
+  /* 类别余额: 设置页给三个总数 + 明细(每类 已分配 + 实时使用率), 不用打开弹窗也能核对 */
   const cbp = catPool(cp), cba = catAllocated(), cbl = catPoolLeft(cp);
   const cbRows = catBudgetRows(cp);
   kv("类别余额(总可用)", "¥"+money(cbp)+"   = 当期预算 ¥"+money(effectiveBudget(cp))+" × 消费 "+consumePct()+"%");
@@ -5220,7 +5269,7 @@ function showSettings(){
   kv("地点模式", s.geoMode==="auto" ? "自动填充地址 (仅 add · 只存行政区名)" : "全手动 (不填则空)");
   kv("腾讯地图 Key", s.geoKey ? (maskGeoKey(s.geoKey)+"   (已配置, 仅存本机)") : "未配置 → config set geokey <Key>");
   kv("当前定位", geoCache.place ? (geoCache.place+"   ["+geoStatus.text+"]") : ("尚未定位  ["+geoStatus.text+"]"));
-  /* v0.1.0 钱包: 默认钱包 + 各钱包余额; 明细与流水用 wallet / wallet log, 界面在「钱包」页 */
+  /* 钱包: 默认钱包 + 各钱包余额; 明细与流水用 wallet / wallet log, 界面在「钱包」页 */
   kv("钱包", walletRows().rows.map(r=>r.name+(r.isDefault?"(默认)":"")+" ¥"+money(r.balance)).join("  ·  "));
   blank();
 }
@@ -5293,7 +5342,7 @@ function doForecast(){
 
 /* ======================= 资产看板 & 收益模拟 ======================= */
 function fv(P, rate, years){ return P * Math.pow(1 + rate, years); }
-/* 注: 原来的 sparkline()(▁▂▃▄▅▆▇█ 字符曲线)在 v0.0.11 已被 miniBars() 取代 —— 字符曲线
+/* 注: 字符曲线 sparkline(▁▂▃▄▅▆▇█)已被 miniBars 取代 —— 字符曲线
    的高度取决于字体, 与柱状图不是同一套颜色/比例语义, 且窄屏会折行。留着就是死代码, 已删除。 */
 function doAssets(tokens){
   const rawYears = numeric(tokens[0]);
@@ -5346,7 +5395,7 @@ function doAssets(tokens){
 function echoCommand(raw){
   const div=document.createElement("div"); div.className="l";
   div.appendChild(Object.assign(document.createElement("span"),{className:"prompt glow",textContent:"user@budget:~$ "}));
-  // v0.0.12: 终端不回显明文地图 Key(命令历史仍保留原值, 方便重跑); config 页也只显示打码值
+  // 终端不回显明文地图 Key(命令历史仍保留原值, 方便重跑); config 页也只显示打码值
   let shown = raw;
   /* P1 B-12: 打码吃掉整段 Key(含引号/空格), 旧正则只吃第一个 \S+ 会漏出后半截明文。 */
   const km = /^(config\s+set\s+(?:geokey|mapkey|key)\s+)(.+)$/i.exec(raw);
@@ -5388,7 +5437,7 @@ function refreshHeader(){
   // 右上角: 类别余额(仅已触发预警的类别) → 今日预算 → 周期预算 的红黄绿"实心圆点"指示
   const ts = todaySnapshot();
   const al=document.createElement("div"); al.className="mini-alert";
-  /* v0.0.14: 类别超额/即将超额时, 在「今日预算 / 周期预算」**之前**列出同类圆点与比例;
+  /* 类别超额/即将超额时, 在「今日预算 / 周期预算」**之前**列出同类圆点与比例;
      未触发的类别完全不渲染(不留空位、不显示 0%), 多项时横向排开。 */
   for(const a of catAlertList(st.p)) al.appendChild(dotPair(a.cat, {cls:a.cls, dot:a.dot, text:a.text}));
   al.appendChild(dotPair("今日预算", ratioDot(ts.ratio)));
@@ -5560,7 +5609,7 @@ function openAdd(){ modalMode="add"; modalId=null;
   document.getElementById("fa_total").value=""; document.getElementById("fa_days").value="";
   document.getElementById("fa_note").value=""; document.getElementById("fa_place").value=""; document.getElementById("fa_cat").value="";
   document.getElementById("fa_date").value=todayYMD();   // 精确到日(以前给的是 YYYY-MM)
-  /* 经常性支出(v0.0.15): 默认"12 个月、每月一次、不分摊"—— 最常见的订阅/房租口径 */
+  /* 经常性支出: 默认"12 个月、每月一次、不分摊"—— 最常见的订阅/房租口径 */
   document.getElementById("fr_amt").value=""; document.getElementById("fr_cat").value="";
   document.getElementById("fr_date").value=todayYMD();
   document.getElementById("fr_dur").value="12";
@@ -5568,7 +5617,7 @@ function openAdd(){ modalMode="add"; modalId=null;
   document.getElementById("fr_freq").value="month";
   document.getElementById("fr_split").checked=false;
   document.getElementById("fr_note").value="";
-  setWalletSelect("f_wallet", null);            // v0.1.0 新增: 支付钱包回到「默认钱包」
+  setWalletSelect("f_wallet", null);            // 支付钱包回到「默认钱包」
   setWalletSelect("fa_wallet", null);
   setWalletSelect("fr_wallet", null);
   setModalTabsVisible(true);           // 新增模式: 三个选项卡都在
@@ -5591,7 +5640,7 @@ function openEdit(r){
   document.getElementById("f_date").value = r.date;
   document.getElementById("f_note").value = r.note || "";
   document.getElementById("f_place").value = r.place || "";
-  setWalletSelect("f_wallet", r.wallet);        // v0.1.0: 预填这条记录的付款钱包(默认钱包 / 旧记录 → 不带 $ 参数)
+  setWalletSelect("f_wallet", r.wallet);        // 预填这条记录的付款钱包(默认钱包 / 旧记录 → 不带 $ 参数)
   setModalTab("add");                  // 编辑固定单笔表单(标题会变成「编辑记录 #id」)
   openOverlay("modalWrap");
   document.getElementById("f_amt").focus();
@@ -5603,7 +5652,7 @@ function refreshCatlist(){
   }
 }
 /* ---- 配置预算面板 ----
-   v0.1.0: 拆成 fillBudgetModal()(按当前 state 回填表单) + openOverlay。
+   拆成 fillBudgetModal()(按当前 state 回填表单) + openOverlay()。
    设置页的「周期预算」卡挂载同一个面板(只回填、不开遮罩, 见 SETTING_CARDS);
    openBudgetModal() 只是"以浮层打开"的程序化入口(主页已无「配置 ▾」, UI 不再调用它)。 */
 function fillBudgetModal(){
@@ -5625,7 +5674,7 @@ function openBudgetModal(){
   document.getElementById("b_amt").focus();
 }
 function closeBudgetModal(){ document.getElementById("budgetWrap").classList.remove("open"); }
-/* ---- 配置投资比例面板(v0.1.0 起常驻在设置页「投资比例」卡; 这里只是弹出宿主) ----
+/* ---- 配置投资比例面板(常驻在设置页「投资比例」卡; 这里只是弹出宿主) ----
    保存时回灌 `config set invest <pct>`,
    输出即 config 的当前配置表(不另写确认文案)。 */
 function fillInvestModal(){
@@ -5638,7 +5687,7 @@ function openInvestModal(){
   document.getElementById("i_pct").focus();
 }
 function closeInvestModal(){ document.getElementById("investWrap").classList.remove("open"); }
-/* ---- 配置周期面板(v0.0.15; v0.1.0 起常驻在设置页「周期持续时间」卡, 这里只是弹出宿主) ----
+/* ---- 配置周期面板(; 常驻在设置页「周期持续时间」卡, 这里只是弹出宿主) ----
    · 起止日期是唯一输入: 周期天数 = 截止日 − 起始日 + 1, 输入即算、即时显示(不另设"天数"输入框);
    · 按月模式把起止日交回 monthStart 规则(输入框只读), 保存回灌 `config set period natural`;
    · 自定义模式保存回灌**一条** `config set period <起> <止>` —— 与命令行同一条通道, 一步撤销。
@@ -5707,7 +5756,7 @@ function savePeriodModal(){
   closePeriodModal();
   runCommand("config set period "+r.start+" "+r.end);
 }
-/* ---- 配置类别余额弹窗(v0.0.14) ----
+/* ---- 配置类别余额弹窗 ----
    每行: [色块] 类别 [提示超额勾选] [数字输入] [浅色: 可配置余额] [占比]
    · 勾选框(默认勾选) = 该类别是否提示超额; 取消后顶栏/budget 不再出现它, 明细里标「静默」;
    · 输入框后的浅色数字 = 总可用余额 − 已配置类别余额(按当前输入实时算) —— 就是"还能再分多少";
@@ -5909,7 +5958,7 @@ function submitModal(){
   closeModal();
   // 编辑模式清空地点 → 回灌 #- 才会真的清掉; 新增模式留空就什么都不带(不填则空着)
   const placePart = place ? " "+quotePlace(place) : (modalMode==="edit" ? " #-" : "");
-  const walletPart = modalWalletPart("f_wallet");   // v0.1.0: 选了非默认钱包才带 $钱包
+  const walletPart = modalWalletPart("f_wallet");   // 选了非默认钱包才带 $钱包
   const cmd = modalMode==="edit"
     ? "update "+modalId+" "+amt+" "+cat+(note?" "+quoteNote(note):"")+" @"+date+walletPart+placePart
     : "add "+amt+" "+cat+(note?" "+quoteNote(note):"")+" @"+date+walletPart+placePart;
@@ -5966,12 +6015,12 @@ function submitRecur(){
 function input2num(v){ const n=parseFloat(String(v).replace(/,/g,"")); return isNaN(n)?null:n; }function quote(s){ return '"'+String(s).replace(/\\/g,"\\\\").replace(/"/g,'\\"')+'"'; }
 function alertModal(msg){ const old=document.getElementById("btnSubmit").textContent; document.getElementById("btnSubmit").textContent=msg; setTimeout(()=>{document.getElementById("btnSubmit").textContent="确认";},1400); }
 
-/* ---- 浮层互斥(v0.0.12 同版修复) ----
+/* ---- 浮层互斥 ----
    现象: 点第二个下拉时 toggleDd() 只 toggle 自己并 stopPropagation, document 的"点空白收起"
         不会执行 → 多个下拉/弹窗同时叠在页面上(互相遮挡)。
    规则: 全局同时最多一个浮层 open —— 打开任一下拉/弹窗前, 先关掉其它所有浮层。
    下拉与弹窗都走这两个入口, 不再各写一份 close 清单(F1 横向重复)。 */
-const DD_IDS = ["listDd","reportDd","exportDd"];   // v0.1.0: configDd/geoDd 分别随「配置 ▾」「地点 ▾」一起移除(配置在设置页)
+const DD_IDS = ["listDd","reportDd","exportDd"];   // configDd/geoDd 分别随「配置 ▾」「地点 ▾」一起移除(配置在设置页)
 const MODAL_IDS = ["modalWrap","budgetWrap","investWrap","dateWrap","geoWrap","catWrap","periodWrap"];
 function closeAllOverlays(except){
   for(const id of DD_IDS.concat(MODAL_IDS)){
@@ -6007,7 +6056,7 @@ function bindToolbar(){
          以前这里是四个 closeDd 的硬编码清单, 新增「导出 ▾」时就会漏关、菜单叠在页面上。 */
       closeAllDd();
       if(c==="open-add"){ openAdd(); return; }
-      /* v0.1.0: 「配置 ▾」下拉整体移除(配置全在设置页) —— data-config / btnConfigDd 两个分支随之删除,
+      /* 「配置 ▾」下拉整体移除(配置全在设置页) —— data-config / btnConfigDd 两个分支随之删除,
          面板的"以弹窗打开"入口(openBudgetModal 等)只剩程序化调用(设置页的卡片直接挂载面板, 不走弹窗)。 */
       if(c==="backup-download"){ doBackupDownload(); return; }
       if(c==="restore-file"){ document.getElementById("fileImport").click(); return; }
@@ -6033,7 +6082,7 @@ function bindToolbar(){
   });
   restoreLocalHandleQuiet(); // 尝试重连上次选择的本地目录(若权限仍在)
 }
-/* ---- 范围下拉(v0.0.10): 「消费列表」与合并后的「总结与图表」共用一套开合/选范围逻辑 ----
+/* ---- 范围下拉: 「消费列表」与合并后的「总结与图表」共用一套开合/选范围逻辑 ----
    现象: 以前四个总结按钮各拼一条固定命令, 图表又另有一个下拉, 选范围与手动输日期只在 list 里有。
    原因: 两套下拉 = 两套行为, 且"先选日期再输出"只有列表能用(F1 横向重复)。
    修复: 统一 data-range + onRangeMenuItem(kind, target); target 决定拼 list 还是 report 命令,
@@ -6065,7 +6114,7 @@ function onRangeMenuItem(kind, target){
    旁边 📅 仍可调原生日历/月份选择器, 选完同样回填成统一格式。 */
 const DATE_HINT = "格式统一: 日期 YYYY-MM-DD、月份 YYYY-MM（等同命令 @2027-08-18 / @2027-08）；填日期 → 只看当天/只出当天总结，只填月份 → 看整月/整月总结，两个都填则优先日期。";
 /* 同一个弹窗服务两个入口: "list" = 消费列表, "report" = 合并后的总结与图表。
-   只改命令名与标题, 日期归一化/校验/预览全部共用(v0.0.8 的 B6/B7 修复不重复实现)。 */
+   只改命令名与标题, 日期归一化/校验/预览全部共用(B6/B7 的修复不重复实现)。 */
 let dateModalTarget = "list";
 function dateModalCmd(target, cat, when){
   const base = target==="report" ? "report" : "list";
@@ -6186,13 +6235,13 @@ function bindModal(){
   document.getElementById("b_daily_off").addEventListener("click",clearDailyBudget);
   document.getElementById("b_daily").addEventListener("input",updateDailyHint);   // 输入即预览红黄绿圆点
   document.getElementById("b_daily").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveDailyBudget(); });
-  // 投资比例面板(v0.1.0 起常驻设置页「投资比例」卡; 这些按钮在卡片里同样生效)
+  // 投资比例面板(常驻设置页「投资比例」卡; 这些按钮在卡片里同样生效)
   document.getElementById("i_cancel").addEventListener("click",closeInvestModal);
   document.getElementById("i_save").addEventListener("click",saveInvest);
   document.getElementById("investWrap").addEventListener("click",(e)=>{ if(e.target.id==="investWrap") closeInvestModal(); });
   document.getElementById("i_pct").addEventListener("input",updateInvestHint);   // 输入即预览消费/投资占比
   document.getElementById("i_pct").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveInvest(); });
-  // 配置周期弹窗(v0.0.15): 起止日输入即算天数; 保存回灌 config set period <起> <止>
+  // 配置周期弹窗: 起止日输入即算天数; 保存回灌 config set period <起> <止>
   document.getElementById("p_cancel").addEventListener("click",closePeriodModal);
   document.getElementById("p_save").addEventListener("click",savePeriodModal);
   document.getElementById("p_mode_month").addEventListener("click",()=>setPeriodModalMode("month"));
@@ -6220,7 +6269,7 @@ function bindModal(){
   });
   document.getElementById("d_cat").addEventListener("input",updateDatePreview);
   document.getElementById("d_cat").addEventListener("keydown",(e)=>{ if(e.key==="Enter") applyDateModal(); });
-  // 地点设置弹窗(v0.0.12): 所有动作都回灌命令, 不直接改 state
+  // 地点设置弹窗: 所有动作都回灌命令, 不直接改 state
   document.getElementById("g_cancel").addEventListener("click",closeGeoModal);
   document.getElementById("g_auto").addEventListener("click",()=>setGeoMode("auto"));
   document.getElementById("g_manual").addEventListener("click",()=>setGeoMode("manual"));
@@ -6229,7 +6278,7 @@ function bindModal(){
   document.getElementById("geoWrap").addEventListener("click",(e)=>{ if(e.target.id==="geoWrap") closeGeoModal(); });
   document.getElementById("g_key").addEventListener("keydown",(e)=>{ if(e.key==="Enter") saveGeoKey(); });
   document.getElementById("g_place").addEventListener("keydown",(e)=>{ if(e.key==="Enter") submitGeoPlace(); });
-  /* v0.0.14 配置类别余额: 三个按钮 + 点遮罩关闭(输入框的 Enter 在 buildCatRows 里逐行绑定,
+  /* 配置类别余额: 三个按钮 + 点遮罩关闭(输入框的 Enter 在 buildCatRows 里逐行绑定,
      因为行是随类别动态生成的) */
   document.getElementById("c_save").addEventListener("click", saveCatBudgets);
   document.getElementById("c_cancel").addEventListener("click", closeCatModal);
@@ -6262,7 +6311,7 @@ function argCandidates(c0, slot, tokens, cur){
   }
   const typingAt = !!(cur && cur[0]==="@");
   if(cur && cur[0]==="#") return [];               // 地点自由输入, 不给候选
-  /* v0.1.0: 正在输 $钱包 → 给全部钱包名(名字不带空格时可直接补全; 带空格请写 $"…" ) */
+  /* 正在输 $钱包 → 给全部钱包名(名字不带空格时可直接补全; 带空格请写 $"…" ) */
   if(cur && cur[0]==="$") return state.wallets.map(w=>"$"+w.name);
   if(cmd==="wallet"){
     if(arg===0) return ["add","in","out","mv","use","name","del","log", ...state.wallets.map(w=>w.name)];
@@ -6284,7 +6333,7 @@ function argCandidates(c0, slot, tokens, cur){
       if(sub==="budget") return ["800","1000","1200","1500"];
       if(sub==="invest"||sub==="consume"||sub==="ratio"||sub==="share") return ["15","85","0.85","0.9"];
       if(sub==="geo") return ["auto","manual"];
-      /* v0.0.15: 周期三种写法都给候选 —— 天数快捷 / natural / 起止日(取当前与 15 天后做示例) */
+      /* 周期三种写法都给候选 —— 天数快捷 / natural / 起止日(取当前与 15 天后做示例) */
       if(sub==="period") return ["natural","15","14","7","30","90",todayYMD()];
       if(sub==="periodstart") return [todayYMD(), addDaysYMD(todayYMD(),-14)];
       if(sub==="periodend") return [addDaysYMD(todayYMD(),14), addDaysYMD(todayYMD(),29)];
@@ -6486,7 +6535,7 @@ function historyDown(){ if(hIdx<0) return; hIdx++; if(hIdx>=history.length){ hId
 
 /* live clock in input prompt? keep simple */
 
-/* v0.0.13 · 工具栏搜索框: 唯一入口仍是 `search` 命令 —— 回车把内容回灌给 runCommand(),
+/* 工具栏搜索框: 唯一入口仍是 `search` 命令 —— 回车把内容回灌给 runCommand,
    解析/匹配/渲染全部复用命令实现(H5 双通道对称: 鼠标与键盘不会走出两套行为)。
    Esc 清空并回到命令行; 搜索后焦点留在框里, 方便改条件再按回车。 */
 function bindSearch(){
@@ -6510,7 +6559,7 @@ function bindSearch(){
     scrollBottom();
   });
 }
-/* ============================ 三页外壳 (v0.1.0) ============================
+/* ============================ 三页外壳 ============================
    页面 = 主页(原终端界面) / 钱包 / 设置, 同一时间只显示一页:
      · 主页的五个顶层元素(顶栏 / 工具栏 / 理财条 / 终端 / 输入行)用 .page-hide 收起, 另两页是独立的
        <main> —— 主页"即当前页面", 原有 DOM 一个 id 都没动, 既有弹窗 / 下拉 / 命令行照常工作;
@@ -6587,7 +6636,7 @@ function afterPageCommand(before, lines0){
 
 /* ---- 「记一笔」三个面板的支付钱包下拉(单一实现) ----
    第一项 = 默认钱包, 其余钱包按名称列出。空值 / 默认钱包 都表示"用默认钱包付款", 提交时不带 $ 参数 ——
-   所以不选钱包时回灌的命令字符串与 v0.1.0 之前完全一致(老用法、老脚本、撤销栈都不受影响)。 */
+   所以不选钱包时回灌的命令字符串保持原样(老用法、老脚本、撤销栈都不受影响)。 */
 const WALLET_SELECTS = ["f_wallet","fa_wallet","fr_wallet"];
 function refreshWalletSelects(){
   const def = defaultWallet();
@@ -6631,6 +6680,22 @@ function walletField(f, label, placeholder, type){
   wf.append(l, i); f.appendChild(wf);
   return i;
 }
+/* 转入口的「转入钱包」下拉: 与「记一笔」的钱包下拉同一份钱包清单, 排除转出钱包自己。
+   不使用 innerHTML 拼串(应用内唯一允许的 innerHTML 是清空)。 */
+function walletSelectField(f, label, excludeId){
+  const wf = document.createElement("div"); wf.className = "wf";
+  const l = document.createElement("label"); l.textContent = label;
+  const sel = document.createElement("select");
+  sel.setAttribute("aria-label", label);
+  for(const w of state.wallets){
+    if(w.id===excludeId) continue;             // 不能转给自己: 下拉里就不给这个选项
+    const o = document.createElement("option");
+    o.value = w.name; o.textContent = w.name;
+    sel.appendChild(o);
+  }
+  wf.append(l, sel); f.appendChild(wf);
+  return sel;
+}
 function walletFormButtons(f, acts){
   let first = null;
   for(const [label, fn, cls] of acts){
@@ -6669,6 +6734,26 @@ function openWalletForm(host, w, kind){
       }, "accent"],
       ["取消", cancel]
     ]);
+    return;
+  }
+  if(kind==="tr"){
+    if(state.wallets.length<2){ err.textContent = "至少要两个钱包才能转账"; return; }
+    const to = walletSelectField(f, "转入钱包", w.id);
+    to.value = (state.wallets.find(x=>x.id!==w.id) || {}).name || "";
+    const amt = walletField(f, "转账金额 (元)", "如 500", "number");
+    const note = walletField(f, "备注 (可选)", "如 提现 / 还钱");
+    const first = walletFormButtons(f, [
+      ["确认转账", ()=>{
+        const n = parseAmount(String(amt.value || "").replace(/,/g,""));
+        if(n==null) return walletFormFail(err, "金额需为 ≥ ¥0.01 的数字");
+        const dest = findWalletByName(to.value);
+        if(!dest || dest.id===w.id) return walletFormFail(err, "请选择另一个钱包作为转入方");
+        const nt = String(note.value || "").trim();
+        runCommand("wallet tr "+quote(w.name)+" "+quote(dest.name)+" "+n+(nt ? " "+quoteNote(nt) : ""));
+      }, "accent"],
+      ["取消", cancel]
+    ]);
+    to.addEventListener("keydown", (e)=>{ if(e && e.key==="Enter"){ if(e.preventDefault) e.preventDefault(); if(first) first.click(); } });
     return;
   }
   const sign = (kind==="in") ? 1 : -1;
@@ -6771,6 +6856,7 @@ function buildWalletCard(r, periodSpend){
   const form = document.createElement("div");
   pageButton(btns, "存入", ()=>openWalletForm(form, r, "in"));
   pageButton(btns, "取出", ()=>openWalletForm(form, r, "out"));
+  if(state.wallets.length>1) pageButton(btns, "转账", ()=>openWalletForm(form, r, "tr"));
   if(!r.isDefault) pageButton(btns, "设为默认", ()=>runCommand("wallet use "+quote(r.name)), "accent");
   pageButton(btns, "重命名", ()=>openWalletForm(form, r, "name"));
   if(state.wallets.length>1){
@@ -6834,7 +6920,7 @@ function renderWalletPage(){
       {t:"  "+it.date+"  ", c:COLOR.gray},
       {t:(walletNameOf(it.wallet) || "—")+"  ", c:COLOR.white},
       {t:(plus ? "+¥" : "-¥")+money(Math.abs(it.amount)).padStart(10," ")+"  ", c:plus ? COLOR.green : (it.kind==="pay" ? COLOR.orange : COLOR.red)},
-      {t:(it.kind==="pay" ? "支出 " : (plus ? "存入 " : "取出 "))+(it.note || ""), c:COLOR.gray}
+      {t:(it.kind==="pay" ? "支出 " : (it.kind==="xfer" ? "" : (plus ? "存入 " : "取出 ")))+(it.note || ""), c:COLOR.gray}
     ]);
   }
 }
@@ -6975,7 +7061,7 @@ function fillOtherCard(){
   const rm = document.getElementById("o_rate_money"); if(rm) rm.value = +(s.rateMoney*100);
   const ri = document.getElementById("o_rate_index"); if(ri) ri.value = +(s.rateIndex*100);
 }
-/* 周期卡里、面板之外的一行: 按月模式的月起始日(v0.1.0 起收进 config, 与命令行同一个校验入口) */
+/* 周期卡里、面板之外的一行: 按月模式的月起始日(收进 config, 与命令行同一个校验入口) */
 function buildMonthStartRow(host){
   settingsRow(host, "按月模式的月起始日", "o_monthstart", "1-28; 1 或 natural = 自然月", "保存", saveMonthStartRow);
 }
@@ -7030,7 +7116,7 @@ function bindPages(){
 }
 function boot(){
   const dropped = loadState();
-  /* v0.0.12: 先把上次定位的地名从独立缓存读回来(左上角立即可见、首笔即可用), 再申请一次新定位 */
+  /* 先把上次定位的地名从独立缓存读回来(左上角立即可见、首笔即可用), 再申请一次新定位 */
   const cached = loadGeoCache();
   setGeoStatus(cached ? "cached" : "idle",
                cached ? (geoCache.district || districtOf(geoCache.place)) : "定位中…");
@@ -7042,7 +7128,7 @@ function boot(){
   // banner
   const t=todayYMD();
   line([{t:"╔═══════════════════════════════════════════════════╗",c:COLOR.green}]);
-  line([{t:"║  ",c:COLOR.green},{t:"BUDGET :: TERM",c:COLOR.cyan,cls:"glow"},{t:"  "+APP_VERSION+"   个人记账 · 自动理财规划",c:COLOR.pure},{t:"  ║",c:COLOR.green}]);
+  line([{t:"║  ",c:COLOR.green},{t:"BUDGET :: TERM",c:COLOR.cyan,cls:"glow"},{t:"  "+APP_VERSION+"   个人记账 · 自动理财规划",c:COLOR.pure},{t:"   ║",c:COLOR.green}]);
   line([{t:"╚═══════════════════════════════════════════════════╝",c:COLOR.green}]);
   line([
     {t:"今日 ",c:COLOR.gray},{t:t,c:COLOR.white},
@@ -7054,7 +7140,7 @@ function boot(){
         {t:" (或 set consume 85 / set ratio 0.85)",c:COLOR.gray}]);
   showBudget();
   line([{t:"输入 ",c:COLOR.gray},{t:"help",c:COLOR.yellow},{t:" 查看全部命令；或点上方按钮快速操作。",c:COLOR.gray}]);
-  /* v0.1.0: 工具栏的「配置 ▾」移除后, 首屏明确指一下配置去哪儿了(省得老用户找按钮) */
+  /* 工具栏的「配置 ▾」移除后, 首屏明确指一下配置去哪儿了(省得老用户找按钮) */
   line([{t:"  配置(周期预算 / 周期持续时间 / 投资比例 / 类别余额 / 地图 Key)都在顶部「",c:COLOR.gray},
         {t:"设置",c:COLOR.cyan},{t:"」页, 页内直接改。",c:COLOR.gray}]);
   blank();

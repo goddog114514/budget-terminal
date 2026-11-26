@@ -38,7 +38,7 @@ function seeded(){
   S.clearTerm();
   return S;
 }
-const wid = (S, name) => S.state.wallets.find(w => w.name===name).id;
+const wid = (S, name) => (S.state.wallets.find(w => w.name===name) || {}).id;   // 变异下不能裸取 .id
 const wtagOf = (cards) => { const c = cards.find(x => has(x, "default")); const t = byCls(c, "wtag")[0]; return t ? t.textContent : ""; };
 
 /* ================= A. 归一化 / 迁移 / 备份 ================= */
@@ -376,6 +376,26 @@ const wtagOf = (cards) => { const c = cards.find(x => has(x, "default")); const 
   del.click();
   eq("F19 第二次才真的删除 → wallet del", S.state.wallets.map(w => w.name), ["默认钱包","微信零钱","支付宝"]);
   ok("F20 只剩一个钱包时不显示「删除」", (()=>{ const N = mk(); N.showPage("wallet"); return !btn(byCls($(N,"walletBody"), "wcard").find(c => c.dataset.wallet==="1"), "删除"); })());
+
+  /* 转账: 转入口的下拉只列其它钱包, 回灌 wallet tr, 页面重画后余额更新 */
+  const T = mk(); T.showPage("wallet");
+  run(T, "wallet in 默认钱包 1000");
+  run(T, "wallet add 微信 500");
+  const tcard = () => byCls($(T,"walletBody"), "wcard").find(c => c.dataset.wallet==="1");
+  ok("F21 每个钱包卡片都有「转账」按钮", !!btn(tcard(), "转账") && !!btn(byCls($(T,"walletBody"),"wcard").find(c=>c.dataset.wallet==="2"), "转账"));
+  btn(tcard(), "转账").click();
+  const tsel = findAll(tcard(), c => String(c.tagName)==="SELECT")[0];
+  const tfi = findAll(tcard(), c => String(c.tagName)==="INPUT");
+  eq("F22 转账表单: 转入钱包下拉(排除自己) + 金额 + 备注", [!!tsel, tsel.children.map(x=>x.value), tfi.length], [true, ["微信"], 2]);
+  btn(tcard(), "确认转账").click();
+  ok("F23 金额为空: 页内提示, 不执行命令", /金额需为/.test(tcard().textContent) && T.state.wops.length===2);
+  tfi[0].value = "100"; tfi[1].value = "还钱"; btn(tcard(), "确认转账").click();
+  eq("F24 确认转账 → 回灌 wallet tr, 两条流水一步撤销",
+     [T.state.wops.length, T.state.wops.slice(-2).map(x=>x.amount), T.undoDepth>0], [4, [-100,100], true]);
+  eq("F25 转账后两侧余额更新", [T.walletBalance(1), T.walletBalance(2)], [900, 600]);
+  ok("F26 回显条能看到转账输出", /✓ 转账 默认钱包 → 微信 ¥100\.00/.test($(T,"walletEchoBody").textContent), $(T,"walletEchoBody").textContent);
+  const one = mk(); one.showPage("wallet");
+  ok("F27 只有一个钱包时不显示「转账」按钮", !btn(byCls($(one,"walletBody"),"wcard").find(c=>c.dataset.wallet==="1"), "转账"));
 }
 
 /* ================= G. 设置页: 同一份表单 DOM 在主页弹窗 ↔ 设置页卡片之间搬动 ================= */
@@ -468,10 +488,74 @@ const wtagOf = (cards) => { const c = cards.find(x => has(x, "default")); const 
   ok("G20 旧写法 set monthstart 15.5 现在也被拒(以前会写入非整数, 重启回落)", /用法: set monthstart/.test(run(a, "set monthstart 15.5")) && a.state.settings.monthStart===20);
 }
 
+/* ================= I. 钱包间转账 ================= */
+{
+  const S = seeded();                       // 默认 ¥1000 / 微信 ¥500 / 现金 ¥5000
+  const o = run(S, "wallet tr 微信 现金 300 提现");
+  eq("I1 两条流水成对落账(转出 − / 转入 +, 同一 xid)",
+     S.state.wops.slice(-2).map(x => [x.wallet, x.amount]), [[wid(S,"微信"), -300], [wid(S,"现金"), 300]]);
+  eq("I2 同一 xid, 备注带对方钱包名与自定义备注",
+     (()=>{ const [a,b] = S.state.wops.slice(-2); return [a.xid===b.xid, !!a.xid, a.note, b.note]; })(),
+     [true, true, "转出至 现金 · 提现", "转入自 微信 · 提现"]);
+  eq("I3 两侧余额各自变化, 钱包总额不变",
+     [S.walletBalance(wid(S,"微信")), S.walletBalance(wid(S,"现金")), S.walletBalance(1)+S.walletBalance(wid(S,"微信"))+S.walletBalance(wid(S,"现金"))],
+     [200, 5300, 6500]);
+  ok("I4 回执含双方 / 金额 / 一步撤销", /✓ 转账 微信 → 现金 ¥300\.00/.test(o) && /两条流水成对记录\(一步撤销\)/.test(o), o);
+  const lg = run(S, "wallet log 微信 2");
+  ok("I5 流水里标出转出 / 转入", /转出至 现金/.test(lg) && /300\.00/.test(lg), lg);
+  const before = S.state.wops.length;
+  ok("I6 同一个钱包互转被拒且不落流水", /同一个钱包/.test(run(S, "wallet tr 微信 微信 100")) && S.state.wops.length===before);
+  for(const [name, cmd] of [
+    ["I7 转出钱包不存在", "wallet tr 支付宝 现金 100"],
+    ["I8 转入钱包不存在", "wallet tr 微信 支付宝 100"],
+    ["I9 金额 0", "wallet tr 微信 现金 0"],
+    ["I10 金额 0.001", "wallet tr 微信 现金 0.001"],
+    ["I11 金额为负", "wallet tr 微信 现金 -1"],
+    ["I12 金额非数字", "wallet tr 微信 现金 abc"],
+    ["I13 缺金额", "wallet tr 微信 现金"],
+    ["I14 非法日期", "wallet tr 微信 现金 10 @2027-13-40"],
+    ["I15 余额不足(整笔不落)", "wallet tr 微信 现金 99999"],
+  ]){
+    ok(name + " 被拒且不落流水", /未找到|金额无效|日期无效|不够转出/.test(run(S, cmd)) && S.state.wops.length===before, out(S));
+  }
+  eq("I16 一次撤销同时撤掉两条流水与两侧余额",
+     (()=>{ S.runCommand("undo"); return [S.state.wops.length, S.walletBalance(wid(S,"微信")), S.walletBalance(wid(S,"现金"))]; })(),
+     [before-2, 500, 5000]);
+  eq("I17 redo 恢复两条流水", (()=>{ S.runCommand("redo"); return S.state.wops.slice(-2).map(x => x.amount); })(), [-300, 300]);
+  const F = seeded();
+  run(F, "wallet tr 微信 现金 100 @2027-09-01");
+  eq("I18 未来日期的转账不计入今天的余额", [F.walletBalance(wid(F,"微信")), F.walletBalance(wid(F,"现金"))], [500, 5000]);
+  eq("I19 截至该日余额已包含转账", [F.walletBalanceAt(wid(F,"微信"),"2027-09-01"), F.walletBalanceAt(wid(F,"现金"),"2027-09-01")], [400, 5100]);
+  ok("I20 未来日期有提示", /晚于今天/.test(out(F)));
+  const B = seeded();
+  run(B, "wallet tr 微信 现金 50");
+  const snap = JSON.parse(B.serializeState());
+  eq("I21 备份带 xid, 导入后成对保留",
+     (()=>{ const R = mk(); R.restoreFromText(B.serializeState()); const [a,b] = R.state.wops.slice(-2);
+            return [snap.wops.slice(-2).every(x=>!!x.xid), a.xid===b.xid, R.walletBalance(wid(R,"微信")), R.walletBalance(wid(R,"现金"))]; })(),
+     [true, true, 450, 5050]);
+  const n = B.normalizeWallets(
+    [{id:1,name:"默认钱包"},{id:2,name:"微信"}],
+    [{wallet:1,amount:-10,date:TODAY,xid:"x1-20270830-0"},{wallet:2,amount:10,date:TODAY,xid:"x1-20270830-0"},
+     {wallet:1,amount:5,date:TODAY,xid:"bad id!"}]);
+  eq("I22 归一化只保留合法短 ASCII xid", n.wops.map(x=>x.xid||""), ["x1-20270830-0", "x1-20270830-0", ""]);
+  const D = seeded();
+  run(D, "wallet tr 微信 现金 200");
+  const del = run(D, "wallet del 现金");
+  eq("I23 删除参与转账的钱包: 对方那半笔一并删除, 不会留下凭空转入",
+     [D.state.wallets.map(w=>w.name), D.state.wops.filter(x=>x.xid).length, D.walletBalance(wid(D,"微信"))],
+     [["默认钱包","微信"], 0, 500]);
+  ok("I24 删除回执说明流水条数包含成对的两条", /流水 3 条一并删除/.test(del), del);
+  const H = seeded(); H.clearTerm(); H.runCommand("help");
+  ok("I25 help 里列出 wallet tr 转账子命令", /wallet tr <转出钱包>/.test(out(H)), "");
+  const A = seeded(); A.clearTerm(); A.runCommand("wallet foobar");
+  ok("I26 wallet 用法里包含 tr", /wallet tr <转出钱包>/.test(out(A)), "");
+}
+
 /* ================= H. 规范自检 ================= */
 {
-  eq("H1 版本号 v0.1.0", mk().APP_VERSION, "v0.1.0");
-  ok("H2 README 当前版本 = v0.1.0", /当前版本：\*\*v0\.1\.0\*\*/.test(readme), "");
+  eq("H1 版本号 v0.1.1", mk().APP_VERSION, "v0.1.1");
+  ok("H2 README 当前版本 = v0.1.1", /当前版本：\*\*v0\.1\.1\*\*/.test(readme), "");
   ok("H3 README 有钱包章节与三页说明", /^## 钱包/m.test(readme) && /主页 \/ 钱包 \/ 设置|三页|三个页面/.test(readme) && /设置页/.test(readme), "");
   ok("H4 .page-hide 带 !important(主页元素自带 display:flex, 会盖掉原生 [hidden])", /\.page-hide\{display:none !important;\}/.test(html), "");
   ok("H5 页面导航有三项且 data-page 齐全", ['data-page="home"','data-page="wallet"','data-page="settings"'].every(s => html.includes(s)), "");

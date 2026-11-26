@@ -139,8 +139,8 @@ const MUTANTS = [
    ['    s.src = GEO_SDK_BASE + "&key=" + encodeURIComponent(key);\n',
     '    s.src = GEO_SDK_BASE + "&key=ABCDEFGHIJKLMNOPQRSTUVWXYZ12345";\n']],
   ["m_geo_toolbar", "test8.mjs", "把已删的「地点 ▾」下拉加回主页工具栏(又多一处地点配置入口)",
-   ["  <!-- v0.1.0: 原来的「地点 ▾」下拉已移除",
-    "  <span class=\"dd\" id=\"geoDd\"><button id=\"btnGeoDd\" type=\"button\">地点 ▾</button></span>\n  <!-- v0.1.0: 原来的「地点 ▾」下拉已移除"]],
+   ["  <!-- 原来的「地点 ▾」下拉已移除",
+    "  <span class=\"dd\" id=\"geoDd\"><button id=\"btnGeoDd\" type=\"button\">地点 ▾</button></span>\n  <!-- 原来的「地点 ▾」下拉已移除"]],
   ["m_geo_badge_canvas", "test8.mjs", "左上角图标换回 Emoji(不用 Canvas 手绘)",
    ["    geoBadgeCanvasEl = document.createElement(\"canvas\");\n",
     "    geoBadgeCanvasEl = document.createElement(\"span\"); geoBadgeCanvasEl.textContent=\"📍\";\n"]],
@@ -354,6 +354,20 @@ const MUTANTS = [
    ['    if(el) el.classList.toggle("page-hide", name!=="home");', '    if(el) el.classList.toggle("page-hide", false);']],
   ["m_settings_mount_dup", "test14.mjs", "设置页不挂载既有弹窗面板(表单消失/被迫复制第二套)",
    ['    if(slot && panel && !hasChild(slot, panel)) slot.appendChild(panel);', '    if(false) slot.appendChild(panel);']],
+  /* v0.1.1 · 钱包间转账: 成对落账 / 一步撤销 / 余额校验 / 归一化 / 删钱包清半笔 */
+  ["m_xfer_dispatch", "test14.mjs", "抹掉 wallet tr 分支(转账只剩帮助文字)",
+   ['  if(sub==="tr"||sub==="transfer"||sub==="转账"||sub==="转"){ walletTransfer(rest); return; }\n', ""]],
+  ["m_xfer_one_leg", "test14.mjs", "转账只落一条流水(钱凭空消失/出现)",
+   ['  state.wops.push({ wallet:from.id, amount:-n, date, note:"转出至 "+to.name+(note ? " · "+note : ""), created:todayYMD(), xid });\n', ""]],
+  ["m_xfer_same", "test14.mjs", "允许转给自己(同一钱包互转制造两条无效流水)",
+   ['  if(from.id===to.id){ line([{t:"转出与转入是同一个钱包「"+from.name+"」, 无需转账。",c:COLOR.yellow}]); return; }\n', ""]],
+  ["m_xfer_balance", "test14.mjs", "转账不检查源钱包余额(可以转出不存在的钱)",
+   ['  if(available < n){', '  if(false){']],
+  ["m_xfer_norm", "test14.mjs", "归一化丢掉 xid(备份导入后转账退化成两笔普通流水)",
+   ['    if(typeof o.xid==="string" && /^[A-Za-z0-9_-]{1,64}$/.test(o.xid)) op.xid = o.xid;\n', ""]],
+  ["m_xfer_del_pair", "test14.mjs", "删钱包不删对方那半笔转账(留下凭空转入)",
+   ['  state.wops = state.wops.filter(o=>o.wallet!==w.id && !(o.xid && xids.has(o.xid)));',
+    '  state.wops = state.wops.filter(o=>o.wallet!==w.id);']],
 ];
 
 const tmp = os.tmpdir();
